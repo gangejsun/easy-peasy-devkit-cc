@@ -1,0 +1,45 @@
+{
+  "name": "easy-peasy-devkit",
+  "owner": {
+    "name": "gangejsun",
+    "email": "gangejsun@gmail.com"
+  },
+  "metadata": {
+    "description": "EasyPeasy Claude Code Devkit — AI Native Dev Harness with Phase Workflow, Agent Orchestration, and Dual Governance",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "epcc-devkit",
+      "source": "./",
+      "description": "AI Native Dev Harness — Phase 워크플로우(P0~P6) + Agent 오케스트레이션(planning/review) + Dual Governance(Rules+Hooks). 26개 스킬, 4개 프리셋(Next.js, React, FastAPI, Blank) 포함.",
+      "version": "1.0.0",
+      "author": {
+        "name": "gangejsun"
+      },
+      "license": "MIT",
+      "homepage": "https://github.com/gangejsun/easy-peasy-devkit-cc",
+      "repository": "https://github.com/gangejsun/easy-peasy-devkit-cc",
+      "keywords": [
+        "claude-code",
+        "ai-native",
+        "dev-harness",
+        "phase-workflow",
+        "agent-orchestration",
+        "code-review",
+        "planning"
+      ],
+      "category": "development-workflows",
+      "tags": [
+        "workflow",
+        "agent",
+        "governance",
+        "code-review",
+        "planning",
+        "nextjs",
+        "react",
+        "fastapi"
+      ]
+    }
+  ]
+}
