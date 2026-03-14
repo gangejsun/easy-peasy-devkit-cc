@@ -1,0 +1,24 @@
+{
+  "name": "epcc-devkit",
+  "version": "1.0.0",
+  "displayName": "EasyPeasy Claude Code Devkit",
+  "description": "AI Native Dev Harness — Phase 워크플로우 + Agent 오케스트레이션 + Dual Governance",
+  "author": {
+    "name": "gyeong"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/gyeong/easy-peasy-devkit-cc",
+  "keywords": [
+    "claude-code",
+    "claude-code-plugin",
+    "ai-native",
+    "dev-harness",
+    "phase-workflow",
+    "agent-orchestration"
+  ],
+  "hooks": "./hooks/hooks.json",
+  "agents": [
+    "./agents/planning-agent.md",
+    "./agents/review-agent.md"
+  ]
+}

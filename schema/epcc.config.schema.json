@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/gyeong/epcc-devkit/main/plugin/schema/epcc.config.schema.json",
+  "title": "EPCC Devkit Configuration",
+  "description": "Configuration schema for EasyPeasy Claude Code Devkit",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "project": {
+      "type": "object",
+      "description": "Project metadata",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Project name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Project description"
+        },
+        "language": {
+          "type": "string",
+          "enum": ["ko", "en", "ja", "zh"],
+          "default": "en",
+          "description": "Response language for Claude"
+        },
+        "experienceLevel": {
+          "type": "string",
+          "enum": ["senior", "mid", "junior"],
+          "default": "senior",
+          "description": "Developer experience level — affects response detail"
+        }
+      },
+      "required": ["name"]
+    },
+    "techStack": {
+      "type": "object",
+      "description": "Technology stack configuration",
+      "properties": {
+        "preset": {
+          "type": "string",
+          "enum": ["nextjs-supabase", "react-vite", "python-fastapi", "blank"],
+          "default": "blank",
+          "description": "Preset name for framework-specific skills and defaults"
+        },
+        "framework": {
+          "type": "string",
+          "description": "Primary framework (e.g., 'Next.js 15 (App Router)')"
+        },
+        "language": {
+          "type": "string",
+          "description": "Primary language (e.g., 'TypeScript (strict mode)')"
+        },
+        "packageManager": {
+          "type": "string",
+          "enum": ["npm", "pnpm", "yarn", "bun", "uv", "pip"],
+          "default": "npm"
+        },
+        "commands": {
+          "type": "object",
+          "properties": {
+            "build": { "type": "string" },
+            "test": { "type": "string" },
+            "lint": { "type": "string" }
+          }
+        },
+        "additionalStack": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Additional technologies (e.g., 'Tailwind CSS v4', 'Supabase')"
+        }
+      },
+      "required": ["preset"]
+    },
+    "domains": {
+      "type": "object",
+      "description": "Domain boundary configuration for the guard hook",
+      "properties": {
+        "sourceDir": {
+          "type": "string",
+          "default": "src",
+          "description": "Source code root directory"
+        },
+        "sharedPackage": {
+          "type": "string",
+          "description": "Shared package path (requires approval to modify)"
+        },
+        "importAlias": {
+          "type": "string",
+          "description": "Import alias (e.g., '@/')"
+        }
+      }
+    },
+    "security": {
+      "type": "object",
+      "description": "Security hook configuration",
+      "properties": {
+        "secretPatterns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string", "description": "Pattern display name" },
+              "pattern": { "type": "string", "description": "Regular expression pattern" },
+              "action": {
+                "type": "string",
+                "enum": ["block", "warn"],
+                "description": "Action on match: block (exit 2) or warn (stderr only)"
+              }
+            },
+            "required": ["name", "pattern", "action"]
+          }
+        }
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "description": "Phase workflow toggle",
+      "properties": {
+        "p0": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true }
+          }
+        },
+        "p6": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true }
+          }
+        }
+      }
+    },
+    "customResources": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Custom resource directories that skills can reference"
+    },
+    "disabledSkills": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Skills to disable (by name)"
+    }
+  },
+  "required": ["project", "techStack"]
+}

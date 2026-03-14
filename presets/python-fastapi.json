@@ -1,0 +1,36 @@
+{
+  "name": "python-fastapi",
+  "displayName": "Python FastAPI",
+  "description": "Python Backend: FastAPI + SQLAlchemy + Pydantic + pytest",
+  "techStack": {
+    "framework": "FastAPI",
+    "language": "Python 3.11+",
+    "packageManager": "uv",
+    "commands": {
+      "build": "",
+      "test": "pytest",
+      "lint": "ruff check ."
+    },
+    "additionalStack": [
+      "SQLAlchemy 2.0",
+      "Pydantic v2",
+      "Alembic",
+      "pytest + httpx"
+    ]
+  },
+  "domains": {
+    "sourceDir": "app",
+    "sharedPackage": "",
+    "importAlias": ""
+  },
+  "security": {
+    "secretPatterns": [
+      { "name": "AWS Key", "pattern": "AKIA[0-9A-Z]{16}", "action": "block" },
+      { "name": "GitHub PAT", "pattern": "ghp_[a-zA-Z0-9]{36}", "action": "block" },
+      { "name": "Database URL with Password", "pattern": "postgresql://[^:]+:[^@]+@", "action": "warn" }
+    ]
+  },
+  "activeSkills": [
+    "python-fastapi-backend-guide"
+  ]
+}

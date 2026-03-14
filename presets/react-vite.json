@@ -1,0 +1,36 @@
+{
+  "name": "react-vite",
+  "displayName": "React + Vite",
+  "description": "SPA Frontend: React + Vite + Tailwind CSS + REST API integration",
+  "techStack": {
+    "framework": "React + Vite",
+    "language": "TypeScript",
+    "packageManager": "npm",
+    "commands": {
+      "build": "npm run build",
+      "test": "npm test",
+      "lint": "npm run lint"
+    },
+    "additionalStack": [
+      "Tailwind CSS",
+      "React Router",
+      "Zustand or Redux Toolkit"
+    ]
+  },
+  "domains": {
+    "sourceDir": "src",
+    "sharedPackage": "",
+    "importAlias": "@/"
+  },
+  "security": {
+    "secretPatterns": [
+      { "name": "AWS Key", "pattern": "AKIA[0-9A-Z]{16}", "action": "block" },
+      { "name": "GitHub PAT", "pattern": "ghp_[a-zA-Z0-9]{36}", "action": "block" },
+      { "name": "Generic API Key", "pattern": "sk-[a-zA-Z0-9]{20,}", "action": "warn" }
+    ]
+  },
+  "activeSkills": [
+    "react-vite-frontend-guide",
+    "react-vite-backend-guide"
+  ]
+}

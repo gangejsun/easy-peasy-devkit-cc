@@ -1,0 +1,28 @@
+{
+  "name": "blank",
+  "displayName": "Blank (Custom)",
+  "description": "Minimal preset with Core workflow only. All project-specific settings are configured manually.",
+  "techStack": {
+    "framework": "",
+    "language": "",
+    "packageManager": "npm",
+    "commands": {
+      "build": "",
+      "test": "",
+      "lint": ""
+    },
+    "additionalStack": []
+  },
+  "domains": {
+    "sourceDir": "src",
+    "sharedPackage": "",
+    "importAlias": ""
+  },
+  "security": {
+    "secretPatterns": [
+      { "name": "AWS Key", "pattern": "AKIA[0-9A-Z]{16}", "action": "block" },
+      { "name": "GitHub PAT", "pattern": "ghp_[a-zA-Z0-9]{36}", "action": "block" }
+    ]
+  },
+  "activeSkills": []
+}

@@ -1,0 +1,39 @@
+# CLAUDE.md
+
+## Project Overview
+### {{project.name}}{{#if project.description}} - {{project.description}}{{/if}}
+
+## User Profile
+
+- Response Language: {{#if (eq project.language "ko")}}한국어{{else if (eq project.language "en")}}English{{else if (eq project.language "ja")}}日本語{{else if (eq project.language "zh")}}中文{{else}}{{project.language}}{{/if}}
+- Experience Level: {{#if (eq project.experienceLevel "senior")}}Senior Developer{{else if (eq project.experienceLevel "mid")}}Mid-level Developer{{else}}Junior Developer{{/if}}
+{{#if (eq project.experienceLevel "senior")}}- 코드 변경 시 **변경 이유와 영향 범위** 설명, 여러 접근 시 **장단점 비교** 후 추천안 제시
+- 버그 수정 시 **자율적으로 분석·수정** 후 결과만 보고 (질문으로 시간 낭비 금지){{/if}}
+
+## 기술 스택
+
+- **프레임워크**: {{techStack.framework}} + {{techStack.language}}
+{{#each techStack.additionalStack}}- **{{this}}**
+{{/each}}- **패키지 매니저**: {{techStack.packageManager}}
+{{#if domains.sharedPackage}}- **프로젝트 구조**: 모노레포 (루트 앱 + `{{domains.sharedPackage}}`). 상세 → `.claude/rules/project-structure.md`{{/if}}
+
+## 개발 명령어
+
+{{#if techStack.commands.build}}- 빌드: `{{techStack.commands.build}}`
+{{/if}}{{#if techStack.commands.test}}- 테스트: `{{techStack.commands.test}}`
+{{/if}}{{#if techStack.commands.lint}}- 린트: `{{techStack.commands.lint}}`
+{{/if}}
+
+## 코딩 컨벤션
+
+- 상세 규칙 → `.claude/rules/code-conventions.md`
+
+---
+
+## 작업 워크플로우
+
+**코드 작업** (신규 기능, 기존 기능 수정, 버그 수정, 리팩토링 등):
+→ `.claude/rules/task-workflow.md` 자동 적용
+
+**비코드 작업** (위 코드 작업 외 모든 작업):
+→ 워크플로우 미적용 / 직접 수행

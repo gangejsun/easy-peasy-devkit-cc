@@ -1,0 +1,39 @@
+{
+  "name": "nextjs-supabase",
+  "displayName": "Next.js 15 + Supabase",
+  "description": "Full-Stack JavaScript/TypeScript: Next.js 15 App Router + Supabase + Tailwind CSS v4 + shadcn/ui",
+  "techStack": {
+    "framework": "Next.js 15 (App Router)",
+    "language": "TypeScript (strict mode)",
+    "packageManager": "pnpm",
+    "commands": {
+      "build": "pnpm build",
+      "test": "pnpm test",
+      "lint": "pnpm lint"
+    },
+    "additionalStack": [
+      "Tailwind CSS v4",
+      "shadcn/ui",
+      "Zustand",
+      "Supabase (PostgreSQL + RLS + Auth)"
+    ]
+  },
+  "domains": {
+    "sourceDir": "src",
+    "sharedPackage": "packages/shared",
+    "importAlias": "@/"
+  },
+  "security": {
+    "secretPatterns": [
+      { "name": "Supabase Service Role", "pattern": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\\.[A-Za-z0-9_-]{50,}", "action": "block" },
+      { "name": "AWS Key", "pattern": "AKIA[0-9A-Z]{16}", "action": "block" },
+      { "name": "GitHub PAT", "pattern": "ghp_[a-zA-Z0-9]{36}", "action": "block" },
+      { "name": "Generic API Key", "pattern": "sk-[a-zA-Z0-9]{20,}", "action": "warn" }
+    ]
+  },
+  "activeSkills": [
+    "nextjs-frontend-guide",
+    "nextjs-backend-guide",
+    "nextjs-ui-ux-design"
+  ]
+}

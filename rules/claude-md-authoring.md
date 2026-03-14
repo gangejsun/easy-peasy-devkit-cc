@@ -1,0 +1,77 @@
+---
+paths:
+  - "CLAUDE.md"
+---
+
+# CLAUDE.md 작성 규칙
+
+CLAUDE.md를 수정하거나 새 프로젝트에 적용할 때 반드시 따르는 규칙.
+
+## 핵심 원칙
+
+1. **Lean Orchestrator**: CLAUDE.md는 라우팅/의사결정 정보만 담는다. 100행 내외 목표.
+2. **매 행 검증**: "이 행을 제거하면 Claude가 실수하는가?" → 아니면 삭제.
+3. **과도한 CLAUDE.md는 무시당한다**: 너무 길면 Claude가 절반을 무시한다 (Anthropic 공식 가이드).
+
+## 구조 규칙
+
+### 커스터마이즈 영역 (상단, `---` 위)
+사용자가 프로젝트별로 채워넣는 영역. 수정 대상.
+
+| 섹션 | 필수 | 용도 |
+|------|------|------|
+| Project Overview | 필수 | 프로젝트명, 기술 스택, 아키텍처 |
+| User Profile | 필수 | 응답 언어, 경험 수준, 소통 스타일 |
+| Development Commands | 필수 | 빌드/테스트/린트 + 비표준 명령어 |
+| Code Conventions | 필수 | 1행 플레이스홀더 × N항목 |
+
+### 워크플로우 영역 (하단, `---` 아래)
+Kit 공통 로직. 수정 불필요.
+
+- 작업 유형 분류 테이블
+- Phase 정의 테이블
+- P4 참조 경로 테이블
+- Key References 테이블
+
+## 무엇을 넣고, 무엇을 빼는가
+
+### CLAUDE.md에 넣는 것 (매 세션 필수 참조)
+- 작업 라우팅에 필요한 정보 (Phase 테이블, Agent 위임)
+- 매 세션 행동에 영향을 주는 설정 (언어, 소통 스타일)
+- 1행으로 표현 가능한 핵심 컨벤션 (Language, Git Commit, Security 등)
+- 문서 네비게이션 (Key References)
+
+### CLAUDE.md에 넣지 않는 것 → 대안 배치
+| 항목 | 이유 | 배치 위치 |
+|------|------|----------|
+| 프로젝트 구조 트리 (15~25행) | 행 수 과다. Claude가 실시간 탐색 가능 | `.claude/rules/project-structure.md` |
+| 기술 특화 규칙 | 프로젝트별 다름. 조건부 로딩 가능 | `.claude/rules/` (paths 지정) |
+| 코드 스타일 상세 | 프로젝트별 다름 | `.claude/rules/` |
+| 도메인 용어 테이블 (5~20행) | 크기 가변적 | `.claude/rules/domain-glossary.md` |
+| 핵심 개발 원칙 | Claude 기본 행동에 포함. Language 항목으로 충분 | 불필요 또는 rules |
+
+## 토큰 효율 3-Layer 모델
+
+| Layer | 위치 | 로딩 조건 | 용도 |
+|-------|------|----------|------|
+| 1 | CLAUDE.md | 매 세션 무조건 | 라우팅, 핵심 설정 |
+| 2 | `.claude/rules/` (paths 지정) | 매칭 파일 작업 시만 | 프로젝트 특화 규칙 |
+| 3 | Skills | 명시적 호출 시만 | Phase별 도메인 지식 |
+
+**주의**: paths 없는 rules = CLAUDE.md와 동일한 토큰 비용. 반드시 paths를 지정하여 조건부 로딩.
+
+## Code Conventions 작성 패턴
+
+각 항목은 **1행 플레이스홀더** 형태로 작성:
+```
+- 항목명: 값 또는 <!-- e.g., 예시 -->
+```
+
+표준 명령어(npm run build 등)는 예시로만 제시. Claude가 설정 파일에서 추론 가능.
+비표준 명령어(make migrate 등)만 명시 필수.
+
+## 행 수 관리
+
+- 목표: 100행 ± 10행
+- 항목 추가 시 반드시 `wc -l CLAUDE.md`로 확인
+- 초과 시: 해당 내용을 `.claude/rules/`로 이동 검토
