@@ -4,11 +4,11 @@
 
 ## 리뷰 컨텍스트 변수
 
-| 변수 | 설명 | 수집 방법 |
-|------|------|----------|
-| WHAT_WAS_IMPLEMENTED | 구현된 기능 설명 | review-agent 입력의 "변경 요약" |
-| PLAN_OR_REQUIREMENTS | 계획/요구사항 | dev/active/<name>/ 문서 또는 사용자 설명 |
-| DIFF_CONTENT | 코드 변경 내용 | `git diff` |
+| 변수                 | 설명             | 수집 방법                                |
+| -------------------- | ---------------- | ---------------------------------------- |
+| WHAT_WAS_IMPLEMENTED | 구현된 기능 설명 | review-agent 입력의 "변경 요약"          |
+| PLAN_OR_REQUIREMENTS | 계획/요구사항    | dev/active/<name>/ 문서 또는 사용자 설명 |
+| DIFF_CONTENT         | 코드 변경 내용   | `git diff`                               |
 
 ## 6-Area 리뷰 프레임워크
 
@@ -35,7 +35,7 @@ dev/active/<name>/ 문서 대비 구현 검증:
 
 ### 3. 아키텍처/설계 (Architecture & Design)
 
-`.claude/rules/domain-boundaries.md` + 프로젝트 패턴 기준:
+`.claude/rules/modification-guardrails.md` + 프로젝트 패턴 기준:
 
 - **도메인 경계**: 도메인 간 경계 존중
 - **공유 패키지**: 공유 코드 수정 시 영향 범위 확인
@@ -53,13 +53,14 @@ dev/active/<name>/ 문서 대비 구현 검증:
 
 각 이슈를 다음 중 하나로 분류:
 
-| 심각도 | 기준 | 예시 |
-|--------|------|------|
-| **Critical** | 보안 취약점, 데이터 손실, 프로덕션 장애 유발 | 인증 우회, 시크릿 노출, 무한 루프 |
-| **Important** | 기능 오동작, 성능 저하, 컨벤션 심각 위반 | 에러 처리 누락, N+1 쿼리, any 타입, 도메인 경계 침범 |
-| **Suggestion** | 코드 개선, 스타일, 선택적 최적화 | 네이밍 개선, 불필요한 재렌더링, 주석 보완 |
+| 심각도         | 기준                                         | 예시                                                 |
+| -------------- | -------------------------------------------- | ---------------------------------------------------- |
+| **Critical**   | 보안 취약점, 데이터 손실, 프로덕션 장애 유발 | 인증 우회, 시크릿 노출, 무한 루프                    |
+| **Important**  | 기능 오동작, 성능 저하, 컨벤션 심각 위반     | 에러 처리 누락, N+1 쿼리, any 타입, 도메인 경계 침범 |
+| **Suggestion** | 코드 개선, 스타일, 선택적 최적화             | 네이밍 개선, 불필요한 재렌더링, 주석 보완            |
 
 각 이슈에 반드시 포함:
+
 - **파일:행** 위치
 - **설명**: 무엇이 문제인지
 - **영향**: 왜 문제인지
@@ -110,6 +111,7 @@ dev/active/<name>/ 문서 대비 구현 검증:
 ## 리뷰 수행 규칙
 
 **수행할 것:**
+
 - 실제 심각도에 맞게 분류 (모든 것을 Critical로 올리지 말 것)
 - 구체적 파일:행 참조 (모호한 피드백 금지)
 - 이슈의 "왜"를 설명
@@ -117,6 +119,7 @@ dev/active/<name>/ 문서 대비 구현 검증:
 - 명확한 종합 판정
 
 **수행하지 않을 것:**
+
 - 확인하지 않은 코드에 대한 피드백
 - 사소한 것을 Critical로 올리기
 - "좋아 보입니다"라는 확인 없는 승인
@@ -134,6 +137,7 @@ dev/active/<name>/ 문서 대비 구현 검증:
 ### You are reviewing a SMALL code change
 
 Focus ONLY on Critical issues that could cause:
+
 - **Type safety violations** (`any`, type assertions)
 - **Domain boundary violations** (cross-domain imports)
 - **Security issues** (hardcoded secrets, auth bypass)
@@ -149,21 +153,25 @@ Focus ONLY on Critical issues that could cause:
 ### Critical Detection Rules
 
 **타입 안전성**:
+
 - `any` 타입 사용 → Critical
 - 타입 단언 남용 (3회 이상) → Critical
 - strict 경고 무시 (`@ts-ignore` 등) → Critical
 
 **도메인 경계**:
+
 - 다른 도메인 직접 import → Critical
 - 공유 패키지에 도메인 로직 포함 → Critical
 
 **보안**:
+
 - API 키/비밀번호 하드코딩 → Critical
 - DB 접근 제어 미적용 → Critical
 - 인증 체크 누락 (API 엔드포인트) → Critical
 - 클라이언트에 민감 데이터 → Critical
 
 **에러 처리**:
+
 - async 함수의 예외 처리 누락 → Critical
 - 에러 경계 미설정 (페이지 레벨) → Critical
 - 사용자에게 기술적 에러 노출 → Critical

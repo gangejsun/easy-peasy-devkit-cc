@@ -1,5 +1,5 @@
 #!/bin/bash
-# scripts/post-tool-use-tracker.sh
+# .claude/hooks/post-tool-use-tracker.sh
 # @harness-type: portable
 # PostToolUse(Edit|Write) 시 수정된 파일을 추적 기록
 # Stop hook에서 빌드/테스트 판단 근거로 활용

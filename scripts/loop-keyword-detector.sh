@@ -1,5 +1,5 @@
 #!/bin/bash
-# scripts/loop-keyword-detector.sh
+# .claude/hooks/loop-keyword-detector.sh
 # @harness-type: portable
 #
 # UserPromptSubmit Hook: "loop start" / "loop stop" 키워드를 감지하여
@@ -34,8 +34,7 @@ fi
 
 # === 상태 파일 경로 ===
 STATE_FILE="/tmp/epc-loop-${SESSION_ID}.json"
-# Runtime plugin: PROJECT_ROOT = pwd
-PROJECT_ROOT="$(pwd)"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # === 소문자 변환 후 키워드 감지 ===
 PROMPT_LOWER=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]')

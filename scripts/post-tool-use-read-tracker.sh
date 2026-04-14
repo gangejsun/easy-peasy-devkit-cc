@@ -1,5 +1,5 @@
 #!/bin/bash
-# scripts/post-tool-use-read-tracker.sh
+# .claude/hooks/post-tool-use-read-tracker.sh
 # @harness-type: portable
 # PostToolUse(Read) 시 읽은 파일을 추적 기록
 # pre-tool-use-guard.mjs의 도메인 패턴 체크에서 참조
@@ -20,8 +20,8 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // ""' 2>/dev/null || e
 
 if [ -n "$FILE_PATH" ]; then
   # 상대 경로로 정규화
-  # Runtime plugin: PROJECT_ROOT = pwd
-  PROJECT_ROOT="$(pwd)"
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
   REL_PATH="${FILE_PATH#$PROJECT_ROOT/}"
 
   echo "$(date '+%Y-%m-%d %H:%M:%S') | $REL_PATH" >> "$LOG_FILE"

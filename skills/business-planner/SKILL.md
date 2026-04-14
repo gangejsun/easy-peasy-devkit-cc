@@ -4,7 +4,7 @@ description: |
   아이디어나 기능을 사업적 관점에서 검증하고 사업 기획서를 생성합니다.
   사용자가 "사업 기획", "비즈니스 모델", "수익화", "시장 진입", "사업성 분석"을 요청할 때,
   또는 planning-agent가 P0-C 단계로 호출할 때 사용합니다.
-  수동 호출 전용 (/business-planner). 자동 트리거되지 않습니다.
+  수동 호출 전용 (/business-planner). 자동 트리거되지 않습니다. (project)
 ---
 
 # Business Planner
@@ -22,166 +22,38 @@ description: |
 | 사용자가 직접 호출 (리서치 없음) | Step 3 → Step 4 → Step 5 |
 | 기존 사업 기획서 수정 요청 | Step 3(기존 문서 로드) → Step 4 → Step 5 |
 
-기존 사업 기획서 확인: `dev/docs/business/` 탐색.
-
 ### Step 2: 리서치 통합
 
 `dev/docs/research/` 문서를 읽고 사업 기획에 활용할 데이터를 추출합니다.
 
-**추출 대상:**
-- 경쟁사 분석 → Competitor(Step 3)에 반영
-- 시장 조사 → Climate(Step 3) + 시장 규모(Step 4)에 반영
-- 사용자 조사 → Customer(Step 3)에 반영
-- 기술 조사 → 기술적 실현 가능성(Step 4)에 반영
-
-추출 결과를 요약하여 이후 Step에서 참조합니다.
-
 ### Step 3: 사업 환경 분석
 
-`resources/business-frameworks.md`의 5C Analysis 가이드를 참조하여 분석합니다.
+`references/business-frameworks.md`의 5C Analysis 가이드를 참조하여 분석합니다.
 
 각 항목에 대해 사용자에게 **1개씩 질문** (brainstorming 패턴):
-
-#### 3-1. Company (자사 역량)
-```
-우리 팀의 핵심 역량은 무엇인가요?
-(기술력, 도메인 전문성, 기존 자산 등)
-```
-- 기술 스택, 인적 자원, 기존 인프라 파악
-- CLAUDE.md 프로젝트 정보 자동 반영
-
-#### 3-2. Customer (고객)
-```
-타겟 고객은 누구인가요?
-(B2B/B2C, 연령대, 직업군, 주요 니즈)
-```
-- 고객 세그먼트 정의
-- 리서치의 페르소나 데이터 통합 (있으면)
-
-#### 3-3. Competitor (경쟁)
-```
-현재 이 문제를 해결하는 대안은 무엇인가요?
-(직접 경쟁 서비스, 간접 대안, DIY 방법)
-```
-- 리서치의 경쟁사 분석 데이터 통합 (있으면)
-- 차별화 포인트 도출
-
-#### 3-4. Collaborator (협력)
-```
-성공에 필요한 외부 파트너나 에코시스템이 있나요?
-(결제사, 클라우드, API 제공자, 유통 채널 등)
-```
-
-#### 3-5. Climate (환경)
-```
-시장 환경에서 주목할 트렌드나 규제가 있나요?
-(기술 트렌드, 법규, 사회 변화 등)
-```
-- 리서치의 시장 트렌드 데이터 통합 (있으면)
+3-1. Company (자사 역량)
+3-2. Customer (고객)
+3-3. Competitor (경쟁)
+3-4. Collaborator (협력)
+3-5. Climate (환경)
 
 ### Step 4: 사업 모델 설계
 
 5C 분석 결과를 바탕으로 사업 모델을 설계합니다.
-`resources/business-frameworks.md`의 Lean Canvas 템플릿을 참조합니다.
 
-**4-1. 가치 제안 (Value Proposition)**
-- 핵심 문제 정의
-- 솔루션의 핵심 가치
-- 기존 대안 대비 차별화 포인트 (Unique Value Proposition)
-
-**4-2. 수익 모델**
-- 수익화 방식 선택 (프리미엄/구독/거래수수료/광고/라이선스 등)
-- 가격 책정 근거 (`resources/business-frameworks.md`의 가격 책정 프레임워크 참조)
-- 예상 수익 시나리오 (보수적/기본/낙관적)
-
-**4-3. 비용 구조**
-- 초기 투자: 개발비, 디자인비
-- 운영 비용: 인프라(서버, DB), 외부 서비스 API, 인건비
-- 마케팅 비용: 초기 사용자 확보 비용
-
-**4-4. Go-to-Market 전략**
-- Phase 1: 초기 타겟 세그먼트 (Beachhead Market)
-- Phase 2: 확장 경로
-- 핵심 채널: 사용자 확보 채널 (유기적/유료)
-
-**4-5. 핵심 지표 (KPI)**
-| 카테고리 | 지표 | 목표 기준 |
-|---------|------|----------|
-| 성장 | MAU, 신규 가입 | [수치] |
-| 참여 | DAU/MAU, 세션 시간 | [수치] |
-| 수익 | ARPU, MRR, 전환율 | [수치] |
-| 효율 | CAC, LTV, LTV/CAC | [수치] |
-
-**4-6. 리스크 매트릭스**
-`resources/business-frameworks.md`의 리스크 매트릭스 템플릿을 참조합니다.
-
-| 리스크 | 카테고리 | 영향도 | 발생 확률 | 대응 방안 |
-|--------|---------|--------|----------|----------|
-| [리스크] | 시장/기술/운영/법규 | 높음/중간/낮음 | 높음/중간/낮음 | [대응책] |
+4-1. 가치 제안 (Value Proposition)
+4-2. 수익 모델
+4-3. 비용 구조
+4-4. Go-to-Market 전략
+4-5. 핵심 지표 (KPI)
+4-6. 리스크 매트릭스
 
 ### Step 5: 사업 기획서 저장 및 확인
 
-**저장:**
-- 저장 경로: `dev/docs/business/business-plan-<name>.md`
-- 파일명 규칙: kebab-case (예: `business-plan-ai-dev-harness.md`)
-
-**문서 구조** (`resources/business-frameworks.md`의 출력 템플릿 참조):
-```markdown
-# 사업 기획서: [서비스명]
-
-**작성일**: [YYYY.MM.DD]
-**상태**: Draft
-**리서치 참조**: [dev/docs/research/xxx.md] (해당 시)
-
-## Executive Summary
-[1문단 요약: 문제, 솔루션, 타겟, 차별점, 수익 모델]
-
-## 1. 사업 환경 분석 (5C)
-[Step 3 결과]
-
-## 2. 가치 제안
-[Step 4-1 결과]
-
-## 3. 수익 모델 및 가격 전략
-[Step 4-2 결과]
-
-## 4. 비용 구조
-[Step 4-3 결과]
-
-## 5. Go-to-Market 전략
-[Step 4-4 결과]
-
-## 6. 핵심 지표 (KPI)
-[Step 4-5 결과]
-
-## 7. 리스크 및 대응
-[Step 4-6 결과]
-
-## P0-D 연결: 서비스 기획을 위한 핵심 결정 요약
-- **타겟 고객**: [핵심 세그먼트]
-- **핵심 가치**: [UVP 1줄]
-- **수익 모델**: [선택된 모델]
-- **핵심 KPI**: [상위 3개 지표]
-- **제약 조건**: [기술/예산/시간 제약]
-```
-
-**사용자 확인:**
-```
-사업 기획서가 생성되었습니다.
-
-파일 위치: dev/docs/business/business-plan-<name>.md
-
-## 핵심 요약
-- 가치 제안: [UVP]
-- 수익 모델: [모델]
-- 타겟 시장: [세그먼트]
-
-검토 후 수정이 필요하면 말씀해주세요.
-서비스 기획으로 진행하려면: /service-planner
-```
+**저장 경로**: `dev/docs/business/business-plan-<name>.md`
 
 ## 참조 문서
 
-- 사업 기획 프레임워크: `resources/business-frameworks.md`
+- 사업 기획 프레임워크: `references/business-frameworks.md`
 - 사업 기획서 저장소: `dev/docs/business/`
 - 리서치 저장소: `dev/docs/research/`

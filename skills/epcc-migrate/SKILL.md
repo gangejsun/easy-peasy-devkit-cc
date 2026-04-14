@@ -9,6 +9,7 @@ trigger: manual
 # /epcc-migrate — Generator → Runtime Plugin 마이그레이션
 
 ## 목적
+
 기존 `plugin-generator/` (빌드타임 코드 제너레이터) 기반으로 설정된 프로젝트를 런타임 플러그인 방식으로 전환합니다. Core 파일은 플러그인이 제공하므로 프로젝트에서 제거하고, 프로젝트 고유 설정만 유지합니다.
 
 ## 전제 조건
@@ -23,6 +24,7 @@ trigger: manual
 프로젝트의 `.claude/` 디렉토리를 분석합니다:
 
 **Core 파일 식별** (플러그인이 대체할 파일):
+
 ```
 .claude/rules/
   - task-workflow.md          → 플러그인 Core Rule
@@ -58,11 +60,12 @@ trigger: manual
 ```
 
 **프로젝트 고유 파일 식별** (유지해야 할 파일):
+
 ```
 .claude/rules/
   - code-conventions.md       → 유지 (프로젝트 고유)
   - project-structure.md      → 유지 (프로젝트 고유)
-  - domain-boundaries.md      → 제거 (SessionStart Hook이 대체)
+  - modification-guardrails.md      → 제거 (SessionStart Hook이 대체)
   - security.md               → 제거 (Security Hook이 대체)
 
 .claude/skills/

@@ -5,15 +5,15 @@
     "email": "gangejsun@gmail.com"
   },
   "metadata": {
-    "description": "EasyPeasy Claude Code Devkit — AI Native Dev Harness with Phase Workflow, Agent Orchestration, and Dual Governance",
-    "version": "1.0.0"
+    "description": "EasyPeasy Claude Code Devkit — AI Native Dev Harness with Phase Workflow, Agent Orchestration, Decision Autopilot, and Dual Governance",
+    "version": "2.0.0"
   },
   "plugins": [
     {
       "name": "epcc-devkit",
       "source": "./",
-      "description": "AI Native Dev Harness — Phase 워크플로우(P0~P6) + Agent 오케스트레이션(planning/review) + Dual Governance(Rules+Hooks). 26개 스킬, 4개 프리셋(Next.js, React, FastAPI, Blank) 포함.",
-      "version": "1.0.0",
+      "description": "AI Native Dev Harness — Phase 워크플로우(P0~P6) + Agent 오케스트레이션(planning/review) + Decision Autopilot + Dual Governance(Rules+Hooks). 37개 스킬, 4개 프리셋(Next.js, React, FastAPI, Blank) 포함.",
+      "version": "2.0.0",
       "author": {
         "name": "gangejsun"
       },
@@ -26,6 +26,7 @@
         "dev-harness",
         "phase-workflow",
         "agent-orchestration",
+        "decision-autopilot",
         "code-review",
         "planning"
       ],

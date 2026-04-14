@@ -1,5 +1,5 @@
 #!/bin/bash
-# scripts/pre-compact-saver.sh
+# .claude/hooks/pre-compact-saver.sh
 # @harness-type: portable
 #
 # PreCompact Hook: 컨텍스트 컴팩트 전에 진행 중인 작업 상태를 요약하여
@@ -16,8 +16,7 @@
 
 set -euo pipefail
 
-# Runtime plugin: PROJECT_ROOT = pwd
-PROJECT_ROOT="$(pwd)"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DEV_ACTIVE="$PROJECT_ROOT/dev/active"
 
 # === dev/active 가 없거나 비어있으면 출력 없이 종료 (0T) ===

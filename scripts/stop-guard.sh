@@ -1,5 +1,5 @@
 #!/bin/bash
-# scripts/stop-guard.sh
+# .claude/hooks/stop-guard.sh
 # @harness-type: portable
 #
 # Stop Hook (command): 코드 변경 시 build/test 실행 여부를 결정론적으로 검증
@@ -59,8 +59,8 @@ if [ "$MODIFIED_COUNT" -eq 0 ]; then
 fi
 
 # === 코드 변경 존재: build/test 실행 여부 확인 ===
-# Runtime plugin: PROJECT_ROOT = pwd
-PROJECT_ROOT="$(pwd)"
+# epcc.config.json에서 소스 디렉토리 읽기 (없으면 확장자 기반 판단)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CONFIG_PATH="${EPCC_CONFIG_PATH:-${PROJECT_ROOT}/epcc.config.json}"
 
 SOURCE_DIR=""
@@ -111,6 +111,7 @@ if [ -n "$BUILD_CMD" ] || [ -n "$TEST_CMD" ]; then
   CMDS=""
   [ -n "$BUILD_CMD" ] && CMDS="$BUILD_CMD"
   [ -n "$TEST_CMD" ] && CMDS="${CMDS:+$CMDS|}$TEST_CMD"
+  # 패키지 매니저 명령을 정규식 이스케이프 없이 간단하게 검색
   BUILD_PATTERN="(${CMDS}|build|test)"
 fi
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# scripts/persistent-loop.sh
+# .claude/hooks/persistent-loop.sh
 # @harness-type: portable
 #
 # Stop Hook: Large 작업 시 Claude가 중간에 멈추지 않고 완주하도록 루프 유지
@@ -98,8 +98,7 @@ if [ "$STOP_REASON" = "context_limit" ] || [ "$STOP_REASON" = "max_tokens" ]; th
 fi
 
 # === dev/active 에서 미완료 태스크 확인 ===
-# Runtime plugin: PROJECT_ROOT = pwd (사용자 프로젝트)
-PROJECT_ROOT="$(pwd)"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 INCOMPLETE_TASKS=0
 INCOMPLETE_LIST=""
 TASKS_FILE=""
