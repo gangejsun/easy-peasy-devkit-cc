@@ -20,11 +20,11 @@ description: >
 
 ### Step 1: 모드 선택
 
-| 조건 | 모드 | 실행 Step |
-|------|------|----------|
-| 기사/블로그/단일 페이지 최적화 요청 | Mode 1 (Article) | 2A → 3A → 4 |
-| 사이트 전체 감사 / URL 감사 요청 | Mode 2 (Audit) | 2B → 3B → 4 |
-| "AI SEO", "AI 검색 최적화", "LLM 최적화" | Mode 3 (AI SEO) | 2C → 3C → 4 |
+| 조건                                       | 모드              | 실행 Step         |
+| ------------------------------------------ | ----------------- | ----------------- |
+| 기사/블로그/단일 페이지 최적화 요청        | Mode 1 (Article)  | 2A → 3A → 4       |
+| 사이트 전체 감사 / URL 감사 요청           | Mode 2 (Audit)    | 2B → 3B → 4       |
+| "AI SEO", "AI 검색 최적화", "LLM 최적화"   | Mode 3 (AI SEO)   | 2C → 3C → 4       |
 | marketing-workflow에서 호출 (site.md 존재) | Mode 2 (pipeline) | 2B(자동) → 3B → 4 |
 
 ### Step 2A-2C: 모드별 인테이크

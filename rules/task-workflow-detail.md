@@ -126,6 +126,35 @@ P0는 **신규 기능 Large** 작업에서 선택적으로 적용됩니다.
 | P0-D  | `dev/docs/service/service-plan-<name>.md`   |
 | P0-E  | `dev/docs/council/council-review-<name>.md` |
 
+## Dev Docs 3-File 패턴
+
+> `dev/active/<name>/`는 **plan / context / tasks** 3개 파일로 구성되며, Phase·Agent 간 핸드오프 매체 역할을 합니다. 구조·섹션 규약은 `dev/templates/feature-{plan,context,tasks}-template.md`가 권위자이며, 생성 절차는 `/dev-docs-generator` 스킬이 수행합니다.
+
+### 운영 원칙
+
+- `context.md`의 **SESSION PROGRESS** 섹션은 **마일스톤마다 갱신**한다 (완료 시점이 아닌, 완료할 때마다). ✅ COMPLETED / 🟡 IN PROGRESS / ⚠️ BLOCKERS / 📝 NEXT STEPS를 현재 상태로 유지
+- `tasks.md`의 체크박스는 **완료 즉시** `[x]`로 표시 (배치 처리 금지)
+- `plan.md`는 스코프나 Phase가 **실제로 변경될 때만** 수정. 진행 상황 추적에 쓰지 않는다
+- 작업 항목은 **actionable**해야 한다: 파일명·수용 기준·의존성을 포함. "인증 고치기"가 아니라 "`AuthMiddleware.ts`에 JWT 검증 추가 (수용: 유효 토큰 통과, 오류는 에러 트래커로 전송)"
+
+### 재개 절차 (컨텍스트 리셋 후)
+
+`dev/active/<name>/`가 존재하는 작업에 복귀할 때:
+
+1. `context.md` 먼저 읽기 — SESSION PROGRESS에 현재 상태가 집약되어 있음
+2. `tasks.md`로 완료/미완료 항목 확인
+3. `plan.md`로 전체 전략 재확인
+4. 즉시 작업 재개, 사용자에게 현재 상태 요약 보고 후 다음 단계 제안
+
+### Handoff 매체
+
+Agent 간 핸드오프는 파일 기반으로만 수행하며 구두(컨텍스트 메모리) 의존 금지 (`agent-governance.md` §Handoff 원칙).
+
+| Handoff                             | 매체                                           |
+| ----------------------------------- | ---------------------------------------------- |
+| planning-agent → Main Session(P4)   | `dev/active/<name>/` 3개 파일                  |
+| Main Session(P4) → review-agent(P5) | `context.md` IMPLEMENTATION NOTES + `git diff` |
+
 ## P4 구현 시 참조 경로
 
 > 아래 경로는 기능 개발 과정에서 생성됩니다. 해당 문서가 없으면 참조를 건너뜁니다.

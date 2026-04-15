@@ -10,7 +10,7 @@ description: "[Phase 4] 구현 단계 워크플로우 (코드 작성)"
    - 구현 전 반드시 `dev/active/[기능명]/` 에 있는 `plan.md`, `context.md`, `tasks.md` 파일을 모두 읽고 목표와 제약사항을 파악해야 합니다.
 
 2. **컨텍스트 로드**
-   - 개발에 들어가기 전 `.claude/rules/project-structure.md`, `.claude/rules/code-conventions.md`, `.claude/rules/domain-boundaries.md` 파일을 확인하여 프로젝트 공통 규칙을 숙지합니다.
+   - 개발에 들어가기 전 `.claude/rules/project-structure.md`, `.claude/rules/code-conventions.md`, `.claude/rules/modification-guardrails.md` 파일을 확인하여 프로젝트 공통 규칙을 숙지합니다.
 
 3. **코드 구현**
    - `tasks.md`에 정의된 **Scope(수정 범위) 안에서만** 코딩을 진행합니다.

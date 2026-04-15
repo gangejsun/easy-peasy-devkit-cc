@@ -7,28 +7,30 @@ Next.js 15 App Router 프로젝트에서의 SEO 최적화 패턴.
 ### Static Metadata
 
 ```typescript
-import type { Metadata } from 'next'
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: 'Product Name - Tagline',
-  description: '150-160자 이내 설명. CTA 포함 권장.',
-  openGraph: { /* ... */ },
-  twitter: { card: 'summary_large_image' },
+  title: "Product Name - Tagline",
+  description: "150-160자 이내 설명. CTA 포함 권장.",
+  openGraph: {
+    /* ... */
+  },
+  twitter: { card: "summary_large_image" },
   robots: { index: true, follow: true },
-  alternates: { canonical: 'https://example.com' },
-}
+  alternates: { canonical: "https://example.com" },
+};
 ```
 
 ### Dynamic Metadata
 
 ```typescript
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params
-  const product = await getProduct(slug)
+  const { slug } = await params;
+  const product = await getProduct(slug);
   return {
     title: `${product.name} - Site Name`,
     description: product.description.slice(0, 160),
-  }
+  };
 }
 ```
 

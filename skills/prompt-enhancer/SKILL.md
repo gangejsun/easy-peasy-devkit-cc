@@ -15,11 +15,11 @@ description: Enhance user prompts by analyzing project context (code structure, 
 
 **강화 유형 판단:**
 
-| 상황 | 강화 유형 | Step 3 동작 |
-|------|----------|------------|
-| P0 파이프라인 경유 (service-plan 존재) | P0-Tech | Step 3: P0 기술 명세 매핑 |
-| 일반 요청 — Medium 규모 | Medium | Step 3: Medium 강화 |
-| 일반 요청 — Large 규모 | Large | Step 3: Large 강화 |
+| 상황                                   | 강화 유형 | Step 3 동작               |
+| -------------------------------------- | --------- | ------------------------- |
+| P0 파이프라인 경유 (service-plan 존재) | P0-Tech   | Step 3: P0 기술 명세 매핑 |
+| 일반 요청 — Medium 규모                | Medium    | Step 3: Medium 강화       |
+| 일반 요청 — Large 규모                 | Large     | Step 3: Large 강화        |
 
 ### Step 3: 규모별 강화 수행
 

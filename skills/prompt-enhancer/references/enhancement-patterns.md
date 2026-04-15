@@ -5,6 +5,7 @@ Common scenarios and enhancement strategies for different types of development r
 ## Feature Addition Patterns
 
 ### New UI Component
+
 - Check existing component library
 - Review existing variants
 - Identify styling system
@@ -12,6 +13,7 @@ Common scenarios and enhancement strategies for different types of development r
 - Find testing approach
 
 ### API Endpoint
+
 - Identify API framework
 - Check existing endpoint patterns
 - Review authentication/authorization
@@ -19,6 +21,7 @@ Common scenarios and enhancement strategies for different types of development r
 - Check error handling conventions
 
 ### State Management
+
 - Identify state management library
 - Review existing store structure
 - Check action/reducer patterns
@@ -28,12 +31,14 @@ Common scenarios and enhancement strategies for different types of development r
 ## Bug Fix Patterns
 
 ### Runtime Error
+
 - Identify error source file and line
 - Check related dependencies
 - Review error handling patterns
 - Find test coverage for affected code
 
 ### Logic Error
+
 - Identify calculation logic location
 - Check input/output types
 - Review similar calculations

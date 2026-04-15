@@ -29,11 +29,11 @@ Apple 제품 페이지와 동일한 기법: 프레임 시퀀스를 Canvas에 그
 
 ### Step 1: 작업 유형 판별
 
-| 조건 | 모드 | 실행 Step |
-|------|------|----------|
-| marketing-workflow에서 호출 (prompts.md 존재) | pipeline | 2(부분) → 3 → 4 → 5 → 6 → 7 |
-| 단독 호출 + URL 제공 | standalone-url | 2 → 3 → 4 → 5 → 6 |
-| 단독 호출 + 콘텐츠 직접 제공 | standalone-manual | 2 → 3 → 4 → 5 → 6 |
+| 조건                                          | 모드              | 실행 Step                   |
+| --------------------------------------------- | ----------------- | --------------------------- |
+| marketing-workflow에서 호출 (prompts.md 존재) | pipeline          | 2(부분) → 3 → 4 → 5 → 6 → 7 |
+| 단독 호출 + URL 제공                          | standalone-url    | 2 → 3 → 4 → 5 → 6           |
+| 단독 호출 + 콘텐츠 직접 제공                  | standalone-manual | 2 → 3 → 4 → 5 → 6           |
 
 ### Step 2: 사용자 인터뷰
 

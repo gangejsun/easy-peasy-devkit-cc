@@ -5,6 +5,7 @@ Quick reference for enhancing prompts in Next.js/React projects.
 ## Next.js
 
 **Key context to gather:**
+
 - App Router vs Pages Router
 - TypeScript usage
 - API route patterns
@@ -15,6 +16,7 @@ Quick reference for enhancing prompts in Next.js/React projects.
 ## React (Create React App / Vite)
 
 **Key context to gather:**
+
 - State management (Context, Redux, Zustand)
 - Routing library (React Router)
 - Component patterns (functional vs class)

@@ -4,17 +4,17 @@
 
 ## 규칙 우선순위
 
-| 순위 | 카테고리 | 영향도 |
-|------|----------|--------|
-| 1 | Accessibility | CRITICAL |
-| 2 | Touch & Interaction | CRITICAL |
-| 3 | Performance | HIGH |
-| 4 | Layout & Responsive | HIGH |
-| 5 | Typography & Color | MEDIUM |
-| 6 | Animation & Interaction | MEDIUM |
-| 7 | Style Selection | MEDIUM |
-| 8 | Anti-Patterns | MEDIUM |
-| 9 | Charts & Data | LOW |
+| 순위 | 카테고리                | 영향도   |
+| ---- | ----------------------- | -------- |
+| 1    | Accessibility           | CRITICAL |
+| 2    | Touch & Interaction     | CRITICAL |
+| 3    | Performance             | HIGH     |
+| 4    | Layout & Responsive     | HIGH     |
+| 5    | Typography & Color      | MEDIUM   |
+| 6    | Animation & Interaction | MEDIUM   |
+| 7    | Style Selection         | MEDIUM   |
+| 8    | Anti-Patterns           | MEDIUM   |
+| 9    | Charts & Data           | LOW      |
 
 ## 1. Accessibility (CRITICAL)
 
@@ -61,6 +61,7 @@
 ## 6. Animation & Interaction (MEDIUM)
 
 ### Micro-Interactions (150-300ms)
+
 - `button-hover` - scale(1.02) + translateY(-1px) + shadow lift
 - `input-focus` - ring + border-color shift + label float
 - `card-hover` - shadow elevation + subtle translateY
@@ -68,12 +69,14 @@
 - `ripple-effect` - 클릭 지점에서 확산
 
 ### Scroll Animations (400-800ms)
+
 - `staggered-entrance` - 자식 요소 순차 fade-up (100ms 딜레이)
 - `parallax` - 배경/전경 속도 차이 (배경 0.5x)
 - `reveal-on-scroll` - IntersectionObserver로 viewport 진입 시 트리거
 - `progress-indicator` - 스크롤 진행률 표시
 
 ### Performance Rules
+
 - `gpu-only` - transform/opacity만 사용. width/height/top/left 금지
 - `max-concurrent` - 동시 애니메이션 최대 2개
 - `reduced-motion` - `@media (prefers-reduced-motion: no-preference)` 래핑 필수
@@ -88,6 +91,7 @@
 ## 8. Anti-Patterns (MEDIUM)
 
 ### Design Anti-Patterns
+
 - `flash-over-function` - 시각 효과보다 기능 우선
 - `low-contrast` - 텍스트 대비율 4.5:1 미만 금지
 - `over-clutter` - 한 화면에 최대 3개 초점
@@ -95,6 +99,7 @@
 - `tiny-targets` - 44x44px 미만 터치 타겟 금지
 
 ### UX Anti-Patterns
+
 - `form-frustration` - 5개 초과 필드 노출 금지 (점진적 공개)
 - `content-wall` - 가치 보여주기 전 로그인 요구 금지
 - `dark-patterns` - 사용자 기만 UI 금지

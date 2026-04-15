@@ -1,6 +1,6 @@
 {
   "name": "epcc-devkit",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "displayName": "EasyPeasy Claude Code Devkit",
   "description": "AI Native Dev Harness — Phase 워크플로우(P0~P6) + Agent 오케스트레이션 + Decision Autopilot + Dual Governance",
   "author": {
@@ -19,8 +19,5 @@
   ],
   "hooks": "./hooks/hooks.json",
   "skills": "./skills/",
-  "agents": [
-    "./agents/planning-agent.md",
-    "./agents/review-agent.md"
-  ]
+  "agents": ["./agents/planning-agent.md", "./agents/review-agent.md"]
 }

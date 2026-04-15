@@ -50,6 +50,7 @@ stars that slowly drift.
 ### JavaScript
 
 Generate ~180 stars, each with:
+
 - Random x, y position
 - Random radius (0.3-1.5px)
 - Random base opacity (0.2-0.8)
@@ -57,17 +58,20 @@ Generate ~180 stars, each with:
 - Random twinkle speed and phase
 
 Animation loop:
+
 ```javascript
 function animateStars() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  stars.forEach(star => {
+  stars.forEach((star) => {
     star.x += star.driftX;
     star.y += star.driftY;
     if (star.x < 0) star.x = canvas.width;
     if (star.x > canvas.width) star.x = 0;
     if (star.y < 0) star.y = canvas.height;
     if (star.y > canvas.height) star.y = 0;
-    const twinkle = Math.sin(Date.now() * star.twinkleSpeed + star.twinklePhase);
+    const twinkle = Math.sin(
+      Date.now() * star.twinkleSpeed + star.twinklePhase,
+    );
     const opacity = star.baseOpacity + twinkle * 0.3;
     ctx.beginPath();
     ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
@@ -103,7 +107,11 @@ Thin bar at the very top of the viewport showing overall page scroll progress.
   left: 0;
   height: 3px;
   width: 0%;
-  background: linear-gradient(90deg, var(--accent), var(--accent-light, var(--accent)));
+  background: linear-gradient(
+    90deg,
+    var(--accent),
+    var(--accent-light, var(--accent))
+  );
   z-index: 10000;
   transition: width 0.1s linear;
 }
@@ -116,6 +124,7 @@ Thin bar at the very top of the viewport showing overall page scroll progress.
 Starts as a full-width bar, then on scroll transforms into a centered floating pill with glass-morphism styling.
 
 Scrolled (pill) state via `.nav-scrolled` class:
+
 ```css
 #navbar.nav-scrolled .nav-inner {
   max-width: 820px;
@@ -231,6 +240,7 @@ Horizontal drag-to-scroll cards with `scroll-snap-type: x mandatory`. Include dr
 ## 12. Card Scanner (Optional)
 
 Three.js-based particle effect. Only build if user specifically requests it.
+
 - Particle count: 2000-5000
 - Trigger: IntersectionObserver at 30% visible
 - Include Three.js from CDN

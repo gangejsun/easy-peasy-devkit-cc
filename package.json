@@ -1,13 +1,13 @@
 {
-  "name": "easy-peasy-devkit-cc",
+  "name": "epcc-devkit-runtime",
   "version": "1.0.0",
-  "description": "EasyPeasy Claude Code Devkit — AI Native Dev Harness Runtime Plugin",
+  "description": "EasyPeasy Claude Code Devkit — Runtime Plugin for Claude Code",
   "author": "gyeong",
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "https://github.com/gangejsun/easy-peasy-devkit-cc"
+    "url": "https://github.com/gyeong/epcc-devkit"
   },
   "keywords": [
     "claude-code",
@@ -15,12 +15,11 @@
     "ai-native",
     "dev-harness",
     "phase-workflow",
-    "agent-orchestration",
     "code-review",
     "planning"
   ],
   "files": [
-    ".claude-plugin/",
+    "plugin.json",
     "hooks/",
     "scripts/",
     "skills/",

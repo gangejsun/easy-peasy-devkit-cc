@@ -51,13 +51,13 @@ After green only: Remove duplication, improve names, extract helpers. Keep tests
 
 ## Common Rationalizations
 
-| Excuse | Reality |
-| ------ | ------- |
-| "Too simple to test" | Simple code breaks. Test takes 30 seconds. |
-| "I'll test after" | Tests passing immediately prove nothing. |
-| "Already manually tested" | Ad-hoc is not systematic. |
-| "Deleting X hours is wasteful" | Sunk cost fallacy. |
-| "TDD will slow me down" | TDD faster than debugging. |
+| Excuse                         | Reality                                    |
+| ------------------------------ | ------------------------------------------ |
+| "Too simple to test"           | Simple code breaks. Test takes 30 seconds. |
+| "I'll test after"              | Tests passing immediately prove nothing.   |
+| "Already manually tested"      | Ad-hoc is not systematic.                  |
+| "Deleting X hours is wasteful" | Sunk cost fallacy.                         |
+| "TDD will slow me down"        | TDD faster than debugging.                 |
 
 ## Project Test Strategy
 

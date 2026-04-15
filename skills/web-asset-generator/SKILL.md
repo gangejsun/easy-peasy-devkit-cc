@@ -19,12 +19,12 @@ description: |
 
 ### Step 1: 작업 유형 판별
 
-| 키워드 | 유형 | 실행 |
-|--------|------|------|
-| "파비콘만" | favicon-only | generate_favicons.py |
-| "OG 이미지만" | og-only | generate_og_images.py |
-| "전체 에셋" | full | 둘 다 실행 |
-| 명시 없음 | full | 기본값: 전체 생성 |
+| 키워드        | 유형         | 실행                  |
+| ------------- | ------------ | --------------------- |
+| "파비콘만"    | favicon-only | generate_favicons.py  |
+| "OG 이미지만" | og-only      | generate_og_images.py |
+| "전체 에셋"   | full         | 둘 다 실행            |
+| 명시 없음     | full         | 기본값: 전체 생성     |
 
 ### Step 2: 사용자 인터뷰
 
