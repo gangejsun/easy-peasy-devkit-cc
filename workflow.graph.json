@@ -160,6 +160,33 @@
       "on_error": [
         "user-report"
       ]
+    },
+    {
+      "id": "security-review",
+      "kind": "skill",
+      "path": "skills/security-review/SKILL.md",
+      "note": "코드베이스 전수 감사 — 의존성 CVE·시크릿·결제. 내장 /security-review는 diff 전용이라 이 영역을 다루지 않는다",
+      "on_error": [
+        "user-report"
+      ]
+    },
+    {
+      "id": "receiving-review",
+      "kind": "skill",
+      "path": "skills/receiving-code-review/SKILL.md",
+      "note": "받은 피드백의 비판적 검증. 네이티브 대응물 없음",
+      "on_error": [
+        "user-report"
+      ]
+    },
+    {
+      "id": "harness-evaluation",
+      "kind": "skill",
+      "path": "skills/harness-evaluation/SKILL.md",
+      "note": "10축 정성 평가. doctor가 측정한 사실을 입력으로 받아 판단만 한다",
+      "on_error": [
+        "user-report"
+      ]
     }
   ],
   "edges": [
@@ -292,6 +319,41 @@
       "from": "track-skill",
       "to": "doctor",
       "cond": "--usage 집계"
+    },
+    {
+      "from": "build",
+      "to": "security-review",
+      "cond": "배포 전·전체 보안 감사 요청"
+    },
+    {
+      "from": "security-review",
+      "to": "build",
+      "cond": "Critical 취약점 발견"
+    },
+    {
+      "from": "verify",
+      "to": "receiving-review",
+      "cond": "리뷰 피드백 수신"
+    },
+    {
+      "from": "cross-check",
+      "to": "receiving-review",
+      "cond": "외부 AI 교차검증 결과 수신"
+    },
+    {
+      "from": "receiving-review",
+      "to": "build",
+      "cond": "검증 후 채택된 Critical/Important"
+    },
+    {
+      "from": "doctor",
+      "to": "harness-evaluation",
+      "cond": "측정 완료 → 정성 판단"
+    },
+    {
+      "from": "harness-evaluation",
+      "to": "user-report",
+      "cond": "개선 제안"
     }
   ]
 }
