@@ -1,8 +1,6 @@
 ---
 name: codex-claude-loop
-description: |
-  Claude Code가 설계/구현하고 OpenAI Codex가 검증/리뷰하는 듀얼 AI 엔지니어링 루프를 오케스트레이션합니다.
-  review-agent의 P6(TDD 검증) 조건 충족 시 사용자 확인 후 호출되거나, 사용자가 코드 품질 검증을 요청할 때 사용하세요.
+description: Claude Code가 설계/구현하고 OpenAI Codex가 검증/리뷰하는 듀얼 AI 엔지니어링 루프를 오케스트레이션합니다. epcc-reviewer의 cross-check 조건 충족 시 사용자 확인 후 호출되거나, 사용자가 코드 품질 검증을 요청할 때 사용하세요.
 ---
 
 # Codex-Claude Engineering Loop

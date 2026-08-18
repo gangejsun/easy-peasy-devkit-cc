@@ -1,9 +1,6 @@
 ---
 name: prd-generator
-description: |
-  사용자가 새로운 기능 개발을 요청했을 때, /dev/docs/prd 경로에 관련 PRD가 없으면 자동으로 PRD를 생성합니다.
-  서비스 규모에 따라 단일 PRD 또는 모듈형 PRD(prd-overload + Phase Sub PRD + Shared) 체계를 선택합니다.
-  수동 호출(/prd-generator) 또는 planning-agent P2에서 자동 호출됩니다. (project)
+description: 사용자가 새로운 기능 개발을 요청했을 때, /dev/docs/prd 경로에 관련 PRD가 없으면 자동으로 PRD를 생성합니다. 서비스 규모에 따라 단일 PRD 또는 모듈형 PRD(prd-overload + Phase Sub PRD + Shared) 체계를 선택합니다. 수동 호출하거나 epcc-planner가 계획 단계에서 호출합니다.
 ---
 
 # PRD Generator
@@ -12,7 +9,7 @@ description: |
 
 | 호출 상황 | 동작 |
 |----------|------|
-| planning-agent에서 강화된 요구사항과 함께 호출 | 그것을 기반으로 PRD 생성 (Step 2 수집 생략) |
+| epcc-planner에서 강화된 요구사항과 함께 호출 | 그것을 기반으로 PRD 생성 (Step 2 수집 생략) |
 | 사용자가 `/prd-generator`로 직접 호출 | Step 2에서 사용자에게 직접 수집 |
 | 기타 | 부족한 정보만 추가 수집 |
 

@@ -17,13 +17,13 @@ description: Enhance user prompts by analyzing project context (code structure, 
 
 | 상황 | 강화 유형 | Step 3 동작 |
 |------|----------|------------|
-| P0 파이프라인 경유 (service-plan 존재) | P0-Tech | Step 3: P0 기술 명세 매핑 |
+| 기획 파이프라인 경유 (service-plan 존재) | tech-spec | Step 3: 기술 명세 매핑 |
 | 일반 요청 — Medium 규모 | Medium | Step 3: Medium 강화 |
 | 일반 요청 — Large 규모 | Large | Step 3: Large 강화 |
 
 ### Step 3: 규모별 강화 수행
 
-#### P0 기술 명세 매핑 (P0-Tech)
+#### 기술 명세 매핑 (tech-spec)
 
 service-planner의 기능 요구사항(FR-xxx)을 프로젝트 코드 컨텍스트와 매핑합니다.
 

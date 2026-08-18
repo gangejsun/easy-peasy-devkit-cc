@@ -1,13 +1,6 @@
 ---
 name: scroll-stop-prompter
-description: >
-  제품 사진/영상을 스크롤 스톱 콘텐츠로 변환하기 위한 AI 이미지/비디오 프롬프트를 생성합니다.
-  조립뷰(Assembled), 분해뷰(Deconstructed), 비디오 전환(Video Transition) 3종 프롬프트를
-  타겟 AI 모델별로 최적화하여 생성하고, 복사 가능한 HTML 프리뷰 페이지를 제공합니다.
-  사용자가 "AI 프롬프트 생성", "제품 프롬프트", "스크롤 스톱 프롬프트", "이미지/비디오 프롬프트"를
-  요청할 때 사용합니다. marketing-workflow Stage 1으로도 호출됩니다.
-  전체 마케팅 파이프라인은 /marketing-workflow. 사이트 구축은 /scroll-stop-builder.
-  수동 호출 전용 (/scroll-stop-prompter). 자동 트리거되지 않습니다. (project)
+description: 제품 사진/영상을 스크롤 스톱 콘텐츠로 변환하기 위한 AI 이미지/비디오 프롬프트를 생성합니다. 조립뷰(Assembled), 분해뷰(Deconstructed), 비디오 전환(Video Transition) 3종 프롬프트를 타겟 AI 모델별로 최적화하여 생성하고, 복사 가능한 HTML 프리뷰 페이지를 제공합니다. 사용자가 "AI 프롬프트 생성", "제품 프롬프트", "스크롤 스톱 프롬프트", "이미지/비디오 프롬프트"를 요청할 때 사용합니다. marketing-workflow Stage 1으로도 호출됩니다. 전체 마케팅 파이프라인은 /marketing-workflow. 사이트 구축은 /scroll-stop-builder. 수동 호출 전용.
 ---
 
 # Scroll-Stop Prompter

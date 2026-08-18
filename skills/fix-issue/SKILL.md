@@ -1,10 +1,6 @@
 ---
 name: fix-issue
-description: |
-  GitHub 이슈 기반 버그 수정 (이슈 컨텍스트 자동 주입).
-  사용자가 "이슈 수정", "fix issue", "fix #123", "이슈 해결" 등을 요청할 때 사용합니다.
-  이슈 번호가 제공되면 gh CLI로 컨텍스트를 자동 수집합니다.
-  수동 호출 전용 (/fix-issue). 자동 트리거되지 않습니다. (project)
+description: GitHub 이슈 기반 버그 수정 (이슈 컨텍스트 자동 주입). 사용자가 "이슈 수정", "fix issue", "fix #123", "이슈 해결" 등을 요청할 때 사용합니다. 이슈 번호가 제공되면 gh CLI로 컨텍스트를 자동 수집합니다. 수동 호출 전용.
 ---
 
 # Fix Issue
@@ -56,7 +52,7 @@ gh pr list --search "<NUMBER>" --json number,title,state
 
 ### Step 4: 수정 및 검증
 
-이 시점부터 일반 task-workflow의 P4 (구현) 규칙을 따름:
+이 시점부터 일반 task-workflow의 build (구현) 규칙을 따름:
 
 1. 근본 원인 식별 후 수정
 2. `/simplify` 코드 정리

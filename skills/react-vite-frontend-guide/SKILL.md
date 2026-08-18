@@ -1,11 +1,6 @@
 ---
 name: react-vite-frontend-guide
-description: |
-  [Preset: react-vite] React + Vite frontend development guide. Covers component patterns, Tailwind CSS styling,
-  React Router routing, state management, and TypeScript standards.
-  Use when creating or modifying components, pages, layouts, styling, data fetching,
-  routing, state management, or any frontend code.
-  Use ONLY when the active preset matches.
+description: [Preset: react-vite] React + Vite frontend development guide. Covers component patterns, Tailwind CSS styling, React Router routing, state management, and TypeScript standards. Use when creating or modifying components, pages, layouts, styling, data fetching, routing, state management, or any frontend code.
 ---
 
 # Frontend Dev Guidelines (React + Vite)

@@ -1,11 +1,6 @@
 ---
 name: service-planner
-description: |
-  서비스 구조를 설계하고 구체적인 기능 요구사항을 도출합니다.
-  사용자가 "서비스 기획", "기능 요구사항", "화면 설계", "사용자 플로우",
-  "기능 목록", "요구사항 도출"을 요청할 때,
-  또는 planning-agent가 P0-D 단계로 호출할 때 사용합니다.
-  수동 호출 전용 (/service-planner). 자동 트리거되지 않습니다. (project)
+description: 서비스 구조를 설계하고 구체적인 기능 요구사항을 도출합니다. 사용자가 "서비스 기획", "기능 요구사항", "화면 설계", "사용자 플로우", "기능 목록", "요구사항 도출"을 요청할 때, 또는 epcc-planner가 service 단계로 호출할 때 사용합니다. 수동 호출 전용.
 ---
 
 # Service Planner
@@ -24,7 +19,7 @@ description: |
 
 | 입력 상황 | 실행 Step |
 | --------- | --------- |
-| P0-C 사업 기획서와 함께 호출 | Step 2 → Step 3 → Step 4 → Step 5 → Step 6 |
+| business 사업 기획서와 함께 호출 | Step 2 → Step 3 → Step 4 → Step 5 → Step 6 |
 | 사용자가 직접 호출 | Step 3 → Step 4 → Step 5 → Step 6 |
 | 기존 서비스 기획 수정 요청 | Step 3(기존 로드) → Step 5(수정) → Step 6 |
 

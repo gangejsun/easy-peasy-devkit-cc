@@ -1,10 +1,6 @@
 ---
 name: business-planner
-description: |
-  아이디어나 기능을 사업적 관점에서 검증하고 사업 기획서를 생성합니다.
-  사용자가 "사업 기획", "비즈니스 모델", "수익화", "시장 진입", "사업성 분석"을 요청할 때,
-  또는 planning-agent가 P0-C 단계로 호출할 때 사용합니다.
-  수동 호출 전용 (/business-planner). 자동 트리거되지 않습니다. (project)
+description: 아이디어나 기능을 사업적 관점에서 검증하고 사업 기획서를 생성합니다. 사용자가 "사업 기획", "비즈니스 모델", "수익화", "시장 진입", "사업성 분석"을 요청할 때, 또는 epcc-planner가 business 단계로 호출할 때 사용합니다. 수동 호출 전용.
 ---
 
 # Business Planner
@@ -18,7 +14,7 @@ description: |
 
 | 입력 상황 | 실행 Step |
 |----------|----------|
-| P0-B 리서치 결과와 함께 호출 (planning-agent 경유) | Step 2 → Step 3 → Step 4 → Step 5 |
+| research 리서치 결과와 함께 호출 (epcc-planner 경유) | Step 2 → Step 3 → Step 4 → Step 5 |
 | 사용자가 직접 호출 (리서치 없음) | Step 3 → Step 4 → Step 5 |
 | 기존 사업 기획서 수정 요청 | Step 3(기존 문서 로드) → Step 4 → Step 5 |
 

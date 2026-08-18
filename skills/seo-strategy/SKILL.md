@@ -1,15 +1,6 @@
 ---
 name: seo-strategy
-description: >
-  3-Mode SEO 분석 스킬. Mode 1: 기사/페이지 SEO 최적화 (키워드 분석, LSI, 메타 태그, 구조화 데이터 생성),
-  Mode 2: 사이트 전체 감사 (기술 SEO, 콘텐츠, 성능, 모바일, 접근성 종합 점수),
-  Mode 3: AI SEO 최적화 (AI 검색 엔진 인용/추출 최적화, 3 Pillar 평가).
-  분석 결과를 인터랙티브 HTML 리포트로 생성합니다.
-  사용자가 "SEO 분석", "SEO 최적화", "사이트 감사", "키워드 분석", "메타 태그 생성",
-  "검색 엔진 최적화", "AI SEO", "AI 검색 최적화", "LLM 최적화"를 요청할 때 사용합니다.
-  marketing-workflow Stage 3으로도 호출됩니다.
-  AI SEO/LLM 최적화도 이 스킬에서 Mode 3으로 처리합니다. 전체 마케팅 캠페인은 /marketing-workflow.
-  수동 호출 전용 (/seo-strategy). 자동 트리거되지 않습니다. (project)
+description: 3-Mode SEO 분석 스킬. Mode 1: 기사/페이지 SEO 최적화 (키워드 분석, LSI, 메타 태그, 구조화 데이터 생성), Mode 2: 사이트 전체 감사 (기술 SEO, 콘텐츠, 성능, 모바일, 접근성 종합 점수), Mode 3: AI SEO 최적화 (AI 검색 엔진 인용/추출 최적화, 3 Pillar 평가). 분석 결과를 인터랙티브 HTML 리포트로 생성합니다. 사용자가 "SEO 분석", "SEO 최적화", "사이트 감사", "키워드 분석", "메타 태그 생성", "검색 엔진 최적화", "AI SEO", "AI 검색 최적화", "LLM 최적화"를 요청할 때 사용합니다. marketing-workflow Stage 3으로도 호출됩니다. AI SEO/LLM 최적화도 이 스킬에서 Mode 3으로 처리합니다. 전체 마케팅 캠페인은 /marketing-workflow. 수동 호출 전용.
 ---
 
 # SEO Strategy

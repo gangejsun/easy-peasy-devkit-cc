@@ -1,8 +1,6 @@
 ---
 name: nextjs-backend-guide
-description: |
-  [Preset: nextjs-supabase] Next.js App Router backend development guide. Covers API Route Handlers, Server Actions, Supabase data access, Zod validation, middleware, and error handling patterns. Use when creating or modifying Route Handlers, Server Actions, Supabase queries, input validation, middleware, backend testing, or any server-side logic.
-  Use ONLY when the active preset matches.
+description: [Preset: nextjs-supabase] Next.js App Router backend development guide. Covers API Route Handlers, Server Actions, Supabase data access, Zod validation, middleware, and error handling patterns. Use when creating or modifying Route Handlers, Server Actions, Supabase queries, input validation, middleware, backend testing, or any server-side logic.
 ---
 
 # Backend Development Guidelines

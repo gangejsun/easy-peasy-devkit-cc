@@ -1,9 +1,6 @@
 ---
 name: completion-review
-description: |
-  코드 구현이 끝나고 문서를 최신화해야 할 때 사용합니다.
-  context.md 업데이트, tasks.md 체크 완료, 관련 아키텍처/API 문서 업데이트, 완료된 작업 아카이브를 처리합니다.
-  CLAUDE.md 워크플로우의 Phase 5에 해당합니다. Small 작업의 P5 또는 review-agent가 호출합니다.
+description: 코드 구현이 끝나고 문서를 최신화해야 할 때 사용합니다. context.md 업데이트, tasks.md 체크 완료, 관련 아키텍처/API 문서 업데이트, 완료된 작업 아카이브를 처리합니다. epcc-reviewer가 호출합니다.
 ---
 
 # Completion Review

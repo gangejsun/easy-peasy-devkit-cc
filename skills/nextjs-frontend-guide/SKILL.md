@@ -1,8 +1,6 @@
 ---
 name: nextjs-frontend-guide
-description: |
-  [Preset: nextjs-supabase] Next.js App Router frontend development guide. Covers Server/Client Component patterns, Tailwind CSS v4 + shadcn/ui styling, App Router routing, Zustand state management, performance optimization, and TypeScript standards. Use when creating or modifying components, pages, layouts, styling, data fetching, routing, state management, or any frontend code.
-  Use ONLY when the active preset matches.
+description: [Preset: nextjs-supabase] Next.js App Router frontend development guide. Covers Server/Client Component patterns, Tailwind CSS v4 + shadcn/ui styling, App Router routing, Zustand state management, performance optimization, and TypeScript standards. Use when creating or modifying components, pages, layouts, styling, data fetching, routing, state management, or any frontend code.
 ---
 
 # Frontend Development Guidelines

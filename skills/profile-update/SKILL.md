@@ -1,6 +1,6 @@
 ---
 name: profile-update
-description: 세션 종료 시 의사결정 로그를 커밋하고, 성향 프로파일 정확도를 업데이트합니다. 기획·기술·메타 결정 등 모든 분기점이 발생한 세션 종료 후 "/profile-update" 또는 "프로파일 업데이트", "의사결정 기록" 키워드로 트리거됩니다. decision-autopilot Rule이 세션 종료 시 자동 리마인드합니다. (project)
+description: 세션 종료 시 의사결정 로그를 커밋하고, 성향 프로파일 정확도를 업데이트합니다. 기획·기술·메타 결정 등 모든 분기점이 발생한 세션 종료 후 "/profile-update" 또는 "프로파일 업데이트", "의사결정 기록" 키워드로 트리거됩니다. decision-autopilot Rule이 세션 종료 시 자동 리마인드합니다.
 ---
 
 # Profile Update (의사결정 디지털 트윈 — 세션 커밋)

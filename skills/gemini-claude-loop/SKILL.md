@@ -1,9 +1,6 @@
 ---
 name: gemini-claude-loop
-description: |
-  외부 AI(Gemini)로 코드를 독립 검증하고 싶을 때, 또는 review-agent의 P6 조건 충족 시 사용합니다.
-  Claude Code가 설계/구현하고 Gemini CLI가 검증/리뷰하는 듀얼 AI 엔지니어링 루프를 오케스트레이션합니다.
-  사용자가 코드 품질의 교차 검증을 요청할 때도 직접 호출 가능합니다.
+description: 외부 AI(Gemini)로 코드를 독립 검증하고 싶을 때, 또는 epcc-reviewer의 cross-check 조건 충족 시 사용합니다. Claude Code가 설계/구현하고 Gemini CLI가 검증/리뷰하는 듀얼 AI 엔지니어링 루프를 오케스트레이션합니다. 사용자가 코드 품질의 교차 검증을 요청할 때도 직접 호출 가능합니다.
 ---
 
 # Gemini-Claude Engineering Loop

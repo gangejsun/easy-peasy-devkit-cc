@@ -1,11 +1,6 @@
 ---
 name: python-fastapi-backend-guide
-description: |
-  [Preset: python-fastapi] FastAPI backend development guide. Covers Router patterns, Pydantic v2 validation,
-  SQLAlchemy 2.0 ORM, alembic migrations, dependency injection, and pytest testing.
-  Use when creating or modifying routers, models, schemas, middleware,
-  database queries, or any backend logic.
-  Use ONLY when the active preset matches.
+description: [Preset: python-fastapi] FastAPI backend development guide. Covers Router patterns, Pydantic v2 validation, SQLAlchemy 2.0 ORM, alembic migrations, dependency injection, and pytest testing. Use when creating or modifying routers, models, schemas, middleware, database queries, or any backend logic.
 ---
 
 # Backend Dev Guidelines (Python FastAPI)

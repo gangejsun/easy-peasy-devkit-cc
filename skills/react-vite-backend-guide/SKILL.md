@@ -1,11 +1,6 @@
 ---
 name: react-vite-backend-guide
-description: |
-  [Preset: react-vite] REST API backend development guide for React + Vite projects.
-  Covers API client patterns, data fetching, caching, and error handling.
-  Use when creating or modifying API integrations, data fetching logic,
-  or any server communication code.
-  Use ONLY when the active preset matches.
+description: [Preset: react-vite] REST API backend development guide for React + Vite projects. Covers API client patterns, data fetching, caching, and error handling. Use when creating or modifying API integrations, data fetching logic, or any server communication code.
 ---
 
 # Backend Dev Guidelines (React + Vite)
