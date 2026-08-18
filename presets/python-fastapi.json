@@ -25,12 +25,21 @@
   },
   "security": {
     "secretPatterns": [
-      { "name": "AWS Key", "pattern": "AKIA[0-9A-Z]{16}", "action": "block" },
-      { "name": "GitHub PAT", "pattern": "ghp_[a-zA-Z0-9]{36}", "action": "block" },
-      { "name": "Database URL with Password", "pattern": "postgresql://[^:]+:[^@]+@", "action": "warn" }
+      {
+        "name": "AWS Key",
+        "pattern": "AKIA[0-9A-Z]{16}",
+        "action": "block"
+      },
+      {
+        "name": "GitHub PAT",
+        "pattern": "ghp_[a-zA-Z0-9]{36}",
+        "action": "block"
+      },
+      {
+        "name": "Database URL with Password",
+        "pattern": "postgresql://[^:]+:[^@]+@",
+        "action": "warn"
+      }
     ]
-  },
-  "activeSkills": [
-    "python-fastapi-backend-guide"
-  ]
+  }
 }

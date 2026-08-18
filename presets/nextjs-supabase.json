@@ -25,15 +25,26 @@
   },
   "security": {
     "secretPatterns": [
-      { "name": "Supabase Service Role", "pattern": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\\.[A-Za-z0-9_-]{50,}", "action": "block" },
-      { "name": "AWS Key", "pattern": "AKIA[0-9A-Z]{16}", "action": "block" },
-      { "name": "GitHub PAT", "pattern": "ghp_[a-zA-Z0-9]{36}", "action": "block" },
-      { "name": "Generic API Key", "pattern": "sk-[a-zA-Z0-9]{20,}", "action": "warn" }
+      {
+        "name": "Supabase Service Role",
+        "pattern": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\\.[A-Za-z0-9_-]{50,}",
+        "action": "block"
+      },
+      {
+        "name": "AWS Key",
+        "pattern": "AKIA[0-9A-Z]{16}",
+        "action": "block"
+      },
+      {
+        "name": "GitHub PAT",
+        "pattern": "ghp_[a-zA-Z0-9]{36}",
+        "action": "block"
+      },
+      {
+        "name": "Generic API Key",
+        "pattern": "sk-[a-zA-Z0-9]{20,}",
+        "action": "warn"
+      }
     ]
-  },
-  "activeSkills": [
-    "nextjs-frontend-guide",
-    "nextjs-backend-guide",
-    "nextjs-ui-ux-design"
-  ]
+  }
 }

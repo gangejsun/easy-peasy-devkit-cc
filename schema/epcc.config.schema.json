@@ -23,18 +23,29 @@
         },
         "language": {
           "type": "string",
-          "enum": ["ko", "en", "ja", "zh"],
+          "enum": [
+            "ko",
+            "en",
+            "ja",
+            "zh"
+          ],
           "default": "en",
           "description": "Response language for Claude"
         },
         "experienceLevel": {
           "type": "string",
-          "enum": ["senior", "mid", "junior"],
+          "enum": [
+            "senior",
+            "mid",
+            "junior"
+          ],
           "default": "senior",
           "description": "Developer experience level — affects response detail"
         }
       },
-      "required": ["name"]
+      "required": [
+        "name"
+      ]
     },
     "techStack": {
       "type": "object",
@@ -42,7 +53,12 @@
       "properties": {
         "preset": {
           "type": "string",
-          "enum": ["nextjs-supabase", "react-vite", "python-fastapi", "blank"],
+          "enum": [
+            "nextjs-supabase",
+            "react-vite",
+            "python-fastapi",
+            "blank"
+          ],
           "default": "blank",
           "description": "Preset name for framework-specific skills and defaults"
         },
@@ -56,24 +72,41 @@
         },
         "packageManager": {
           "type": "string",
-          "enum": ["npm", "pnpm", "yarn", "bun", "uv", "pip"],
+          "enum": [
+            "npm",
+            "pnpm",
+            "yarn",
+            "bun",
+            "uv",
+            "pip"
+          ],
           "default": "npm"
         },
         "commands": {
           "type": "object",
           "properties": {
-            "build": { "type": "string" },
-            "test": { "type": "string" },
-            "lint": { "type": "string" }
+            "build": {
+              "type": "string"
+            },
+            "test": {
+              "type": "string"
+            },
+            "lint": {
+              "type": "string"
+            }
           }
         },
         "additionalStack": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Additional technologies (e.g., 'Tailwind CSS v4', 'Supabase')"
         }
       },
-      "required": ["preset"]
+      "required": [
+        "preset"
+      ]
     },
     "domains": {
       "type": "object",
@@ -103,47 +136,42 @@
           "items": {
             "type": "object",
             "properties": {
-              "name": { "type": "string", "description": "Pattern display name" },
-              "pattern": { "type": "string", "description": "Regular expression pattern" },
+              "name": {
+                "type": "string",
+                "description": "Pattern display name"
+              },
+              "pattern": {
+                "type": "string",
+                "description": "Regular expression pattern"
+              },
               "action": {
                 "type": "string",
-                "enum": ["block", "warn"],
+                "enum": [
+                  "block",
+                  "warn"
+                ],
                 "description": "Action on match: block (exit 2) or warn (stderr only)"
               }
             },
-            "required": ["name", "pattern", "action"]
-          }
-        }
-      }
-    },
-    "workflow": {
-      "type": "object",
-      "description": "Phase workflow toggle",
-      "properties": {
-        "p0": {
-          "type": "object",
-          "properties": {
-            "enabled": { "type": "boolean", "default": true }
-          }
-        },
-        "p6": {
-          "type": "object",
-          "properties": {
-            "enabled": { "type": "boolean", "default": true }
+            "required": [
+              "name",
+              "pattern",
+              "action"
+            ]
           }
         }
       }
     },
     "customResources": {
       "type": "object",
-      "additionalProperties": { "type": "string" },
+      "additionalProperties": {
+        "type": "string"
+      },
       "description": "Custom resource directories that skills can reference"
-    },
-    "disabledSkills": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "Skills to disable (by name)"
     }
   },
-  "required": ["project", "techStack"]
+  "required": [
+    "project",
+    "techStack"
+  ]
 }

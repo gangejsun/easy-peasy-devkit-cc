@@ -1,0 +1,297 @@
+{
+  "$comment": "하네스를 기계 판독 가능한 그래프로 선언한다. v2에서 이 그래프는 마크다운 표와 산문에 흩어져 있어 검증도 계측도 불가능했고, 그 결과 '선언됐지만 도달 불가능한 자산'(rules/ 697줄)이 4개월간 아무에게도 발견되지 않았다. doctor --graph가 이 파일로 dangling 엣지·도달 불가 노드·에러 엣지 누락을 검사한다. edges의 instrumented:true 는 훅이 실제로 방출하는 엣지다. stage 간 엣지는 모델 행동이라 코드가 방출할 수 없으므로 '죽은 엣지' 판정에서 제외한다.",
+  "version": "3.0.0",
+  "nodes": [
+    {
+      "id": "session-start",
+      "kind": "hook",
+      "path": "scripts/session-brief.sh",
+      "event": "SessionStart",
+      "entry": true,
+      "emits": "T0 운영 계약 + 세션 브리핑 + 훅 생존 현황",
+      "on_error": [
+        "user-report"
+      ]
+    },
+    {
+      "id": "understand",
+      "kind": "stage",
+      "when": "영향 반경이 불명확할 때",
+      "produces": "탐색 결과 (파일 목록·호출 관계)",
+      "entry": true,
+      "on_error": [
+        "user-report"
+      ]
+    },
+    {
+      "id": "plan",
+      "kind": "stage",
+      "when": "진입 조건 4상태 중 2개 이상 미충족",
+      "produces": "구현 계획 (세션을 넘어갈 때만 파일로)",
+      "entry": true,
+      "on_error": [
+        "user-report"
+      ]
+    },
+    {
+      "id": "epcc-planner",
+      "kind": "agent",
+      "path": "agents/epcc-planner.md",
+      "tools": [
+        "Read",
+        "Grep",
+        "Glob",
+        "WebSearch",
+        "WebFetch"
+      ],
+      "note": "Write 없음 — 불필요한 문서 양산이 구조적으로 불가",
+      "on_error": [
+        "user-report"
+      ]
+    },
+    {
+      "id": "build",
+      "kind": "stage",
+      "when": "항상",
+      "produces": "코드",
+      "entry": true,
+      "on_error": [
+        "user-report"
+      ]
+    },
+    {
+      "id": "security-check",
+      "kind": "hook",
+      "path": "scripts/security-check.sh",
+      "event": "PreToolUse",
+      "blocks": true,
+      "note": "exit 2로 시크릿 하드코딩 차단. 판정에 프로젝트 루트가 불필요",
+      "on_error": [
+        "user-report"
+      ]
+    },
+    {
+      "id": "build-gate",
+      "kind": "hook",
+      "path": "scripts/build-gate.sh",
+      "event": "Stop",
+      "blocks": true,
+      "note": "continue:false + systemMessage. decision/reason은 Stop이 미지원",
+      "on_error": [
+        "user-report"
+      ]
+    },
+    {
+      "id": "verify",
+      "kind": "stage",
+      "when": "Costly 이상",
+      "produces": "리뷰 결과",
+      "on_error": [
+        "build"
+      ]
+    },
+    {
+      "id": "epcc-reviewer",
+      "kind": "agent",
+      "path": "agents/epcc-reviewer.md",
+      "tools": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Bash"
+      ],
+      "note": "읽기 전용 — dev/archive 무단 이동이 물리적으로 불가",
+      "on_error": [
+        "user-report"
+      ]
+    },
+    {
+      "id": "cross-check",
+      "kind": "stage",
+      "when": "Irreversible만",
+      "produces": "다관점 독립 검증 결과 (correctness / security / reversibility 과반)",
+      "on_error": [
+        "build"
+      ]
+    },
+    {
+      "id": "handoff",
+      "kind": "hook",
+      "path": "scripts/handoff.sh",
+      "event": "PreCompact|SessionEnd",
+      "note": "additionalContext JSON. 평문 stdout은 이 이벤트에서 컨텍스트가 되지 않음",
+      "on_error": [
+        "user-report"
+      ]
+    },
+    {
+      "id": "lessons",
+      "kind": "store",
+      "path": "rules/lessons.md",
+      "note": "교훈 기록 형식. 집계는 doctor --lessons가 수행"
+    },
+    {
+      "id": "doctor",
+      "kind": "tool",
+      "path": "scripts/doctor.sh",
+      "entry": true,
+      "note": "자기검증 진입점. CI가 없으므로 package.json scripts에 기생"
+    },
+    {
+      "id": "rule-promotion",
+      "kind": "stage",
+      "when": "동일 카테고리 교훈 3건 이상",
+      "produces": "대응 자산 diff + lessons-archive.md로 물리 이동",
+      "on_error": [
+        "user-report"
+      ]
+    },
+    {
+      "id": "user-report",
+      "kind": "terminal",
+      "note": "모든 에러 엣지의 종착점. 실패는 조용히 사라지지 않는다"
+    },
+    {
+      "id": "track-skill",
+      "kind": "hook",
+      "path": "scripts/track-skill.sh",
+      "event": "PostToolUse",
+      "note": "스킬 호출 계측. 측정 없이 컬링하지 않는다(안티골 8)",
+      "on_error": [
+        "user-report"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "session-start",
+      "to": "understand",
+      "cond": "영향 반경 불명확"
+    },
+    {
+      "from": "session-start",
+      "to": "build",
+      "cond": "진입 조건 4상태 충족 — 준비 작업 0"
+    },
+    {
+      "from": "session-start",
+      "to": "doctor",
+      "cond": "훅 생존 N/4 미달 보고",
+      "instrumented": true
+    },
+    {
+      "from": "understand",
+      "to": "plan",
+      "cond": "미충족 항목 2개 이상"
+    },
+    {
+      "from": "understand",
+      "to": "build",
+      "cond": "영향 반경 확정"
+    },
+    {
+      "from": "plan",
+      "to": "epcc-planner",
+      "cond": "설계 위임"
+    },
+    {
+      "from": "epcc-planner",
+      "to": "build",
+      "cond": "계획 반환 (메인 세션이 기록)"
+    },
+    {
+      "from": "plan",
+      "to": "build"
+    },
+    {
+      "from": "build",
+      "to": "security-check",
+      "cond": "Edit|Write 시 자동",
+      "instrumented": true
+    },
+    {
+      "from": "security-check",
+      "to": "build",
+      "cond": "통과"
+    },
+    {
+      "from": "build",
+      "to": "build-gate",
+      "cond": "Stop 시 자동",
+      "instrumented": true
+    },
+    {
+      "from": "build-gate",
+      "to": "build",
+      "cond": "빌드 미실행 → 차단",
+      "instrumented": true
+    },
+    {
+      "from": "build",
+      "to": "verify",
+      "cond": "Costly 이상"
+    },
+    {
+      "from": "verify",
+      "to": "epcc-reviewer",
+      "cond": "리뷰 위임"
+    },
+    {
+      "from": "epcc-reviewer",
+      "to": "build",
+      "cond": "Critical 발견"
+    },
+    {
+      "from": "verify",
+      "to": "cross-check",
+      "cond": "Irreversible"
+    },
+    {
+      "from": "cross-check",
+      "to": "build",
+      "cond": "과반 미달"
+    },
+    {
+      "from": "build",
+      "to": "handoff",
+      "cond": "PreCompact | SessionEnd",
+      "instrumented": true
+    },
+    {
+      "from": "verify",
+      "to": "lessons",
+      "cond": "사용자 지적 발생"
+    },
+    {
+      "from": "cross-check",
+      "to": "lessons",
+      "cond": "사용자 지적 발생"
+    },
+    {
+      "from": "lessons",
+      "to": "doctor",
+      "cond": "집계 요청"
+    },
+    {
+      "from": "doctor",
+      "to": "rule-promotion",
+      "cond": "카테고리 3건 이상"
+    },
+    {
+      "from": "rule-promotion",
+      "to": "user-report",
+      "cond": "승인 요청 1회"
+    },
+    {
+      "from": "build",
+      "to": "track-skill",
+      "cond": "Skill 호출 시 자동",
+      "instrumented": true
+    },
+    {
+      "from": "track-skill",
+      "to": "doctor",
+      "cond": "--usage 집계"
+    }
+  ]
+}
