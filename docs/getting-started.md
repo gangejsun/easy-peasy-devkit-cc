@@ -20,6 +20,7 @@ This will interactively:
 - Ask you to choose a preset (nextjs-supabase, react-vite, python-fastapi, or blank)
 - Collect project information
 - Generate `epcc.config.json` and `CLAUDE.md`
+- Install rule cards into `.claude/rules/`
 - Create the `dev/` directory structure
 
 ### 3. Start Working
@@ -30,17 +31,15 @@ claude
 
 The plugin automatically:
 - Loads your project context via SessionStart hook
-- Routes to the correct preset skills
-- Enforces domain boundaries and security patterns
-- Manages the Phase workflow (P0-P6)
+- Blocks hardcoded secrets before they are written
+- Blocks stopping when source changed but build/test never ran
+- Routes work by reversibility class (Reversible / Costly / Irreversible)
 
 ## Zero-Config Mode
 
-The plugin works without `epcc.config.json` — Core workflow (Phase system, Persistent Loop, Stop Guard) is always active. Adding a config enables:
-- Preset-specific skills
-- Domain boundary enforcement
-- Custom security patterns
-- Build/test command validation
+The plugin works without `epcc.config.json` — the five hooks and the reversibility-class workflow are always active. Adding a config enables:
+- Project-specific secret patterns
+- Build/test command awareness (`build-gate` names the exact command)
 
 ## Available Presets
 
@@ -67,4 +66,4 @@ Project files always take priority over plugin files.
 
 - [Configuration Reference](configuration.md) — Full `epcc.config.json` options
 - [Presets Guide](presets.md) — Detailed preset documentation
-- [Migration Guide](migration-from-generator.md) — Migrate from code generator version
+- Upgrading from v2? Run `/epcc-migrate`

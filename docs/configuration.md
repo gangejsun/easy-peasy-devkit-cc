@@ -47,8 +47,8 @@ The configuration file lives at the project root. All fields are optional except
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `p0.enabled` | boolean | `true` | Enable P0 (Ideation/Research) phase |
-| `p6.enabled` | boolean | `true` | Enable P6 (TDD/Gemini Loop) phase |
+| `p0.enabled` | boolean | `true` | Enable 기획 (Ideation/Research) phase |
+| `p6.enabled` | boolean | `true` | Enable cross-check (TDD/Gemini Loop) phase |
 
 ### customResources
 

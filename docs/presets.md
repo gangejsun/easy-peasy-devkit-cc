@@ -11,10 +11,10 @@ Presets provide framework-specific skills, security patterns, and default config
 **Active Skills**:
 - `/nextjs-frontend-guide` — Server/Client Components, App Router, Tailwind, Zustand
 - `/nextjs-backend-guide` — Route Handlers, Server Actions, Supabase, Zod
-- `/nextjs-ui-ux-design` — UI/UX design intelligence with 67 styles, 96 palettes
+- `/ui-ux-design` — UI/UX design intelligence with 67 styles, 96 palettes
 
 **Default Security Patterns**:
-- Supabase Service Role JWT (block)
+- Supabase Service Role key — `sb_secret_*` and legacy JWT (block)
 - AWS Access Key (block)
 - GitHub PAT (block)
 - Generic API Key (warn)
