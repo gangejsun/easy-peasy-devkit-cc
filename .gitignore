@@ -19,3 +19,9 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+
+# EPCC 런타임 산출물 (훅이 생성하는 세션 상태 — 소스 아님)
+.claude/.epcc/
+dev/handoff/
+dev/active/
+dev/archive/
