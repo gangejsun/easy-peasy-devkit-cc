@@ -1,8 +1,6 @@
 ---
 name: epcc-init
-description: |
-  EPCC Devkit 프로젝트 초기 설정. epcc.config.json과 CLAUDE.md를 생성합니다.
-  새 프로젝트에서 처음 EPCC Devkit을 설정할 때 사용합니다.
+description: EPCC Devkit 프로젝트 초기 설정. epcc.config.json과 CLAUDE.md를 생성합니다. 새 프로젝트에서 처음 EPCC Devkit을 설정할 때 사용합니다.
 trigger: manual
 ---
 
@@ -91,13 +89,7 @@ trigger: manual
     "secretPatterns": []  // 프리셋 기본값 사용
   },
 
-  "workflow": {
-    "p0": { "enabled": true },
-    "p6": { "enabled": true }
-  },
-
-  "customResources": {},
-  "disabledSkills": []
+  "customResources": {}
 }
 ```
 
@@ -125,7 +117,7 @@ trigger: manual
 - <추가 스택 목록>
 - **패키지 매니저**: <패키지 매니저>
 <공유 패키지가 있는 경우>
-- **프로젝트 구조**: 모노레포 (루트 앱 + `<공유 패키지>`). 상세 → `.claude/rules/project-structure.md`
+- **프로젝트 구조**: 모노레포 (루트 앱 + `<공유 패키지>`)
 
 ## 개발 명령어
 
@@ -133,20 +125,51 @@ trigger: manual
 
 ## 코딩 컨벤션
 
-- 상세 규칙 → `.claude/rules/code-conventions.md`
+<프로젝트 고유 컨벤션만 1행씩. 없으면 섹션 삭제>
 
 ---
 
-## 작업 워크플로우
+## 하네스
 
-**코드 작업** (신규 기능, 기존 기능 수정, 버그 수정, 리팩토링 등):
-→ `.claude/rules/task-workflow.md` 자동 적용
+운영 계약은 세션 시작 시 자동 주입됩니다. 작업 규칙은 `.claude/rules/`에서 조건부 로드됩니다.
 
-**비코드 작업** (위 코드 작업 외 모든 작업):
-→ 워크플로우 미적용 / 직접 수행
+- `bash scripts/doctor.sh` — 하네스 자기검증
+- `bash scripts/doctor.sh --usage` — 훅 생존·계측
 ```
 
-### Step 7: dev/ 디렉토리 생성
+> **CLAUDE.md는 100행 내외로 유지하세요.** 프로젝트 구조 트리, 기술 특화 규칙,
+> 코드 스타일 상세는 넣지 않습니다 — 실시간 탐색이 가능하거나 `.claude/rules/`가 담당합니다.
+> 매 행마다 "이 행을 지우면 Claude가 실수하는가"를 물어 아니면 지웁니다.
+
+### Step 7: T1 규칙 카드 설치 (필수 — 건너뛰지 마세요)
+
+플러그인의 규칙 카드를 프로젝트 `.claude/rules/`로 설치합니다:
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/install-rules.sh"
+```
+
+설치되는 카드 (경로 매칭 시 조건부 로드):
+
+| 파일 | 로드 조건 |
+| --- | --- |
+| `code-change.md` | `src/**` `app/**` `packages/**` 편집 시 |
+| `reversibility.md` | 소스·마이그레이션·워크스페이스 편집 시 |
+| `harness-change.md` | `.claude/**` `scripts/**` 편집 시 |
+| `lessons.md` | `docs/lessons.md` 편집 시 |
+
+**설치 후 반드시 확인**하세요:
+
+```bash
+ls .claude/rules/
+```
+
+파일이 0개면 설치가 실패한 것입니다. 사용자에게 보고하고 중단하세요.
+
+> 상시 규범(T0)은 파일이 아니라 `session-brief` 훅이 매 세션 출력합니다.
+> 플러그인 소유이므로 자동 갱신되며 프로젝트가 수정할 수 없습니다.
+
+### Step 8: dev/ 디렉토리 생성
 
 ```
 dev/
@@ -168,14 +191,14 @@ dev/
     └── feature-tasks-template.md
 ```
 
-### Step 8: .gitignore 업데이트
+### Step 9: .gitignore 업데이트
 
 `.gitignore`에 다음 항목을 추가합니다 (이미 있으면 건너뜀):
 ```
 .epcc/
 ```
 
-### Step 9: 완료 보고
+### Step 10: 완료 보고
 
 ```
 EPCC Devkit 초기 설정 완료!
@@ -183,13 +206,15 @@ EPCC Devkit 초기 설정 완료!
 생성된 파일:
   ✅ epcc.config.json
   ✅ CLAUDE.md
+  ✅ .claude/rules/ (규칙 카드 N개)
   ✅ dev/ 디렉토리 구조
 
+검증:
+  bash scripts/doctor.sh
+
 다음 단계:
-  1. CLAUDE.md를 검토하고 필요시 수정하세요
-  2. 프로젝트에 code-conventions.md나 project-structure.md가 필요하면
-     .claude/rules/ 에 직접 생성하세요
-  3. Claude Code를 재시작하면 EPCC 워크플로우가 활성화됩니다
+  1. CLAUDE.md를 검토하고 프로젝트 고유 정보를 채우세요
+  2. Claude Code를 재시작하면 하네스가 활성화됩니다
 ```
 
 ## 주의사항

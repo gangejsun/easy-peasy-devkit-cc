@@ -1,0 +1,68 @@
+---
+paths:
+  - ".claude/**"
+  - "scripts/**"
+  - "hooks/**"
+  - "rules/**"
+  - "agents/**"
+  - "skills/**"
+---
+<!-- epcc-rule-version: 3.0.0 -->
+
+# 하네스 변경 카드
+
+훅·규칙·스킬·에이전트·스크립트를 건드릴 때 로드된다.
+
+> **핵심: Script가 할 수 있는 것은 Script에, LLM만 할 수 있는 것은 LLM에.**
+
+## 추가 전 3-질문
+
+| # | 질문 | YES면 |
+| --- | --- | --- |
+| Q1 | 기존 훅/규칙/스킬/**Claude Code 빌트인**과 역할이 겹치는가 | **중단** — 기존 것을 확장하거나 빌트인을 쓴다 |
+| Q2 | 향상된 모델 성능 덕에 이제 불필요한 것 아닌가 | **중단** |
+| Q3 | 이미 잘 동작하는 것을 굳이 바꾸는 건 아닌가 | **중단** |
+
+Q1의 "빌트인"은 실제로 확인한다. `/code-review`, `/simplify`, `/security-review`,
+`skill-creator`, `/init`, `/run`, `/loop`은 Claude Code가 제공한다. **이들과 경쟁하는
+자산을 만들지 않는다.**
+
+## 해결 수단 우선순위
+
+```
+1. 기존 문서 수정 (1~3줄 추가)        ← 가장 선호
+2. 기존 훅 로직 확장
+3. 기존 스크립트에 기능 추가
+4. 신규 스크립트 작성                  ← 가장 후순위
+```
+
+## 침묵 실패 방지 (필수)
+
+새 훅·스크립트를 만들거나 고쳤으면 **아래를 실제로 실행**한다. 생략 불가.
+
+1. `scripts/lib/common.sh`를 source하고 `epcc_begin`으로 시작한다
+   — 루트는 `epcc_root()`로만 구한다. `BASH_SOURCE`, `dirname ../..` **금지**
+   — 숫자는 `epcc_num()`을 통과시킨다. `|| echo 0` **금지**
+2. 출력은 `epcc_emit_context` / `epcc_emit_block`으로만 한다
+   — 이벤트마다 지원 필드가 다르다. 미지원 필드는 **조용히 무시**된다
+   — Stop은 `decision`/`reason`을 지원하지 않는다 (`continue`+`systemMessage` 사용)
+   — PreCompact/SessionEnd는 평문 stdout이 컨텍스트에 들어가지 않는다 (JSON 필요)
+3. `bash scripts/doctor.sh --fast && bash scripts/doctor.sh --self-test` → 통과 확인
+4. hooks.json에 등록했으면 `workflow.graph.json`에도 노드/엣지를 추가한다
+
+## 도달 경로 검증
+
+규칙·점검 장치를 추가할 때 **그 파일이 의도한 시점에 실제로 로드되는지** 즉시 확인한다.
+
+- `paths:` 조건부 로딩이면 대상 파일의 paths가 실제 편집 경로를 포함하는가
+- 플러그인에 넣는 자산이면 **Claude Code가 지원하는 컴포넌트 타입인가**
+  (`skills`/`commands`/`agents`/`hooks`/`mcpServers`/`outputStyles`/`lspServers` — **`rules`는 없다**)
+- 프로젝트에 있어야 하는 파일이면 `epcc-init`에 설치 단계가 있는가
+
+> v2에서 규칙 697줄이 4개월간 아무 프로젝트에도 도달하지 못했다. 원인은 이 검증의 부재다.
+
+## 에이전트 예외
+
+에이전트는 `.claude/rules/`를 상속받지 않는다. 에이전트에 필요한 규범은
+**해당 에이전트 프롬프트에 직접** 기재한다. 규칙 파일로 대신하려 하지 않는다.
+단 같은 규범을 두 곳이 주장하게 두지 않는다 — 한 곳이 원본이고 다른 곳은 인용이다.

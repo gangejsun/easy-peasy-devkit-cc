@@ -15,7 +15,7 @@
 - **프레임워크**: {{techStack.framework}} + {{techStack.language}}
 {{#each techStack.additionalStack}}- **{{this}}**
 {{/each}}- **패키지 매니저**: {{techStack.packageManager}}
-{{#if domains.sharedPackage}}- **프로젝트 구조**: 모노레포 (루트 앱 + `{{domains.sharedPackage}}`). 상세 → `.claude/rules/project-structure.md`{{/if}}
+{{#if domains.sharedPackage}}- **프로젝트 구조**: 모노레포 (루트 앱 + `{{domains.sharedPackage}}`){{/if}}
 
 ## 개발 명령어
 
@@ -26,14 +26,18 @@
 
 ## 코딩 컨벤션
 
-- 상세 규칙 → `.claude/rules/code-conventions.md`
+<!-- 프로젝트 고유 컨벤션을 1행씩. 없으면 이 섹션을 지우세요.
+     "Prettier 기본값을 따른다" 같은 자명한 내용은 적지 않습니다. -->
 
 ---
 
-## 작업 워크플로우
+## 하네스
 
-**코드 작업** (신규 기능, 기존 기능 수정, 버그 수정, 리팩토링 등):
-→ `.claude/rules/task-workflow.md` 자동 적용
+운영 계약(되돌림 분류·진입 조건·최소 수정)은 **세션 시작 시 자동 주입**됩니다.
+작업 규칙은 `.claude/rules/`에서 편집 경로에 따라 조건부 로드됩니다.
 
-**비코드 작업** (위 코드 작업 외 모든 작업):
-→ 워크플로우 미적용 / 직접 수행
+| 명령 | 용도 |
+| --- | --- |
+| `bash scripts/doctor.sh` | 하네스 자기검증 (훅·규칙·그래프) |
+| `bash scripts/doctor.sh --usage` | 훅 생존·스킬 호출·엣지 계측 |
+| `bash scripts/doctor.sh --lessons` | 교훈 집계 + 승격 후보 |
