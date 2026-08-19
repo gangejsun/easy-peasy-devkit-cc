@@ -211,6 +211,15 @@
       "kind": "store",
       "path": "skills/harness-evaluation/assets/report-template.md",
       "note": "평가 결함 목록 저장소 (dev/docs/harness-evaluation/vN.md — 파일명이 원장). 결함 목록이 rule-promotion의 입력이 된다"
+    },
+    {
+      "id": "stack-guide-generator",
+      "kind": "skill",
+      "path": "skills/stack-guide-generator/SKILL.md",
+      "note": "스택 조합(백엔드 유형·클라우드·DB·액세스·인증) 기반 frontend/backend-guide 생성. 자기 검증 실패 시 미설치 — placeholder 거짓 계약이 구조적으로 불가",
+      "on_error": [
+        "user-report"
+      ]
     }
   ],
   "edges": [
@@ -408,6 +417,11 @@
       "from": "eval-report",
       "to": "rule-promotion",
       "cond": "결함이 반복 패턴일 때 자산 승격"
+    },
+    {
+      "from": "session-start",
+      "to": "stack-guide-generator",
+      "cond": "epcc-init Step 9.5 또는 스택 변경 시 (config 미설정 넛지 경유)"
     }
   ]
 }

@@ -96,6 +96,33 @@
             }
           }
         },
+        "backend": {
+          "type": "object",
+          "description": "Backend dimension choices. Preset values are defaults, not fixed — set by epcc-init Step 4.5 or stack-guide-generator interview",
+          "properties": {
+            "backendType": {
+              "type": "string",
+              "enum": ["baas", "cloud-server", "framework-builtin"],
+              "description": "BaaS (Supabase/Firebase), self-managed cloud API server, or framework-builtin (Route Handlers etc.)"
+            },
+            "cloudProvider": {
+              "type": ["string", "null"],
+              "description": "AWS / GCP / Azure / Vercel / self-hosted (required when backendType is cloud-server)"
+            },
+            "database": {
+              "type": "string",
+              "description": "PostgreSQL / MySQL / MongoDB / DynamoDB / ..."
+            },
+            "dataAccess": {
+              "type": "string",
+              "description": "Prisma / Drizzle / SQLAlchemy / SDK direct / ..."
+            },
+            "auth": {
+              "type": "string",
+              "description": "Supabase Auth / NextAuth / Cognito / custom"
+            }
+          }
+        },
         "additionalStack": {
           "type": "array",
           "items": {

@@ -15,7 +15,14 @@
       "Tailwind CSS",
       "React Router",
       "Zustand or Redux Toolkit"
-    ]
+    ],
+    "backend": {
+      "backendType": "cloud-server",
+      "cloudProvider": null,
+      "database": "",
+      "dataAccess": "REST API client",
+      "auth": ""
+    }
   },
   "domains": {
     "sourceDir": "src",

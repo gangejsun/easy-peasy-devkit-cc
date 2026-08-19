@@ -24,15 +24,15 @@ Presets provide framework-specific skills, security patterns, and default config
 **Stack**: React + Vite + TypeScript + Tailwind CSS
 
 **Active Skills**:
-- `/react-vite-frontend-guide` — Client-side React patterns, Vite config, routing
-- `/react-vite-backend-guide` — REST API integration, data fetching patterns
+- 가이드 스킬은 `/epcc-init`(또는 `/stack-guide-generator`)가 선택한 백엔드·DB 조합에
+  맞춰 프로젝트의 `.claude/skills/frontend-guide`·`backend-guide`로 **생성**됩니다
 
 ### python-fastapi
 
 **Stack**: Python 3.11+ + FastAPI + SQLAlchemy 2.0 + Pydantic v2
 
 **Active Skills**:
-- `/python-fastapi-backend-guide` — FastAPI routers, SQLAlchemy, Pydantic, pytest
+- 가이드 스킬은 선택한 DB·데이터 액세스 조합에 맞춰 프로젝트에 **생성**됩니다 (`/stack-guide-generator`)
 
 **Note**: No frontend skills — this is a backend-only preset.
 

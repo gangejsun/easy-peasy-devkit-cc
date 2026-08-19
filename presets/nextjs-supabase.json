@@ -16,7 +16,14 @@
       "shadcn/ui",
       "Zustand",
       "Supabase (PostgreSQL + RLS + Auth)"
-    ]
+    ],
+    "backend": {
+      "backendType": "baas",
+      "cloudProvider": null,
+      "database": "PostgreSQL",
+      "dataAccess": "Supabase SDK",
+      "auth": "Supabase Auth"
+    }
   },
   "domains": {
     "sourceDir": "src",

@@ -69,7 +69,7 @@ bash scripts/doctor.sh
 | **훅** | 5 스크립트 / 6 등록 | SessionStart · PreToolUse · Stop · PreCompact · SessionEnd · PostToolUse |
 | **규칙** | T0 26줄 + T1 4개 242줄 | T0는 훅이 상시 주입(플러그인 소유), T1은 경로 매칭 시 조건부 로드 |
 | **에이전트** | 2 | `epcc-planner`(쓰기 없음) · `epcc-reviewer`(읽기 전용) |
-| **스킬** | 34 | 기획·구현·검증·보안·마케팅 워크플로우 |
+| **스킬** | 32 | 기획·구현·검증·보안·마케팅 워크플로우 + 스택 가이드 생성기 |
 | **프리셋** | 4 | nextjs-supabase · react-vite · python-fastapi · blank |
 
 ### 훅
@@ -130,7 +130,7 @@ bash scripts/doctor.sh --all        # 전체
 ## 그래프 선언
 
 `workflow.graph.json`이 노드(에이전트·스킬·훅)와 엣지(전이 조건), **에러 엣지**를
-기계 판독 가능한 형태로 선언합니다. 현재 노드 22 · 엣지 38.
+기계 판독 가능한 형태로 선언합니다. 현재 노드 23 · 엣지 39.
 
 `doctor --graph`가 검증합니다:
 - 모든 엣지의 타깃이 실재하는가
@@ -146,14 +146,22 @@ bash scripts/doctor.sh --all        # 전체
 - 프로젝트별 시크릿 패턴
 - 빌드/테스트 명령 인식 (`build-gate`가 구체적 명령을 안내)
 
+## 스택 가이드 — 프리셋은 기본값, 조합은 선택
+
+프리셋은 백엔드를 고정하지 않습니다. `/epcc-init`이 백엔드 유형(BaaS·클라우드 자체
+구축·프레임워크 내장)·클라우드·DB(PostgreSQL·MongoDB 등)·데이터 액세스·인증을 확인하고,
+확정된 조합에 맞는 `frontend-guide`·`backend-guide` 스킬을 프로젝트 `.claude/skills/`에
+생성합니다 (`stack-guide-generator`). 정확히 Next.js+Supabase 조합만 플러그인 원본을
+그대로 사용합니다. 스택이 바뀌면 `/stack-guide-generator`로 재생성합니다.
+
 ## Available Presets
 
 | Preset | Stack | Skills |
 |--------|-------|--------|
-| `nextjs-supabase` | Next.js 15 + Supabase + Tailwind + shadcn/ui | frontend, backend, ui-ux-design |
-| `react-vite` | React + Vite + Tailwind | frontend, backend |
-| `python-fastapi` | FastAPI + SQLAlchemy + Pydantic | backend |
-| `blank` | Custom | Core only |
+| `nextjs-supabase` | Next.js 15 + Supabase + Tailwind + shadcn/ui | 플러그인 가이드 원본 사용 |
+| `react-vite` | React + Vite + Tailwind | 가이드 **생성** (조합 확인 후) |
+| `python-fastapi` | FastAPI + SQLAlchemy + Pydantic | 가이드 **생성** (조합 확인 후) |
+| `blank` | Custom | 전체 차원 인터뷰 → 가이드 생성 |
 
 ## Project Override
 

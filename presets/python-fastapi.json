@@ -16,7 +16,14 @@
       "Pydantic v2",
       "Alembic",
       "pytest + httpx"
-    ]
+    ],
+    "backend": {
+      "backendType": "cloud-server",
+      "cloudProvider": null,
+      "database": "PostgreSQL",
+      "dataAccess": "SQLAlchemy 2.0",
+      "auth": ""
+    }
   },
   "domains": {
     "sourceDir": "app",
