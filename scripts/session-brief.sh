@@ -77,6 +77,11 @@ if [ -f "$HOOKS_JSON" ] && command -v jq >/dev/null 2>&1; then
   fi
 fi
 
+# ── 3.5 미설정 프로젝트 넛지 (설치 후 가장 이른 대화형 접점) ─────────
+if [ ! -f "$EPCC_ROOT/epcc.config.json" ]; then
+  printf -- '- 미설정 프로젝트 — `/epcc-init`로 기술 스택(백엔드·DB 포함)을 선택하면 스택 맞춤 가이드가 생성됩니다\n'
+fi
+
 # ── 4. 교훈 승격 후보 (임계 도달 시에만) ─────────────────────────────
 LF="$EPCC_ROOT/docs/lessons.md"
 if [ -f "$LF" ]; then

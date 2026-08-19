@@ -135,3 +135,11 @@ doctor --fast: 통과 N · 경고 N · 실패 N
 - **파일을 지우기 전에 반드시 내용을 읽고**, 프로젝트가 추가한 내용이 있으면 사용자에게 확인받습니다
 - 한 번에 전부 지우지 말고 카테고리별로 진행하며 각 단계 후 `doctor --fast`로 확인합니다
 - `git status`가 깨끗한 상태에서 시작하면 되돌리기 쉽습니다
+
+## 마이그레이션 후: 스택 가이드
+
+v2 프로젝트에는 스택 맞춤 가이드가 없다. 마이그레이션 완료 후 안내한다:
+
+- `epcc.config.json`에 `techStack.backend` 차원이 없으면 `/stack-guide-generator` 실행을 권한다
+  (백엔드 유형·DB·데이터 액세스를 확인하고 frontend/backend-guide를 생성)
+- 정확히 Next.js+Supabase 조합이면 플러그인 원본이 담당하므로 생성 불필요

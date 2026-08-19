@@ -52,6 +52,24 @@ trigger: manual
 8. **소스 디렉토리** (기본: src)
 9. **공유 패키지 경로** (선택)
 
+### Step 4.5: 백엔드 차원 확인 (대화형 — Supabase 고정 아님)
+
+프리셋의 백엔드는 **기본값이지 고정이 아니다.** 기본값을 표시하고 반드시 확인한다:
+
+```
+백엔드 구성을 확인합니다 (프리셋 기본값: Supabase BaaS + PostgreSQL):
+
+1. 백엔드 유형 — BaaS(Supabase/Firebase) / 클라우드 자체 구축(AWS·GCP·Azure) / 프레임워크 내장
+2. (자체 구축 시) 클라우드/호스팅 — AWS / GCP / Azure / 자체
+3. DB — PostgreSQL / MySQL / MongoDB / DynamoDB / 기타
+4. 데이터 액세스 — Prisma / Drizzle / SQLAlchemy / SDK 직접
+5. 인증 — Supabase Auth / NextAuth / Cognito / 자체 구현
+
+기본값 그대로 진행할까요, 바꾸시겠습니까?
+```
+
+BaaS 선택 시 DB·인증은 자동 추론 후 확인만 받는다. 자체 구축 선택 시 2~5를 필수로 묻는다.
+
 ### Step 5: epcc.config.json 생성
 
 수집된 정보로 `epcc.config.json` 생성:
@@ -75,6 +93,13 @@ trigger: manual
       "build": "<입력값>",
       "test": "<입력값>",
       "lint": "<입력값>"
+    },
+    "backend": {
+      "backendType": "<baas | cloud-server | framework-builtin>",
+      "cloudProvider": "<Step 4.5 입력값 또는 null>",
+      "database": "<Step 4.5 입력값>",
+      "dataAccess": "<Step 4.5 입력값>",
+      "auth": "<Step 4.5 입력값>"
     },
     "additionalStack": []
   },
@@ -198,6 +223,19 @@ dev/
 .epcc/
 ```
 
+### Step 9.5: 스택 가이드 생성
+
+확정된 조합을 요약하고 가이드 생성 여부를 확인한다:
+
+```
+확정된 스택: <프론트엔드> + <백엔드 유형> + <DB> + <데이터 액세스>
+이 조합에 맞는 frontend-guide / backend-guide 스킬을 .claude/skills/에 생성할까요?
+```
+
+- 승인 시 **stack-guide-generator 스킬을 호출**한다 (Step 1 인터뷰는 config가 채워졌으므로 생략됨)
+- 정확히 Next.js+Supabase 조합이면 생성 없이 플러그인 원본 사용을 안내한다
+- 거절 시 나중에 `/stack-guide-generator`로 생성 가능함을 안내한다
+
 ### Step 10: 완료 보고
 
 ```
@@ -207,6 +245,7 @@ EPCC Devkit 초기 설정 완료!
   ✅ epcc.config.json
   ✅ CLAUDE.md
   ✅ .claude/rules/ (규칙 카드 N개)
+  ✅ .claude/skills/frontend-guide · backend-guide (생성한 경우)
   ✅ dev/ 디렉토리 구조
 
 검증:
