@@ -25,6 +25,7 @@ SKILL=$(epcc_field "$INPUT" '.tool_input.skill')
 DIR="$EPCC_ROOT/.claude/.epcc"
 mkdir -p "$DIR" 2>/dev/null || exit 0
 printf '%s|%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$SKILL" >> "$DIR/skilluse.log" 2>/dev/null || true
+epcc_edge "build" "track-skill"   # 그래프가 instrumented:true로 선언한 엣지 — 방출 없으면 '미실행' 경고가 영구 잔존
 
 # 로테이션 (무한 축적 방지)
 N=$(epcc_count_lines "$DIR/skilluse.log")

@@ -18,6 +18,7 @@ source "${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}/
 epcc_begin "build-gate" "$INPUT"
 
 cd "$EPCC_ROOT" 2>/dev/null || exit 0
+epcc_edge "build" "build-gate"   # Stop 시 자동 — 판정 결과와 무관하게 traversal 사실을 기록
 
 # 무한 루프 방지: 이 훅 때문에 이미 계속 중이면 재차 막지 않는다
 STOP_ACTIVE=$(epcc_field "$INPUT" '.stop_hook_active')
@@ -58,7 +59,7 @@ if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ] && command -v jq >/dev/null 2>&1
   fi
 fi
 
-[ "$BUILD_RAN" -eq 1 ] && { epcc_edge "build" "build-gate"; exit 0; }
+[ "$BUILD_RAN" -eq 1 ] && exit 0
 
 # ── 3. 차단 ──────────────────────────────────────────────────────────
 # config에서 실제 명령을 읽어 구체적으로 안내한다
@@ -76,8 +77,7 @@ FILES=$(printf '%s\n' "$SRC_CHANGED" | head -5 | sed 's/^/  - /')
 MORE=""
 [ "$SRC_COUNT" -gt 5 ] && MORE=$(printf '\n  ... 외 %s개' "$((SRC_COUNT-5))")
 
-epcc_edge "build" "build-gate"
-epcc_edge "build-gate" "build"
+epcc_edge "build-gate" "build"   # 차단 → build 재진입
 epcc_emit_block "Stop" "$(printf '소스 %s개 파일이 이번 세션에 변경되었으나 빌드/테스트가 실행되지 않았습니다.\n\n%s%s\n\n실행하세요: %s\n\n(작성했다 ≠ 작동한다 — 검증까지가 한 동작입니다)' \
   "$SRC_COUNT" "$FILES" "$MORE" "$HINT")"
 exit 0
