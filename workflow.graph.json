@@ -183,7 +183,7 @@
       "id": "harness-evaluation",
       "kind": "skill",
       "path": "skills/harness-evaluation/SKILL.md",
-      "note": "10축 정성 평가. doctor가 측정한 사실을 입력으로 받아 판단만 한다",
+      "note": "경로 단위 5축 평가(라우팅·발동·종료·되먹임·비용). doctor가 측정한 사실을 입력으로 받아 판단만 하고, 산출물은 점수가 아니라 결함 목록이다",
       "on_error": [
         "user-report"
       ]
@@ -205,6 +205,12 @@
       "on_error": [
         "user-report"
       ]
+    },
+    {
+      "id": "eval-report",
+      "kind": "store",
+      "path": "skills/harness-evaluation/assets/report-template.md",
+      "note": "평가 결함 목록 저장소 (dev/docs/harness-evaluation/vN.md — 파일명이 원장). 결함 목록이 rule-promotion의 입력이 된다"
     }
   ],
   "edges": [
@@ -392,6 +398,16 @@
       "from": "ai-review-loop",
       "to": "receiving-review",
       "cond": "외부 리뷰 판정 반환"
+    },
+    {
+      "from": "harness-evaluation",
+      "to": "eval-report",
+      "cond": "결함 목록 산출"
+    },
+    {
+      "from": "eval-report",
+      "to": "rule-promotion",
+      "cond": "결함이 반복 패턴일 때 자산 승격"
     }
   ]
 }
