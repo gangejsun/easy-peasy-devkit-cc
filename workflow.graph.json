@@ -196,6 +196,15 @@
       "on_error": [
         "user-report"
       ]
+    },
+    {
+      "id": "ai-review-loop",
+      "kind": "skill",
+      "path": "skills/gemini-claude-loop/SKILL.md",
+      "note": "외부 모델 교차검증 (codex-claude-loop·gemini-claude-loop 대표). 재검증 최대 2회, 미해결 Critical은 사용자 tie-break. cross-check에서 모델 다양성이 필요할 때만 — 렌즈 다양성이 본질이고 모델 다양성은 부수적",
+      "on_error": [
+        "user-report"
+      ]
     }
   ],
   "edges": [
@@ -373,6 +382,16 @@
       "from": "council-review",
       "to": "plan",
       "cond": "통합 권고안 반환 (사용자 확인 후)"
+    },
+    {
+      "from": "cross-check",
+      "to": "ai-review-loop",
+      "cond": "외부 모델 검증 선택 시"
+    },
+    {
+      "from": "ai-review-loop",
+      "to": "receiving-review",
+      "cond": "외부 리뷰 판정 반환"
     }
   ]
 }
