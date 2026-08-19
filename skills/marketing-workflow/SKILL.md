@@ -56,8 +56,8 @@ description: 마케팅 콘텐츠 파이프라인을 오케스트레이션합니�
 
 ## 참조 문서
 
-- 제품 마케팅 컨텍스트 템플릿: [assets/product-marketing-context-template.md](assets/product-marketing-context-template.md)
-- 캠페인 요약 템플릿: [assets/campaign-summary-template.md](assets/campaign-summary-template.md)
+- 제품 마케팅 컨텍스트: `dev/docs/marketing/context-<제품>.md` — 제품명·타겟·핵심 가치·톤·금지 표현을 표 1개로
+- 캠페인 요약: `dev/docs/marketing/campaign-<제품>.md` — 스테이지별 산출물 경로 + 다음 액션 목록
 - scroll-stop-prompter: `.claude/skills/scroll-stop-prompter/SKILL.md`
 - scroll-stop-builder: `.claude/skills/scroll-stop-builder/SKILL.md`
 - seo-strategy: `.claude/skills/seo-strategy/SKILL.md`

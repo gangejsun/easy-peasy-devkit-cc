@@ -45,5 +45,5 @@ description: 주어진 주제에 대해 웹 검색 기반 리서치를 수행하
 
 ## 참조 문서
 
-- 리서치 유형별 템플릿: `assets/research-templates.md`
+- 리서치 유형별 템플릿: `resources/research-templates.md`
 - 리서치 저장소: `dev/docs/research/`
