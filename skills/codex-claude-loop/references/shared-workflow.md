@@ -1,3 +1,4 @@
+<!-- epcc-doctor: shared-copy — codex-claude-loop과 gemini-claude-loop이 같은 내용을 보유해야 한다 -->
 # AI Review Loop — 공통 워크플로우
 
 이 파일은 codex-claude-loop과 gemini-claude-loop이 공유하는 워크플로우를 정의합니다.

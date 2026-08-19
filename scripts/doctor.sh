@@ -213,6 +213,40 @@ run_fast() {
     ok "네이티브를 밀어내는 문구 없음"
   fi
 
+  # ── 6.5 스킬 내부 참조 (B-6) ──
+  # SKILL.md가 가리키는 references/·assets/·resources/ 상대 경로의 실재.
+  # 기존 dangling 검사는 .claude/rules만 봐서 이 사각지대가 5건을 4개월간 숨겼다.
+  sec "스킬 내부 참조"
+  local sdang=0 schecked=0
+  for sd in skills/*/; do
+    [ -f "$sd/SKILL.md" ] || continue
+    while IFS= read -r ref; do
+      [ -z "$ref" ] && continue
+      schecked=$((schecked+1))
+      if [ ! -f "$sd$ref" ]; then
+        bad "$(basename "$sd") → $ref 없음"; sdang=$((sdang+1))
+      fi
+    done < <(grep -ohE '(references|assets|resources)/[A-Za-z0-9._/-]+\.(md|json|csv|txt|py)' "$sd/SKILL.md" 2>/dev/null | sort -u)
+  done
+  [ "$sdang" -eq 0 ] && ok "스킬 내부 참조 ${schecked}건 모두 실재"
+
+  # 공유 사본 쌍의 내용 drift (사본 공유 구조의 알려진 실패 모드)
+  # 동명 ≠ 사본 (complete-examples.md는 스킬마다 독립 내용). 파일명 추측 대신
+  # 'epcc-doctor: shared-copy' 마커를 선언한 파일만 쌍으로 검사한다.
+  local drift=0
+  while IFS= read -r base; do
+    [ -z "$base" ] && continue
+    local first="" f2
+    while IFS= read -r f2; do
+      if [ -z "$first" ]; then first="$f2"
+      elif ! diff -q "$first" "$f2" >/dev/null 2>&1; then
+        warn "공유 사본 내용 상이: $first ↔ $f2" "사본 드리프트 — 한쪽을 원본으로 정하고 동기화"
+        drift=$((drift+1))
+      fi
+    done < <(grep -rl 'epcc-doctor: shared-copy' skills/*/references skills/*/resources 2>/dev/null | grep "/$base$" | sort)
+  done < <(grep -rl 'epcc-doctor: shared-copy' skills/*/references skills/*/resources 2>/dev/null | xargs -I{} basename {} | sort | uniq -d)
+  [ "$drift" -eq 0 ] && ok "공유 사본 드리프트 없음"
+
   # ── 7. 매니페스트 정합 ──
   sec "매니페스트"
   local pv cv
@@ -287,6 +321,23 @@ run_self_test() {
   done < <(jq -r '.hooks | to_entries[] | .key as $e | .value[]?.hooks[]? | "\($e)\t\(.command)"' "$hooks_json" 2>/dev/null)
 
   printf "\n  훅 자기검사: ${good}/${total}\n"
+
+  # ── 양성 픽스처 (B-7): '살아있다'가 아니라 '막는다'를 증명 ──
+  # 무해 픽스처는 exit 0만 확인한다. 차단돼야 할 입력이 실제로 exit 2로
+  # 차단되는지는 별도 증명이 필요하다 (v2 교훈: 살아있음 ≠ 작동함).
+  sec "양성 픽스처 (차단 검증)"
+  local blockfx="$fx/PreToolUse-block.json"
+  if [ -f "$blockfx" ] && [ -f scripts/security-check.sh ]; then
+    local bcode=0
+    CLAUDE_PROJECT_DIR="$ROOT" bash scripts/security-check.sh < "$blockfx" >/dev/null 2>&1 || bcode=$?
+    if [ "$bcode" -eq 2 ]; then
+      ok "security-check: 시크릿 주입 → exit 2 (차단 확인)"
+    else
+      bad "security-check: 시크릿 주입에 exit $bcode" "차단 훅이 잡아야 할 것을 잡지 못함 — 미탐"
+    fi
+  else
+    warn "양성 픽스처 없음 ($blockfx)" "차단 능력이 증명되지 않은 상태"
+  fi
 
   # 루트 해석 확인
   sec "루트 해석"
