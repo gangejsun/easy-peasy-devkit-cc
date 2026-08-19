@@ -1,6 +1,6 @@
 ---
 name: council-review
-description: 복잡한 기획 결정에서 기술/비즈니스/UX 3개 관점의 병렬 분석 후 통합 권고안을 도출합니다. 사용자가 "다관점 분석", "council review", "3관점 검토"를 요청할 때, 또는 epcc-planner가 council 단계로 호출할 때 사용합니다. Large 신규 기능 전용. 수동 호출 전용.
+description: 복잡한 기획 결정에서 기술/비즈니스/UX 3개 관점의 병렬 분석 후 통합 권고안을 도출합니다. 사용자가 "다관점 분석", "council review", "3관점 검토"를 요청할 때, 또는 epcc-planner가 council 단계로 호출할 때 사용합니다. Irreversible 기획 결정(사업 방향·아키텍처 선택 등 되돌림 비용이 큰 결정) 전용입니다. 해당 결정을 다룰 때 자동 발동하며, 수동 호출(/council-review)도 가능합니다.
 ---
 
 # Council Review

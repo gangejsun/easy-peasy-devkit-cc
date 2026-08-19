@@ -187,6 +187,15 @@
       "on_error": [
         "user-report"
       ]
+    },
+    {
+      "id": "council-review",
+      "kind": "skill",
+      "path": "skills/council-review/SKILL.md",
+      "note": "Irreversible 기획 결정의 3관점 팬아웃 합의(기술/비즈니스/UX). 재질의 최대 1회, 미해결은 사용자 tie-break",
+      "on_error": [
+        "user-report"
+      ]
     }
   ],
   "edges": [
@@ -354,6 +363,16 @@
       "from": "harness-evaluation",
       "to": "user-report",
       "cond": "개선 제안"
+    },
+    {
+      "from": "plan",
+      "to": "council-review",
+      "cond": "Irreversible 기획 결정"
+    },
+    {
+      "from": "council-review",
+      "to": "plan",
+      "cond": "통합 권고안 반환 (사용자 확인 후)"
     }
   ]
 }
