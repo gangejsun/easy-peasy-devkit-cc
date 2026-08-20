@@ -6,7 +6,7 @@ description: 프로젝트의 기술 스택 조합(프론트엔드·백엔드 유
 # Stack Guide Generator
 
 확정된 스택 조합으로 프로젝트 소유의 가이드 스킬을 생성한다.
-구조는 `assets/guide-skeleton.md` 계약을 따르고, 내용은 조합 지식으로 채운다.
+구조는 `assets/guide-skeleton.md` 생성 규격서를 따르고, 내용은 조합 지식으로 채운다.
 
 > **원칙: 본문을 먼저 만들고 검증한 뒤에만 설치한다.** description이 본문이 못 지키는
 > 약속을 하는 스킬(placeholder)을 만드는 것이 이 스킬이 대체하는 실패 모드다.
@@ -46,7 +46,7 @@ description: 프로젝트의 기술 스택 조합(프론트엔드·백엔드 유
    - **형식 참조 (선택, 방화벽 있음)**: 예시 코드 밀도·좋/나쁨 쌍의 형식·설명 어조가
      막히면 플러그인의 `nextjs-frontend-guide`·`nextjs-backend-guide`를 **형식
      참조로만** 열어본다. 내용·라이브러리·패턴 복사는 금지 — Step 4의 교차 누출
-     검사가 이를 잡는다. 계약(skeleton)과 충돌하면 항상 계약이 이긴다
+     검사가 이를 잡는다. 규격서(skeleton)와 충돌하면 항상 규격서를 따른다
 3. resources/를 4~10개로 분할하고 Navigation Guide에 전부 매핑한다
 4. 산출 위치: 프로젝트의 `.claude/skills/frontend-guide/` · `.claude/skills/backend-guide/`
 5. **관계형 DB면 데이터 모델링 카드와 연결한다 — 복사하지 않는다.** 정본은
