@@ -2,7 +2,7 @@
 
 AI Native Dev Harness for Claude Code — 되돌림 가능성 축 워크플로우, 자기검증 훅, 그래프 계측.
 
-![version](https://img.shields.io/badge/version-3.3.2-blue)
+![version](https://img.shields.io/badge/version-3.4.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 ## 무엇인가
@@ -70,7 +70,7 @@ bash "<플러그인-루트>/scripts/doctor.sh"
 | 계층 | 수 | 내용 |
 |------|-----|------|
 | **훅** | 5 스크립트 / 6 등록 | SessionStart · PreToolUse · Stop · PreCompact · SessionEnd · PostToolUse |
-| **규칙** | T0 26줄 + T1 4개 242줄 | T0는 훅이 상시 주입(플러그인 소유), T1은 경로 매칭 시 조건부 로드 |
+| **규칙** | T0 26줄 + T1 5개 351줄 | T0는 훅이 상시 주입(플러그인 소유), T1은 경로 매칭 시 조건부 로드 |
 | **에이전트** | 2 | `epcc-planner`(쓰기 없음) · `epcc-reviewer`(읽기 전용) |
 | **스킬** | 33 | 기획·구현·검증·보안·마케팅 워크플로우 + 스택 가이드 생성기 + 스킬 강화기 |
 | **프리셋** | 4 | nextjs-supabase · react-vite · python-fastapi · blank |
@@ -99,6 +99,10 @@ bash "<플러그인-루트>/scripts/doctor.sh"
 
 T0을 훅 출력으로 둔 것이 핵심입니다 — 플러그인 소유라 자동 갱신되면서 상시 로드되므로,
 규칙이 프로젝트에서 독립적으로 자라나는 드리프트가 구조적으로 불가능합니다.
+
+여기에 더해 `/epcc-init`이 **프로젝트 소유 카드 2장**(project-structure ·
+code-conventions)을 생성합니다 — 레포 토폴로지(싱글/모노레포/MSA)와 실측 트리,
+프리셋에 맞는 컨벤션으로 채워지며, 버전 스탬프가 없어 플러그인 갱신의 영향을 받지 않습니다.
 
 ### 에이전트
 
@@ -201,7 +205,7 @@ mkdir -p .claude/skills/my-brainstorming
 | 항목 | v2 | v3 |
 |------|-----|-----|
 | 훅 | 11개 (10개가 침묵 실패) | **5개, 전부 자기검증** |
-| 규칙 | 697줄, 프로젝트 도달 경로 없음 | **T0 26줄 + T1 242줄, 설치 실증** |
+| 규칙 | 697줄, 프로젝트 도달 경로 없음 | **T0 26줄 + T1 351줄, 설치 실증** |
 | 작업 분류 | P0~P6 번호 + S/M/L 규모 | **되돌림 가능성 축 (경로 판정)** |
 | 에이전트 | frontmatter 없음, 전체 도구 접근 | **계약 완비 + 최소 권한** |
 | 스킬 | 37개 | **34개** (네이티브가 더 나은 것만 제거) |
