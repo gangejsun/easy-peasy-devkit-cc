@@ -19,18 +19,20 @@ description: 프로젝트 상태 일괄 점검 (빌드, 린트, 타입체크, �
 
 ### Step 2: 빌드 및 타입체크
 
+이 스킬 로드 시 표시되는 Base directory를 `<skill-dir>`로 치환해 실행한다:
+
 ```bash
-scripts/build-parser.sh build
+bash <skill-dir>/scripts/build-parser.sh build
 ```
 
-- build-parser.sh를 활용하여 빌드 에러를 JSON 구조화
-- TypeScript 에러: 파일, 행, 열, 메시지 추출
+- 명령은 `epcc.config.json`의 `techStack.commands.build` → 없으면 `package.json` scripts에서 자동 해석
+- 빌드 에러를 JSON 구조화 (파일·행·메시지, 최대 40건) — 원시 로그를 컨텍스트에 넣지 않는다
 - 성공 시 `"success": true` 확인
 
 ### Step 3: 린트 검사
 
 ```bash
-scripts/build-parser.sh lint
+bash <skill-dir>/scripts/build-parser.sh lint
 ```
 
 - ESLint 에러/경고를 JSON 구조화
@@ -39,7 +41,7 @@ scripts/build-parser.sh lint
 ### Step 4: 테스트 실행
 
 ```bash
-pnpm test 2>&1
+bash <skill-dir>/scripts/build-parser.sh test
 ```
 
 - 테스트 결과 요약 (통과/실패/스킵 수)
@@ -47,8 +49,11 @@ pnpm test 2>&1
 
 ### Step 5: 의존성 점검
 
+패키지 매니저를 락파일로 판별해 실행한다 (pnpm-lock.yaml→pnpm audit, yarn.lock→yarn audit,
+package-lock.json→npm audit, uv.lock→pip-audit 등. 없으면 이 Step 생략):
+
 ```bash
-pnpm audit 2>&1
+pnpm audit 2>&1   # 예시 — 판별된 매니저로 치환
 ```
 
 - Critical/High/Medium/Low 취약점 분류
