@@ -223,12 +223,24 @@ run_fast() {
     while IFS= read -r ref; do
       [ -z "$ref" ] && continue
       schecked=$((schecked+1))
-      if [ ! -f "$sd$ref" ]; then
+      # 스킬 디렉토리 우선, 플러그인 루트 폴백 (${CLAUDE_PLUGIN_ROOT}/scripts/* 참조 허용)
+      if [ ! -f "$sd$ref" ] && [ ! -f "$ref" ]; then
         bad "$(basename "$sd") → $ref 없음"; sdang=$((sdang+1))
       fi
-    done < <(grep -ohE '(references|assets|resources)/[A-Za-z0-9._/-]+\.(md|json|csv|txt|py)' "$sd/SKILL.md" 2>/dev/null | sort -u)
+    done < <(grep -ohE '(references|assets|resources|scripts)/[A-Za-z0-9._/-]+\.(md|json|csv|txt|py|sh|html|hbs)' "$sd/SKILL.md" 2>/dev/null | sort -u)
   done
   [ "$sdang" -eq 0 ] && ok "스킬 내부 참조 ${schecked}건 모두 실재"
+
+  # .claude/skills/ 하드코딩 — 플러그인 스킬이 프로젝트 오버라이드 경로를 지시하면
+  # 오버라이드가 없는 프로젝트(플러그인 전용 설치)에서 그 명령은 실패한다.
+  # 스킬 로드 시 주어지는 Base directory(<skill-dir>) 기준이어야 한다.
+  local hc=0
+  while IFS= read -r hit; do
+    [ -z "$hit" ] && continue
+    warn ".claude/skills/ 경로 하드코딩: $hit" "<skill-dir>(Base directory) 기준으로 변경"
+    hc=$((hc+1))
+  done < <(grep -rln 'python3 \.claude/skills/\|bash \.claude/skills/' skills/*/SKILL.md 2>/dev/null)
+  [ "$hc" -eq 0 ] && ok "스크립트 호출의 .claude/skills/ 하드코딩 없음"
 
   # 공유 사본 쌍의 내용 drift (사본 공유 구조의 알려진 실패 모드)
   # 동명 ≠ 사본 (complete-examples.md는 스킬마다 독립 내용). 파일명 추측 대신

@@ -1,0 +1,47 @@
+<!-- AI 프롬프트 프리뷰 페이지 — 카드별 복사 버튼. {{CARDS}}에 카드 블록 삽입 -->
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{PRODUCT_NAME}} — AI 프롬프트</title>
+<style>
+  * { margin: 0; box-sizing: border-box; }
+  body { background: #0d1117; color: #e6edf3; font-family: -apple-system, sans-serif; padding: 48px 24px; }
+  h1 { text-align: center; margin-bottom: 8px; }
+  .sub { text-align: center; color: #8b949e; margin-bottom: 40px; }
+  .grid { display: grid; gap: 20px; max-width: 960px; margin: 0 auto; }
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; }
+  .card h2 { font-size: 16px; margin-bottom: 4px; }
+  .meta { color: #8b949e; font-size: 13px; margin-bottom: 12px; }
+  pre { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 14px;
+        white-space: pre-wrap; word-break: break-word; font-size: 13px; line-height: 1.5; }
+  button { margin-top: 10px; background: #238636; color: #fff; border: 0; border-radius: 6px;
+           padding: 8px 14px; font-size: 13px; cursor: pointer; }
+  button.copied { background: #1f6feb; }
+</style>
+</head>
+<body>
+<h1>{{PRODUCT_NAME}}</h1>
+<p class="sub">조립뷰 · 분해뷰 · 비디오 전환 — 카드의 버튼으로 프롬프트를 복사해 대상 AI 모델에 붙여넣으세요</p>
+<div class="grid">
+{{CARDS}}
+<!-- 카드 형식:
+<div class="card">
+  <h2>조립뷰 (Assembled)</h2>
+  <p class="meta">대상 모델: Midjourney v7 · 비율 4:5</p>
+  <pre id="p1">프롬프트 본문…</pre>
+  <button onclick="copyPrompt(this,'p1')">프롬프트 복사</button>
+</div>
+-->
+</div>
+<script>
+function copyPrompt(btn, id) {
+  navigator.clipboard.writeText(document.getElementById(id).textContent).then(() => {
+    btn.textContent = "복사됨 ✓"; btn.classList.add("copied");
+    setTimeout(() => { btn.textContent = "프롬프트 복사"; btn.classList.remove("copied"); }, 1500);
+  });
+}
+</script>
+</body>
+</html>

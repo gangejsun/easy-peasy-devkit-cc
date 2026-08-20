@@ -1,0 +1,65 @@
+<!-- 스크롤 드리븐 캔버스 스캐폴드 — 핵심 메커니즘만. 섹션 구현은 references/sections-guide.md -->
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{PRODUCT_NAME}}</title>
+<style>
+  :root { --bg: #000; --fg: #f5f5f7; }
+  * { margin: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font-family: -apple-system, sans-serif; }
+  /* 스크롤 길이가 재생 시간을 결정한다: 프레임 수 × 배율 */
+  #scroll-track { height: {{SCROLL_HEIGHT}}vh; position: relative; }
+  #frame-canvas { position: sticky; top: 0; width: 100%; height: 100vh; object-fit: contain; display: block; }
+  .section { min-height: 100vh; display: grid; place-items: center; padding: 8vh 6vw; }
+</style>
+</head>
+<body>
+<section id="hero" class="section"><h1>{{HEADLINE}}</h1></section>
+
+<div id="scroll-track">
+  <canvas id="frame-canvas"></canvas>
+</div>
+
+<section id="features" class="section"><!-- sections-guide.md 참조 --></section>
+
+<script>
+(() => {
+  const FRAME_COUNT = {{FRAME_COUNT}};
+  const FRAME_PATH = i => `frames/frame-${String(i + 1).padStart(4, "0")}.webp`;
+
+  const canvas = document.getElementById("frame-canvas");
+  const ctx = canvas.getContext("2d");
+  const images = new Array(FRAME_COUNT);
+  let current = -1;
+
+  // 전 프레임 프리로드 — file:// 에서는 동작하지 않으므로 로컬 서버 필수
+  for (let i = 0; i < FRAME_COUNT; i++) {
+    images[i] = new Image();
+    images[i].src = FRAME_PATH(i);
+  }
+
+  function draw(i) {
+    const img = images[i];
+    if (!img || !img.complete || i === current) return;
+    current = i;
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    ctx.drawImage(img, 0, 0);
+  }
+
+  const track = document.getElementById("scroll-track");
+  function onScroll() {
+    const r = track.getBoundingClientRect();
+    const scrollable = r.height - innerHeight;
+    const progress = Math.min(1, Math.max(0, -r.top / scrollable));
+    draw(Math.min(FRAME_COUNT - 1, Math.floor(progress * FRAME_COUNT)));
+  }
+
+  addEventListener("scroll", () => requestAnimationFrame(onScroll), { passive: true });
+  images[0].onload = () => draw(0);
+})();
+</script>
+</body>
+</html>

@@ -32,7 +32,7 @@ Apple 제품 페이지와 동일한 기법: 프레임 시퀀스를 Canvas에 그
 ### Step 3: 비디오 분석 및 프레임 추출
 
 ```bash
-bash .claude/skills/scroll-stop-builder/scripts/extract-frames.sh "<VIDEO_PATH>" "<OUTPUT_DIR>" [TARGET_FPS]
+bash <skill-dir>/scripts/extract-frames.sh   # <skill-dir> = 스킬 로드 시 표시된 Base directory "<VIDEO_PATH>" "<OUTPUT_DIR>" [TARGET_FPS]
 ```
 
 ### Step 4: HTML 사이트 생성
@@ -58,4 +58,4 @@ cd "<OUTPUT_DIR>" && python3 -m http.server 8080
 - 섹션 구현 가이드: [references/sections-guide.md](references/sections-guide.md) (~982줄, 13개 섹션별 HTML/CSS/JS)
 - HTML 스캐폴드: [assets/html-template.html](assets/html-template.html)
 - 프레임 추출 스크립트: [scripts/extract-frames.sh](scripts/extract-frames.sh)
-- 파이프라인 연동: `.claude/skills/marketing-workflow/SKILL.md`
+- 파이프라인 연동: marketing-workflow 스킬 (Stage 2로 호출됨)
