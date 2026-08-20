@@ -1,11 +1,22 @@
-# 데이터 모델링 설계 규칙
+---
+paths:
+  - "supabase/**"
+  - "**/migrations/**"
+  - "db/**"
+  - "prisma/**"
+  - "drizzle/**"
+  - "dev/docs/database/**"
+---
+<!-- epcc-rule-version: 3.4.2 -->
 
-> 김영한의 현대적 데이터 모델링 철학 기반. PostgreSQL/Supabase 특화.
-> 새 테이블·마이그레이션·스키마 변경 설계 시 이 문서를 참조한다.
+# 데이터 모델링 카드
+
+> 김영한의 현대적 데이터 모델링 철학 기반. 새 테이블·마이그레이션·스키마 변경 설계 시 적용한다.
 > 프로젝트에 정본 스키마 문서(`dev/docs/database/`)가 있으면 그것과 일관성을 유지한다.
 >
-> **이 파일이 플러그인의 정본이다.** Next.js+Supabase 외의 관계형 DB 스택에는
-> `stack-guide-generator`가 생성 backend-guide로 이 정본을 복사·적응해 전달한다 (Step 3-5).
+> **적용 범위**: §1~4·6~9·11~13·15·17은 관계형 DB 공통. §5·10·14·16·18은
+> PostgreSQL(Supabase 포함) 특화 — 다른 RDB에서는 원칙만 취하고 문법은 해당 DB로 치환한다.
+> NoSQL 프로젝트에서는 이 카드의 paths가 거의 매칭되지 않아 휴면 상태가 된다.
 
 **3대 원칙**: 대리키 우선 · 3NF 기본 · 비식별 관계 기본
 
@@ -135,7 +146,7 @@ PostgreSQL/Supabase 기준:
 새 테이블 생성 시 필수 점검:
 
 - [ ] `CREATE TABLE` + 인라인 제약조건 (PK, FK, CHECK, NOT NULL, DEFAULT)
-- [ ] `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` + 최소 1개 정책 (→ [supabase-patterns.md](supabase-patterns.md))
+- [ ] `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` + 최소 1개 정책 (Supabase — RLS 상세는 backend-guide 스킬의 supabase-patterns 리소스)
 - [ ] FK 컬럼에 인덱스 생성 (`idx_{테이블}_{FK컬럼}`)
 - [ ] 빈번한 WHERE/ORDER BY 컬럼에 인덱스 추가
 - [ ] JSONB 컬럼에 GIN 인덱스 (내부 검색 필요 시)
@@ -294,7 +305,7 @@ PostgreSQL/Supabase 기준:
 
 - 부분 인덱스: `CREATE INDEX idx_{테이블}_active ON {테이블}(...) WHERE deleted_at IS NULL`
 - UNIQUE 제약: `CREATE UNIQUE INDEX uq_{테이블}_{컬럼} ON {테이블}({컬럼}) WHERE deleted_at IS NULL` (활성 행에만 유니크)
-- RLS 정책: 모든 SELECT/UPDATE 정책의 `USING` 절에 `AND deleted_at IS NULL` 추가 (→ [supabase-patterns.md](supabase-patterns.md))
+- RLS 정책: 모든 SELECT/UPDATE 정책의 `USING` 절에 `AND deleted_at IS NULL` 추가 (Supabase — 상세는 backend-guide 스킬의 supabase-patterns 리소스)
 - Supabase 클라이언트: `.is("deleted_at", null)` 필터 또는 DB View로 자동 필터링
 
 **이력 테이블과의 관계** (→ §11): Soft Delete와 `_history` 테이블은 **대체재가 아니라 보완재**. FK 참조 있는 핵심 테이블 → Soft Delete + `_history` 병행 (참조 무결성 유지 + 변경 이력 보존). FK 참조 없는 테이블 → Hard Delete + `_history`로 충분 (메인 테이블 경량화).

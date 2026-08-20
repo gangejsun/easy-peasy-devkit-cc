@@ -7,7 +7,7 @@ paths:
   - "agents/**"
   - "skills/**"
 ---
-<!-- epcc-rule-version: 3.4.0 -->
+<!-- epcc-rule-version: 3.4.2 -->
 
 # 하네스 변경 카드
 
@@ -60,6 +60,9 @@ Q1의 "빌트인"은 실제로 확인한다. `/code-review`, `/simplify`, `/secu
 - 플러그인에 넣는 자산이면 **Claude Code가 지원하는 컴포넌트 타입인가**
   (`skills`/`commands`/`agents`/`hooks`/`mcpServers`/`outputStyles`/`lspServers` — **`rules`는 없다**)
 - 프로젝트에 있어야 하는 파일이면 `epcc-init`에 설치 단계가 있는가
+- **프리셋/스택 분기가 있으면 모든 조합에서 도달하는가** — 보편 규범을 한 프리셋
+  전용 스킬 안에 두지 않는다 (T1 카드가 보편 배포 수단이다). 사본 배포는 드리프트
+  원천이므로 최후 수단 — 단일 정본 + 참조를 우선한다
 
 > v2에서 규칙 697줄이 4개월간 아무 프로젝트에도 도달하지 못했다. 원인은 이 검증의 부재다.
 

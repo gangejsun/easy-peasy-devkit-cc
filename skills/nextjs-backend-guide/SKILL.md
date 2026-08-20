@@ -21,7 +21,8 @@ Next.js App Router 기반 백엔드 개발 가이드. API Route Handler, Server 
 
 ### New Table / Migration Checklist
 
-새 테이블·스키마 변경은 [data-modeling.md](resources/data-modeling.md) §8 체크리스트를 따른다
+새 테이블·스키마 변경은 데이터 모델링 카드(`.claude/rules/data-modeling.md` — 마이그레이션·
+스키마 편집 시 자동 로드) §8 체크리스트를 따른다
 (RLS 동반, FK 인덱스, 공통 컬럼, `_history` 판단, Soft Delete, 멱등성 키).
 
 ### New Server Action Checklist
@@ -221,6 +222,6 @@ import { z } from "zod";
 | Create middleware | [middleware-guide.md](resources/middleware-guide.md) |
 | Handle errors | [error-handling.md](resources/error-handling.md) |
 | Database access | [database-patterns.md](resources/database-patterns.md) |
-| Design tables / migrations / history / idempotency | [data-modeling.md](resources/data-modeling.md) |
+| Design tables / migrations / history / idempotency | `.claude/rules/data-modeling.md` (T1 규칙 카드 — DB 경로 편집 시 자동 로드) |
 | Write tests | [testing-guide.md](resources/testing-guide.md) |
 | See full examples | [complete-examples.md](resources/complete-examples.md) |
