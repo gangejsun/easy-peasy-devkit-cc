@@ -1,6 +1,6 @@
 ---
 name: nextjs-backend-guide
-description: [Preset: nextjs-supabase] Next.js App Router backend development guide. Covers API Route Handlers, Server Actions, Supabase data access, Zod validation, middleware, and error handling patterns. Use when creating or modifying Route Handlers, Server Actions, Supabase queries, input validation, middleware, backend testing, or any server-side logic.
+description: [Preset: nextjs-supabase] Next.js App Router backend development guide. Covers API Route Handlers, Server Actions, Supabase data access, Zod validation, middleware, error handling, and PostgreSQL data modeling (schema design, migrations, history tables, idempotency, SECURITY DEFINER). Use when creating or modifying Route Handlers, Server Actions, Supabase queries, input validation, middleware, backend testing, database tables, migrations, RLS policies, or any server-side logic.
 ---
 
 # Backend Development Guidelines
@@ -18,6 +18,11 @@ Next.js App Router 기반 백엔드 개발 가이드. API Route Handler, Server 
 - [ ] 에러 처리 (try-catch + 적절한 HTTP 상태코드)
 - [ ] RLS 정책 확인
 - [ ] 테스트 작성
+
+### New Table / Migration Checklist
+
+새 테이블·스키마 변경은 [data-modeling.md](resources/data-modeling.md) §8 체크리스트를 따른다
+(RLS 동반, FK 인덱스, 공통 컬럼, `_history` 판단, Soft Delete, 멱등성 키).
 
 ### New Server Action Checklist
 
@@ -216,5 +221,6 @@ import { z } from "zod";
 | Create middleware | [middleware-guide.md](resources/middleware-guide.md) |
 | Handle errors | [error-handling.md](resources/error-handling.md) |
 | Database access | [database-patterns.md](resources/database-patterns.md) |
+| Design tables / migrations / history / idempotency | [data-modeling.md](resources/data-modeling.md) |
 | Write tests | [testing-guide.md](resources/testing-guide.md) |
 | See full examples | [complete-examples.md](resources/complete-examples.md) |
