@@ -3,7 +3,7 @@ paths:
   - "docs/lessons.md"
   - "docs/lessons-archive.md"
 ---
-<!-- epcc-rule-version: 3.0.0 -->
+<!-- epcc-rule-version: 3.4.0 -->
 
 # 교훈 기록 카드
 
@@ -27,6 +27,13 @@ paths:
 
 예시: `validation` `tdd` `architecture` `security` `naming` `scope`
 `workflow` `skill` `rule` `agent` `infra` `tooling`
+
+## 반복 요청
+
+같은 유형의 작업 요청을 **2회 이상** 수행했다고 인지하면 같은 형식으로
+`## [request: <요청유형>]`을 기록한다 (예: `harness-evaluation`, `prd-review` —
+과도하게 넓은 명명 금지). 3건 이상이면 doctor가 **자동화 후보(스킬 승격)**로 보고한다.
+승격 절차는 아래와 동일 — 사용자 승인 1회, 승인 후 항목은 아카이브로 물리 이동.
 
 ## 승격
 

@@ -53,6 +53,8 @@ ls docs/lessons.md dev/docs/insights memory/ 2>/dev/null
 1. 형식: `assets/report-template.md`
 2. 버전: `ls dev/docs/harness-evaluation/`의 최대 vN에 +1 (**파일명이 원장이다** — 별도 기록 없음)
 3. 저장: `dev/docs/harness-evaluation/v{N}.md`
+   — 저장 시점이 곧 외부 변화 점검 스탬프다. `session-brief` 훅이 최신 리포트의
+   mtime으로 30일 경과를 계산해 다음 점검을 알린다 (별도 스탬프 파일 없음).
 4. 전회가 있으면 결함 증감만 요약한다 ("Critical 2→0" 형식). 점수 추세는 없다.
 
 ## 부록: 커버리지 맵 (v2 10축 → 5축)

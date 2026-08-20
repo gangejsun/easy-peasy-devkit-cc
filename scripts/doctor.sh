@@ -183,6 +183,31 @@ run_fast() {
     ok "\.claude/rules 참조 ${checked}건 모두 실재"
   fi
 
+  # T0 예산 — operating-contract.md 주석이 약속한 40줄 상한을 기계가 지킨다
+  local t0="templates/operating-contract.md"
+  if [ -f "$t0" ]; then
+    local t0n; t0n=$(num "$(wc -l < "$t0")")
+    if [ "$t0n" -le 40 ]; then
+      ok "T0 운영 계약 ${t0n}/40줄"
+    else
+      bad "T0 운영 계약 ${t0n}줄 — 예산 40줄 초과" "매 세션 상시 주입 비용. 줄이거나 T1 카드로 내리세요"
+    fi
+  else
+    bad "T0 운영 계약 파일 없음: $t0"
+  fi
+
+  # 규칙 카드 버전 스탬프 — 없으면 install-rules가 0.0.0으로 읽어 갱신을 영영 건너뛴다
+  local nostamp=""
+  for rf in rules/*.md; do
+    [ -f "$rf" ] || continue
+    grep -q 'epcc-rule-version:' "$rf" 2>/dev/null || nostamp="$nostamp $(basename "$rf")"
+  done
+  if [ -n "$nostamp" ]; then
+    bad "버전 스탬프 없는 규칙 카드:$nostamp" "install-rules.sh 갱신 판정 불가"
+  else
+    ok "규칙 카드 버전 스탬프 완비"
+  fi
+
   # ── 5. 에이전트 계약 ──
   sec "에이전트 계약"
   local aok=0 atot=0
@@ -463,6 +488,19 @@ run_usage() {
   sec "스킬 호출"
   if [ -f "$d/skilluse.log" ]; then
     awk -F'|' '{c[$2]++} END{for(k in c) printf "    %-32s %d\n", k, c[k]}' "$d/skilluse.log" | sort -k2 -rn | head -20
+
+    # 계측 기간 내 호출 기록 없는 플러그인 스킬 — 판정이 아니라 관찰 대상 목록.
+    # 장기(수개월) 무호출이 지속되는 자산만 폐기 후보로 사용자에게 제안한다.
+    local unseen="" un=0 sname
+    while IFS= read -r sname; do
+      [ -z "$sname" ] && continue
+      awk -F'|' '{print $2}' "$d/skilluse.log" 2>/dev/null | grep -qx "$sname" \
+        || { un=$((un+1)); unseen="$unseen $sname"; }
+    done < <(ls -1 "$PLUGIN_ROOT/skills" 2>/dev/null)
+    if [ "$un" -gt 0 ]; then
+      printf "    ${C_D}호출 기록 없음 %d개:%s${C_0}\n" "$un" "$unseen"
+      printf "    ${C_D}(계측 기간이 짧으면 정상 — 장기 무호출만 폐기 후보)${C_0}\n"
+    fi
   else
     warn "스킬 호출 로그 없음" "미사용 스킬 판정은 계측 후에만 (안티골 8)"
   fi
@@ -512,6 +550,48 @@ run_lessons() {
     || printf " · ${C_Y}아카이브 파일 없음${C_0}\n"
 
   [ "$found" -gt 0 ] && warn "승격 후보 ${found}건" "승격 시 lessons-archive.md로 물리 이동 (선언이 아니라 파일 이동으로 증명)"
+
+  # 반복 요청 [request: X] — 3건+이면 자동화(스킬 승격) 후보
+  sec "반복 요청 집계"
+  local rfound=0 rshown=0
+  while read -r cnt req; do
+    [ -z "$req" ] && continue
+    rshown=1
+    local rstatus="—"
+    if [ "$(num "$cnt")" -ge "$threshold" ]; then
+      if [ -d "$PLUGIN_ROOT/skills/$req" ] || [ -d "$PROJ/.claude/skills/$req" ]; then
+        rstatus="${C_G}자동화됨 → 대응 스킬 실재${C_0}"
+      else
+        rstatus="${C_Y}자동화 후보 — 대응 스킬 없음${C_0}"; rfound=$((rfound+1))
+      fi
+    fi
+    printf "  %-24s %5s  %b\n" "$req" "$cnt" "$rstatus"
+  done < <(grep -oE '\[request: [^]]+\]' "$lf" 2>/dev/null | sed 's/\[request: //;s/\]//' | sort | uniq -c | sort -rn)
+  [ "$rshown" -eq 0 ] && printf "  (기록 없음)\n"
+  [ "$rfound" -gt 0 ] && warn "자동화 후보 ${rfound}건" "동일 요청 3회+ — 스킬 승격 검토 (사용자 승인 필수)"
+
+  # Shadow 폐기 미러 — 만료분은 삭제 확정 또는 롤백 결정이 필요하다
+  local sh_dir="$PROJ/.claude/deprecated"
+  if [ -d "$sh_dir" ]; then
+    sec "Shadow 폐기 미러"
+    local today expired=0 sh_active=0 exp_list=""
+    today=$(date +%Y-%m-%d)
+    while IFS= read -r sf; do
+      [ -z "$sf" ] && continue
+      local exp="${sf##*.shadow-expires-}"
+      case "$exp" in
+        [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9])
+          if [ "$exp" \< "$today" ]; then expired=$((expired+1)); exp_list="$exp_list $(basename "$sf")"
+          else sh_active=$((sh_active+1)); fi ;;
+        *) expired=$((expired+1)); exp_list="$exp_list $(basename "$sf")(만료일 형식 오류)" ;;
+      esac
+    done < <(find "$sh_dir" -name '*.shadow-expires-*' -type f 2>/dev/null)
+    if [ "$expired" -gt 0 ]; then
+      warn "만료된 shadow ${expired}건" "폐기 확정(삭제) 또는 롤백(원위치 복구) 결정 필요:$exp_list"
+    else
+      ok "shadow ${sh_active}건 관찰 중 · 만료 없음"
+    fi
+  fi
 }
 
 # ════════════════════════════════════════════════════════════════════

@@ -33,8 +33,15 @@ printf '\n## 세션 브리핑\n\n'
 cd "$EPCC_ROOT" 2>/dev/null || true
 
 if git rev-parse --git-dir >/dev/null 2>&1; then
-  HEAD_LINE=$(git log -1 --format='%h %s' 2>/dev/null | cut -c1-72)
-  BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+  # 커밋 0개(초기화 직후) 리포: git log/rev-parse HEAD가 exit 128 → pipefail+ERR 트랩이
+  # 훅 전체를 죽여 브리핑이 통째로 소실된다. HEAD 존재를 먼저 확인한다.
+  if git rev-parse -q --verify HEAD >/dev/null 2>&1; then
+    HEAD_LINE=$(git log -1 --format='%h %s' 2>/dev/null | cut -c1-72)
+    BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+  else
+    HEAD_LINE="없음 (첫 커밋 전)"
+    BRANCH=$(git branch --show-current 2>/dev/null)
+  fi
   DIRTY=$(epcc_num "$(git status --porcelain 2>/dev/null | wc -l)")
   printf -- '- 브랜치 `%s` · HEAD `%s`\n' "${BRANCH:-?}" "${HEAD_LINE:-없음}"
   if [ "$DIRTY" -gt 0 ]; then
@@ -88,10 +95,31 @@ printf -- '- 자기검증: `bash "%s/scripts/doctor.sh"`\n' "$PLUGIN_ROOT"
 # ── 4. 교훈 승격 후보 (임계 도달 시에만) ─────────────────────────────
 LF="$EPCC_ROOT/docs/lessons.md"
 if [ -f "$LF" ]; then
-  CAND=$(grep -oE '\[category: [^]]+\]' "$LF" 2>/dev/null \
+  # grep은 무매칭 시 exit 1 — pipefail+ERR 트랩이 훅을 죽이지 않도록 || true 가드
+  CAND=$({ grep -oE '\[category: [^]]+\]' "$LF" 2>/dev/null || true; } \
     | sed 's/\[category: //;s/\]//' | sort | uniq -c | sort -rn \
     | awk '$1>=3 {printf "%s(%s) ", $2, $1}')
   [ -n "$CAND" ] && printf -- '- 교훈 승격 후보: %s→ `bash "%s/scripts/doctor.sh" --lessons`\n' "$CAND" "$PLUGIN_ROOT"
+  RCAND=$({ grep -oE '\[request: [^]]+\]' "$LF" 2>/dev/null || true; } \
+    | sed 's/\[request: //;s/\]//' | sort | uniq -c | sort -rn \
+    | awk '$1>=3 {printf "%s(%s) ", $2, $1}')
+  [ -n "$RCAND" ] && printf -- '- 반복 요청 자동화 후보: %s→ 스킬 승격 검토 (`--lessons`)\n' "$RCAND"
+fi
+
+# ── 5. 외부 변화 점검 경과 (자가-진화 루프의 탐색 단계) ──────────────
+# 스탬프 파일을 따로 두지 않는다 — harness-evaluation 리포트 파일명이 원장이고,
+# 최신 리포트의 mtime이 곧 마지막 점검 시점이다.
+LATEST_HE=$({ ls -t "$EPCC_ROOT"/dev/docs/harness-evaluation/*.md 2>/dev/null || true; } | head -1)
+if [ -n "$LATEST_HE" ]; then
+  HE_MTIME=$(epcc_num "$(stat -f %m "$LATEST_HE" 2>/dev/null || stat -c %Y "$LATEST_HE" 2>/dev/null || true)")
+  NOW_TS=$(epcc_num "$(date +%s)")
+  if [ "$HE_MTIME" -gt 0 ] && [ "$NOW_TS" -gt "$HE_MTIME" ]; then
+    HE_AGE=$(( (NOW_TS - HE_MTIME) / 86400 ))
+    if [ "$HE_AGE" -ge 30 ]; then
+      printf -- '- 마지막 하네스 평가 후 %s일 경과 — 외부 변화(네이티브 기능·모델) 점검용 `/harness-evaluation` 권장\n' "$HE_AGE"
+      epcc_edge "session-start" "harness-evaluation"
+    fi
+  fi
 fi
 
 exit 0

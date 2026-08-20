@@ -249,6 +249,12 @@
       "instrumented": true
     },
     {
+      "from": "session-start",
+      "to": "harness-evaluation",
+      "cond": "마지막 평가 후 30일+ 경과 알림",
+      "instrumented": true
+    },
+    {
       "from": "understand",
       "to": "plan",
       "cond": "미충족 항목 2개 이상"
