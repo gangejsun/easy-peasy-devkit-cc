@@ -56,20 +56,19 @@ src/
 │   ├── (auth)/              # 인증 관련 페이지
 │   ├── (main)/              # 메인 레이아웃 페이지
 │   │   ├── layout.tsx
-│   │   ├── deals/
+│   │   ├── posts/
 │   │   │   ├── page.tsx
 │   │   │   ├── loading.tsx
 │   │   │   └── [id]/
 │   │   │       └── page.tsx
-│   │   └── my/
+│   │   └── profile/
 │   │       └── page.tsx
 │   ├── layout.tsx           # 루트 레이아웃
 │   └── page.tsx             # 홈페이지
 ├── components/
 │   ├── ui/                  # shadcn/ui (자동 생성)
-│   ├── deal/                # 딜 관련 컴포넌트
+│   ├── post/                # 도메인별 컴포넌트 폴더 (프로젝트 도메인에 맞게)
 │   ├── user/                # 유저 관련 컴포넌트
-│   ├── payment/             # 결제 관련 컴포넌트
 │   └── layout/              # Header, Footer 등
 ├── hooks/                   # 커스텀 훅
 ├── stores/                  # Zustand 스토어

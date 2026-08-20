@@ -74,8 +74,8 @@ app/
 │       └── page.tsx     →  /signup
 ├── (main)/              # URL에 (main) 포함되지 않음
 │   ├── layout.tsx       # 메인 레이아웃 (Header, Footer 포함)
-│   ├── deals/
-│   │   └── page.tsx     →  /deals
+│   ├── posts/
+│   │   └── page.tsx     →  /posts
 │   └── my/
 │       └── page.tsx     →  /my
 ```

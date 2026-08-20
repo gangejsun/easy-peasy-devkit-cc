@@ -86,7 +86,7 @@ src/
 
 ---
 
-## Core Principles (7 Key Rules)
+## Core Principles (8 Key Rules)
 
 ### 1. Route Handler는 라우팅만, 로직은 분리
 
@@ -161,6 +161,22 @@ try {
 ### 7. 테스트 필수
 
 Route Handler, Server Action, 서비스 로직 모두 테스트 작성.
+
+### 8. 세션 신뢰 구분 — 민감 동작은 `getUser()`
+
+`getSession()`은 저장소(쿠키/localStorage)의 값을 검증 없이 반환한다 — **표시용**이다.
+권한 판단·민감 동작 전에는 `getUser()`로 토큰을 Supabase 서버에서 검증한다.
+
+```typescript
+// bad: 저장소 세션을 그대로 신뢰 — 만료·위조 검증 없음
+const { data: { session } } = await supabase.auth.getSession();
+if (session) await deleteAccount(session.user.id);
+
+// good: 민감 동작 직전 서버 검증
+const { data: { user }, error } = await supabase.auth.getUser();
+if (error || !user) return unauthorized();
+await deleteAccount(user.id);
+```
 
 ---
 

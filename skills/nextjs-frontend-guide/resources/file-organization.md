@@ -12,11 +12,11 @@ src/
 │   │       └── page.tsx
 │   ├── (main)/              # 메인 레이아웃
 │   │   ├── layout.tsx       # 공유 레이아웃 (Header, Footer)
-│   │   ├── deals/
-│   │   │   ├── page.tsx     # 딜 목록
+│   │   ├── posts/
+│   │   │   ├── page.tsx     # 게시글 목록
 │   │   │   ├── loading.tsx  # 로딩 UI
 │   │   │   └── [id]/
-│   │   │       ├── page.tsx # 딜 상세
+│   │   │       ├── page.tsx # 게시글 상세
 │   │   │       └── not-found.tsx
 │   │   ├── my/
 │   │   │   └── page.tsx     # 마이페이지
@@ -37,14 +37,14 @@ src/
 │   │   ├── card.tsx
 │   │   ├── input.tsx
 │   │   └── ...
-│   ├── deal/                # 딜 관련 컴포넌트
-│   │   ├── DealCard.tsx
-│   │   ├── DealList.tsx
-│   │   └── DealCardSkeleton.tsx
+│   ├── post/                # 도메인별 컴포넌트 (프로젝트 도메인에 맞게)
+│   │   ├── PostCard.tsx
+│   │   ├── PostList.tsx
+│   │   └── PostCardSkeleton.tsx
 │   ├── user/                # 유저 관련 컴포넌트
 │   │   ├── UserAvatar.tsx
 │   │   └── UserProfile.tsx
-│   ├── payment/             # 결제 관련 컴포넌트
+│   ├── comment/             # 댓글 관련 컴포넌트
 │   │   └── PaymentForm.tsx
 │   └── layout/              # 레이아웃 컴포넌트
 │       ├── Header.tsx
@@ -60,7 +60,7 @@ src/
 │   ├── actions/             # Server Actions
 │   │   ├── user.ts
 │   │   └── post.ts
-│   ├── toss/                # Toss Payments 연동
+│   ├── analytics/           # 외부 서비스 연동 (예: 분석·결제 SDK)
 │   │   └── client.ts
 │   └── utils.ts             # cn() 등 공통 유틸
 │
@@ -100,8 +100,8 @@ src/
 
 | 파일 유형 | 규칙 | 예시 |
 |----------|------|------|
-| 컴포넌트 | PascalCase.tsx | `DealCard.tsx`, `Header.tsx` |
-| 페이지 | page.tsx (Next.js 규칙) | `app/deals/page.tsx` |
+| 컴포넌트 | PascalCase.tsx | `PostCard.tsx`, `Header.tsx` |
+| 페이지 | page.tsx (Next.js 규칙) | `app/posts/page.tsx` |
 | 레이아웃 | layout.tsx (Next.js 규칙) | `app/(main)/layout.tsx` |
 | 훅 | camelCase.ts | `useDebounce.ts`, `useAuth.ts` |
 | 스토어 | use~Store.ts | `useAuthStore.ts` |
@@ -130,7 +130,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 // 4. 프로젝트 내부 - 도메인 컴포넌트
-import DealCard from "@/components/deal/DealCard";
+import PostCard from "@/components/post/PostCard";
 
 // 5. 프로젝트 내부 - 유틸, 훅, 스토어
 import { cn } from "@/lib/utils";
@@ -138,7 +138,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useAuthStore } from "@/stores/useAuthStore";
 
 // 6. 타입 (type 키워드 사용)
-import type { Deal } from "@/types/deal";
+import type { Post } from "@/types/post";
 ```
 
 ---
@@ -147,17 +147,17 @@ import type { Deal } from "@/types/deal";
 
 ```typescript
 // good: Props는 컴포넌트 파일에 정의
-// components/deal/DealCard.tsx
-interface DealCardProps {
-  deal: Deal;
+// components/post/PostCard.tsx
+interface PostCardProps {
+  post: Post;
   className?: string;
 }
 
-function DealCard({ deal, className }: DealCardProps) { /* ... */ }
+function PostCard({ post, className }: PostCardProps) { /* ... */ }
 
 // good: 공유 타입은 types/ 디렉토리에
-// types/deal.ts
-export interface Deal {
+// types/post.ts
+export interface Post {
   id: string;
   title: string;
   price: number;
@@ -176,13 +176,13 @@ import { Button } from "../../components/ui/button";
 import { Button } from "@/components/ui/button";
 
 // bad: 컴포넌트를 app/ 디렉토리에 직접 넣기
-// app/deals/DealCard.tsx  ← 잘못된 위치
+// app/posts/PostCard.tsx  ← 잘못된 위치
 // good:
-// components/deal/DealCard.tsx
+// components/post/PostCard.tsx
 
 // bad: 하나의 거대한 컴포넌트 파일 (300줄+)
 // 분리 기준: UI가 독립적으로 테스트/재사용 가능한 단위로 분리
 
 // bad: index.ts barrel export (Next.js에서 트리쉐이킹 문제)
-// components/deal/index.ts ← 사용하지 않음
+// components/post/index.ts ← 사용하지 않음
 ```

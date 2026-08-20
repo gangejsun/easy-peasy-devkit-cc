@@ -245,10 +245,10 @@ export default async function Header() {
 
         <nav className="hidden md:flex items-center gap-6">
           <Link
-            href="/deals"
+            href="/posts"
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            딜 목록
+            게시글 목록
           </Link>
           <Link
             href="/search"
