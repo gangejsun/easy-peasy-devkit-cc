@@ -278,7 +278,7 @@ export default function PostCard({ post, className }: PostCardProps) {
 
 | Need to... | Read this |
 |------------|-----------|
-| Create components | [component-patterns.md](resources/component-patterns.md) |
+| Create components | [component-patterns.md](resources/component-patterns.md) — 반복 UI 추출(공통 레이아웃) 규칙 포함 |
 | Fetch data | [data-fetching.md](resources/data-fetching.md) |
 | Organize files | [file-organization.md](resources/file-organization.md) |
 | Style components | [styling-guide.md](resources/styling-guide.md) |

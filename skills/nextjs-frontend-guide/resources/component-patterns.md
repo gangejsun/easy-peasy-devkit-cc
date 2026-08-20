@@ -247,3 +247,107 @@ import { Button } from "../../components/ui/button";
 // bad: arrow function 컴포넌트
 const UserCard = ({ user }: UserCardProps) => { /* ... */ };
 ```
+
+---
+
+## Shared Layout Components (반복 UI 추출)
+
+같은 종류의 화면(상세/목록/설정 등)에 **상단 헤더(뒤로가기 + 타이틀)·하단 액션바·빈 상태 등 반복 UI**가 등장하면 인라인 복제 금지. 즉시 공통 컴포넌트로 추출한다.
+
+### Rule of Three (3회 반복 시 즉시 추출)
+
+신규 페이지 작성 시 다음을 자가 점검한다:
+
+1. 동일 형태의 헤더/푸터/카드를 **2개 이상 페이지**에서 작성하고 있는가? → 다음 페이지에서 동일 형태가 또 등장하면 **즉시 추출**
+2. 이미 비슷한 컴포넌트가 `components/layout/`, `components/common/`에 존재하는가? → 새로 만들기 전에 grep으로 확인
+
+### 표준 위치
+
+| 컴포넌트 종류        | 경로                 | 예시                                                           |
+| -------------------- | -------------------- | -------------------------------------------------------------- |
+| 페이지 공통 레이아웃 | `components/layout/` | `PageHeader`, `PageContainer`, `BackButton`, `BottomActionBar` |
+| 도메인 무관 재사용   | `components/common/` | `EmptyState`, `ErrorBoundary`, `LoadingSpinner`                |
+| shadcn primitive     | `components/ui/`     | shadcn add로 생성된 원자 컴포넌트만                            |
+
+### PageHeader 예시 (인라인 중복 → 공통화)
+
+```typescript
+// components/layout/page-header.tsx
+import { ChevronLeft } from "lucide-react";
+import Link from "next/link";
+
+interface PageHeaderProps {
+  title: string;
+  backHref?: string;
+  rightSlot?: React.ReactNode;
+}
+
+export function PageHeader({ title, backHref, rightSlot }: PageHeaderProps) {
+  return (
+    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background px-4">
+      {backHref ? (
+        <Link href={backHref} aria-label="뒤로가기">
+          <ChevronLeft className="h-6 w-6" />
+        </Link>
+      ) : <span className="w-6" />}
+      <h1 className="text-base font-semibold">{title}</h1>
+      <div className="w-6">{rightSlot}</div>
+    </header>
+  );
+}
+
+// 사용처: 상세/설정/프로필 등 모든 sub 페이지가 동일 인터페이스 공유
+// app/posts/[id]/page.tsx
+<PageHeader title="게시글" backHref="/posts" />
+// app/settings/page.tsx
+<PageHeader title="설정" backHref="/" />
+```
+
+### 디자인 토큰 일관성
+
+헤더 높이·타이틀 폰트 크기·여백은 페이지마다 임의 지정 금지. `tailwind.config` 또는 `globals.css`의 토큰(`h-14`, `text-base font-semibold` 등)을 PageHeader에 **한 곳에서만** 정의하고, 페이지는 props로만 제어한다.
+
+추가 정의가 필요한 토큰(예: 모바일 헤더 전용 높이)은 `ui-ux-design` 스킬로 생성된 디자인 시스템 문서(`dev/docs/design/`)와 정합해야 한다.
+
+---
+
+## Anti-Patterns
+
+```typescript
+// bad: 불필요한 "use client"
+"use client"; // 상태도, 이벤트도, 브라우저 API도 없음
+export default function StaticContent() {
+  return <div>Just static text</div>;
+}
+
+// bad: Server Component에서 useState
+export default function Page() {
+  const [count, setCount] = useState(0); // 에러!
+}
+
+// bad: any 타입 사용
+function UserCard({ user }: { user: any }) { /* ... */ }
+
+// bad: 상대 경로 import
+import { Button } from "../../components/ui/button";
+
+// bad: arrow function 컴포넌트
+const UserCard = ({ user }: UserCardProps) => { /* ... */ };
+
+// bad: 같은 헤더(뒤로가기 + 타이틀)를 페이지마다 인라인 복제
+export default function PostDetail() {
+  return (
+    <>
+      <header className="sticky top-0 ..."> {/* 다른 페이지에도 동일 구조 */}
+        <Link href="/posts"><ChevronLeft /></Link>
+        <h1 className="text-base font-semibold">게시글</h1>
+      </header>
+      {/* ... */}
+    </>
+  );
+}
+// good: components/layout/page-header.tsx로 추출 → <PageHeader title="게시글" backHref="/posts" />
+
+// bad: 헤더 높이·폰트를 페이지마다 다르게 (h-12 / h-14 / h-16 혼재, text-lg / text-base 혼재)
+// good: PageHeader 한 곳에서 토큰 정의, 페이지는 props만 전달
+```

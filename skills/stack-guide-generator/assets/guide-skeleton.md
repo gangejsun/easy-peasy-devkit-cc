@@ -18,7 +18,7 @@ nextjs-frontend-guide(290줄·리소스 10)·nextjs-backend-guide(220줄·리소
 | 2 | `## Quick Start` — 작업 단위 체크리스트 2개 | 체크리스트 이름(New Component/New Route Handler 등)과 항목은 스택에서 도출 | 항목 6~9개/개 |
 | 3 | `## Architecture Overview` | 스택 구성 요소와 책임 경계 | ≤30줄 |
 | 4 | `## Directory Structure` | 해당 스택의 관례적 배치 (프로젝트 실제 구조가 있으면 그것을 우선) | ≤30줄 |
-| 5 | `## Core Principles (N Key Rules)` — 번호형 규칙 + 코드 예시 | 규칙 5~8개. 각 규칙에 좋은/나쁜 예 코드 1쌍 | 규칙당 ≤20줄 |
+| 5 | `## Core Principles (N Key Rules)` — 번호형 규칙 + 코드 예시 | 규칙 5~8개. 각 규칙에 좋은/나쁜 예 코드 1쌍. **backend는 입력 검증·인증/권한 규칙을, frontend는 반복 UI 추출(공통 레이아웃) 규칙을 반드시 포함** — 스택이 바뀌어도 이 두 범주는 보편이다 | 규칙당 ≤20줄 |
 | 6 | `## Common Imports` | 스택 표준 import 블록 | ≤30줄 |
 | 7 | 보조 섹션 1개 (frontend: 컴포넌트 템플릿 / backend: HTTP Status + Anti-Patterns) | 스택별 선택 | ≤40줄 |
 | 8 | `## Navigation Guide` — **태스크→리소스 매핑 테이블** | "하려는 일 → 읽을 파일" 행. resources/ 전 파일이 정확히 1회 이상 등장해야 함 | 전 리소스 커버 |

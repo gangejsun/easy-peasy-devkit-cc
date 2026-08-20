@@ -2,7 +2,7 @@
 
 AI Native Dev Harness for Claude Code — 되돌림 가능성 축 워크플로우, 자기검증 훅, 그래프 계측.
 
-![version](https://img.shields.io/badge/version-3.4.2-blue)
+![version](https://img.shields.io/badge/version-3.4.3-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 ## 무엇인가
@@ -70,7 +70,7 @@ bash "<플러그인-루트>/scripts/doctor.sh"
 | 계층 | 수 | 내용 |
 |------|-----|------|
 | **훅** | 5 스크립트 / 6 등록 | SessionStart · PreToolUse · Stop · PreCompact · SessionEnd · PostToolUse |
-| **규칙** | T0 26줄 + T1 6개 816줄 | T0는 훅이 상시 주입(플러그인 소유), T1은 경로 매칭 시 조건부 로드 |
+| **규칙** | T0 26줄 + T1 6개 830줄 | T0는 훅이 상시 주입(플러그인 소유), T1은 경로 매칭 시 조건부 로드 |
 | **에이전트** | 2 | `epcc-planner`(쓰기 없음) · `epcc-reviewer`(읽기 전용) |
 | **스킬** | 33 | 기획·구현·검증·보안·마케팅 워크플로우 + 스택 가이드 생성기 + 스킬 강화기 |
 | **프리셋** | 4 | nextjs-supabase · react-vite · python-fastapi · blank |
@@ -205,7 +205,7 @@ mkdir -p .claude/skills/my-brainstorming
 | 항목 | v2 | v3 |
 |------|-----|-----|
 | 훅 | 11개 (10개가 침묵 실패) | **5개, 전부 자기검증** |
-| 규칙 | 697줄, 프로젝트 도달 경로 없음 | **T0 26줄 + T1 816줄, 설치 실증** |
+| 규칙 | 697줄, 프로젝트 도달 경로 없음 | **T0 26줄 + T1 830줄, 설치 실증** |
 | 작업 분류 | P0~P6 번호 + S/M/L 규모 | **되돌림 가능성 축 (경로 판정)** |
 | 에이전트 | frontmatter 없음, 전체 도구 접근 | **계약 완비 + 최소 권한** |
 | 스킬 | 37개 | **34개** (네이티브가 더 나은 것만 제거) |
