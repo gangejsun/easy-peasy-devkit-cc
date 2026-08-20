@@ -95,3 +95,36 @@ skill-creator 프로세스는 본문·스크립트를 먼저 만들고 테스트
 | 장문 desc 6종 | description optimizer로 트리거 정확도 유지하며 축약 가능한가 |
 
 방법: skill-creator의 평가 루프 (테스트 프롬프트 2-3개 → with/without 서브에이전트 → 벤치마크 뷰어).
+
+
+---
+
+## 처리 현황 (2026-08-20 갱신)
+
+### ❌ 5건 → 전건 해소
+
+| 스킬 | 처리 |
+| --- | --- |
+| react-vite-frontend/backend-guide · python-fastapi-backend-guide | 삭제 — stack-guide-generator가 프로젝트에 생성 (T2·T3·T6 검증 통과) |
+| health-check | build-parser.sh 실작성·동봉 (JSON 구조화, config 기반 명령 해석, 3케이스 실증) |
+| web-asset-generator | Python 스크립트 3종 실작성 (favicon 7파일 + OG 2종 실증) + 경로 수정 |
+
+### 🔧 8건 → 전건 해소
+
+| 항목 | 처리 |
+| --- | --- |
+| ui-ux-design | 하드코딩 11건 → <skill-dir> (doctor 경고 검증) |
+| test-driven-development | stop-guard.sh·Vitest/pnpm 잔재 절제 → config·스택 가이드 기반 일반화 |
+| prd-generator | 빈 Step 충전 + prd-template.md 동봉 |
+| dev-docs-generator | 죽은 참조 2건 제거 + doc-templates.md 동봉 + 필요성 판정 선행 |
+| gemini-claude-loop | Step 0·6 실체화 |
+| seo-strategy | 리소스 시점 안내 테이블 |
+| scroll-stop-builder | extract-frames.sh 실작성(전제 조건 검증 내장) + html-template.html + 경로 수정 |
+| doctor B-6 확장 | scripts/·html 참조 검사 + 하드코딩 경고 — 확장 즉시 수동 검토가 놓친 3건 검출 |
+
+### 검사기가 새로 잡은 것 (수동 검토 밖)
+
+- scroll-stop-builder: extract-frames.sh·html-template.html 부재
+- scroll-stop-prompter: prompt-page-template.html 부재
+
+세 건 모두 실작성으로 해소. **"검사기 먼저, 수리 나중" 순서의 근거가 실측으로 확인됨.**

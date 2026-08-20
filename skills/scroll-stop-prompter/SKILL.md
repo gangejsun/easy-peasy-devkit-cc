@@ -46,4 +46,4 @@ AskUserQuestion으로 수집: 제품명, 제품 설명, 비주얼 스타일, 타
 
 - 프롬프트 상세 가이드: [references/prompt-guide.md](references/prompt-guide.md)
 - HTML 프리뷰 템플릿: [assets/prompt-page-template.html](assets/prompt-page-template.html)
-- 파이프라인 연동: `.claude/skills/marketing-workflow/SKILL.md`
+- 파이프라인 연동: marketing-workflow 스킬 (Stage 1로 호출됨)
