@@ -3,6 +3,9 @@
 > 김영한의 현대적 데이터 모델링 철학 기반. PostgreSQL/Supabase 특화.
 > 새 테이블·마이그레이션·스키마 변경 설계 시 이 문서를 참조한다.
 > 프로젝트에 정본 스키마 문서(`dev/docs/database/`)가 있으면 그것과 일관성을 유지한다.
+>
+> **이 파일이 플러그인의 정본이다.** Next.js+Supabase 외의 관계형 DB 스택에는
+> `stack-guide-generator`가 생성 backend-guide로 이 정본을 복사·적응해 전달한다 (Step 3-5).
 
 **3대 원칙**: 대리키 우선 · 3NF 기본 · 비식별 관계 기본
 

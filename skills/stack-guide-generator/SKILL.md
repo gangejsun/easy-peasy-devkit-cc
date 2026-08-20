@@ -45,6 +45,21 @@ description: 프로젝트의 기술 스택 조합(프론트엔드·백엔드 유
    - 확신이 없는 패턴은 쓰지 않는다 — 빈 슬롯이 틀린 내용보다 낫다
 3. resources/를 4~10개로 분할하고 Navigation Guide에 전부 매핑한다
 4. 산출 위치: 프로젝트의 `.claude/skills/frontend-guide/` · `.claude/skills/backend-guide/`
+5. **DB가 관계형이면 데이터 모델링 정본을 동반 설치한다** — 플러그인의
+   `nextjs-backend-guide` 스킬(이 스킬의 형제 디렉토리)에 있는 정본 리소스
+   `data-modeling.md`를 읽어, 생성한 backend-guide의 `resources/` 아래 같은 이름으로 저장하고
+   Navigation Guide에 매핑한다:
+   - **Supabase(PostgreSQL)**: 그대로 복사
+   - **Supabase 아닌 PostgreSQL**: 내용 유지하되 Supabase 참조를 스택 대응으로 치환 —
+     RLS 절은 해당 스택의 권한 모델로, Supabase 클라이언트 예시와 `supabase-patterns`
+     링크는 확정된 데이터 액세스(SQLAlchemy·Prisma 등) 패턴으로
+   - **기타 RDB(MySQL 등)**: DB 중립 원칙(정규화·키 전략·네이밍·이력 설계·삭제 전략·
+     멱등성·통계 테이블·EAV 금지·슈퍼/서브타입)은 유지하되, PostgreSQL 전용 절
+     (JSONB/GIN 상세·RLS·pg_cron·SECURITY DEFINER §18)은 해당 DB의 대응 패턴으로 치환하거나 제거
+   - **NoSQL(MongoDB·DynamoDB)**: 복사하지 않는다 — 해당 DB의 모델링 패턴을 조합 지식으로 작성
+
+   > 이 단계를 건너뛰면 Next.js+Supabase 외 조합에서 데이터 모델링 정본이
+   > 프로젝트에 도달할 경로가 없다 (정본은 preset-scoped 스킬 안에 산다).
 
 ## Step 4: 자기 검증 — 실패 시 설치하지 않는다
 

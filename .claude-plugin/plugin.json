@@ -1,6 +1,6 @@
 {
   "name": "epcc-devkit",
-  "version": "3.4.0",
+  "version": "3.4.1",
   "displayName": "EasyPeasy Claude Code Devkit",
   "description": "AI Native Dev Harness — 되돌림 축 워크플로우 + 자기검증 훅 + 그래프 계측",
   "author": {
