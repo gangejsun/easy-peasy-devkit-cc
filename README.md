@@ -2,7 +2,7 @@
 
 AI Native Dev Harness for Claude Code — 되돌림 가능성 축 워크플로우, 자기검증 훅, 그래프 계측.
 
-![version](https://img.shields.io/badge/version-3.2.1-blue)
+![version](https://img.shields.io/badge/version-3.3.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 ## 무엇인가
@@ -69,7 +69,7 @@ bash scripts/doctor.sh
 | **훅** | 5 스크립트 / 6 등록 | SessionStart · PreToolUse · Stop · PreCompact · SessionEnd · PostToolUse |
 | **규칙** | T0 26줄 + T1 4개 242줄 | T0는 훅이 상시 주입(플러그인 소유), T1은 경로 매칭 시 조건부 로드 |
 | **에이전트** | 2 | `epcc-planner`(쓰기 없음) · `epcc-reviewer`(읽기 전용) |
-| **스킬** | 32 | 기획·구현·검증·보안·마케팅 워크플로우 + 스택 가이드 생성기 |
+| **스킬** | 33 | 기획·구현·검증·보안·마케팅 워크플로우 + 스택 가이드 생성기 + 스킬 강화기 |
 | **프리셋** | 4 | nextjs-supabase · react-vite · python-fastapi · blank |
 
 ### 훅
@@ -130,7 +130,7 @@ bash scripts/doctor.sh --all        # 전체
 ## 그래프 선언
 
 `workflow.graph.json`이 노드(에이전트·스킬·훅)와 엣지(전이 조건), **에러 엣지**를
-기계 판독 가능한 형태로 선언합니다. 현재 노드 23 · 엣지 39.
+기계 판독 가능한 형태로 선언합니다. 현재 노드 24 · 엣지 41.
 
 `doctor --graph`가 검증합니다:
 - 모든 엣지의 타깃이 실재하는가

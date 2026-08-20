@@ -1,6 +1,6 @@
 {
   "$comment": "하네스를 기계 판독 가능한 그래프로 선언한다. v2에서 이 그래프는 마크다운 표와 산문에 흩어져 있어 검증도 계측도 불가능했고, 그 결과 '선언됐지만 도달 불가능한 자산'(rules/ 697줄)이 4개월간 아무에게도 발견되지 않았다. doctor --graph가 이 파일로 dangling 엣지·도달 불가 노드·에러 엣지 누락을 검사한다. edges의 instrumented:true 는 훅이 실제로 방출하는 엣지다. stage 간 엣지는 모델 행동이라 코드가 방출할 수 없으므로 '죽은 엣지' 판정에서 제외한다.",
-  "version": "3.2.1",
+  "version": "3.3.0",
   "nodes": [
     {
       "id": "session-start",
@@ -220,6 +220,15 @@
       "on_error": [
         "user-report"
       ]
+    },
+    {
+      "id": "skill-enhancer",
+      "kind": "skill",
+      "path": "skills/skill-enhancer/SKILL.md",
+      "note": "스킬을 하네스급으로 강화 — 6패턴(경계·행동 계약·실패 경로·기계 검증·배선·토큰 규율) 진단 후 해당분만 주입. 생성·A/B는 skill-creator 담당, 이 스킬은 그 평가 루프가 못 채점하는 차원 담당",
+      "on_error": [
+        "user-report"
+      ]
     }
   ],
   "edges": [
@@ -422,6 +431,16 @@
       "from": "session-start",
       "to": "stack-guide-generator",
       "cond": "epcc-init Step 9.5 또는 스택 변경 시 (config 미설정 넛지 경유)"
+    },
+    {
+      "from": "eval-report",
+      "to": "skill-enhancer",
+      "cond": "평가가 스킬 결함을 검출했을 때"
+    },
+    {
+      "from": "skill-enhancer",
+      "to": "user-report",
+      "cond": "패턴별 진단·적용 결과 보고"
     }
   ]
 }
