@@ -151,6 +151,11 @@
         "importAlias": {
           "type": "string",
           "description": "Import alias (e.g., '@/')"
+        },
+        "repoTopology": {
+          "type": "string",
+          "enum": ["monorepo", "single", "msa"],
+          "description": "Repository topology chosen at epcc-init (drives the generated project-structure rule card)"
         }
       }
     },

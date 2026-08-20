@@ -70,6 +70,21 @@ trigger: manual
 
 BaaS 선택 시 DB·인증은 자동 추론 후 확인만 받는다. 자체 구축 선택 시 2~5를 필수로 묻는다.
 
+### Step 4.7: 레포 구조 확인 (대화형)
+
+기존 코드가 있으면 먼저 실측(`ls` + 주요 디렉토리 확인)으로 추정한 값을 기본값으로 표시하고 확인만 받는다:
+
+```
+레포 구조를 확인합니다:
+
+1. single   — 싱글레포: 앱 하나 (기본값)
+2. monorepo — 모노레포: 루트 앱 + 공유 패키지 (packages/ 등)
+3. msa      — 서비스 여러 개 (services/·apps/ 분리, 서비스 간 API/이벤트 계약)
+```
+
+- **monorepo** 선택 시에만 Step 4의 "공유 패키지 경로"를 필수로 확정한다
+- 선택 결과는 Step 5의 `domains.repoTopology`와 Step 7.5의 구조 카드 생성에 쓰인다
+
 ### Step 5: epcc.config.json 생성
 
 수집된 정보로 `epcc.config.json` 생성:
@@ -107,7 +122,8 @@ BaaS 선택 시 DB·인증은 자동 추론 후 확인만 받는다. 자체 구�
   "domains": {
     "sourceDir": "<입력값>",
     "sharedPackage": "<입력값>",
-    "importAlias": "<입력값>"
+    "importAlias": "<입력값>",
+    "repoTopology": "<monorepo | single | msa — Step 4.7 선택값>"
   },
 
   "security": {
@@ -195,6 +211,26 @@ ls .claude/rules/
 > 상시 규범(T0)은 파일이 아니라 `session-brief` 훅이 매 세션 출력합니다.
 > 플러그인 소유이므로 자동 갱신되며 프로젝트가 수정할 수 없습니다.
 
+### Step 7.5: 프로젝트 전용 규칙 카드 생성 (프로젝트 소유)
+
+Step 7의 카드가 **플러그인 소유**(버전 스탬프로 자동 갱신)라면, 이 단계의 두 카드는
+**프로젝트 소유**다 — 이 프로젝트의 실제 구조·컨벤션을 담고, 이후 프로젝트가 직접 관리한다.
+
+1. `${CLAUDE_PLUGIN_ROOT}/templates/rules/project-structure.template.md`를 읽는다
+2. **기존 코드가 있으면 실제 트리를 실측한다** (`ls` + 주요 디렉토리 2~3 depth) —
+   추측으로 채우지 않는다. 신규 프로젝트면 프리셋 + Step 4.7 토폴로지의 목표 구조로 채운다
+3. 플레이스홀더와 안내 주석을 전부 치환·제거하고 `.claude/rules/` 아래
+   `project-structure.md`로 저장한다
+4. `${CLAUDE_PLUGIN_ROOT}/templates/rules/code-conventions.template.md`도 같은 방식 —
+   프리셋에 맞는 **스택 블록 하나만** 남기고, 공통 블록(네이밍·코드 스타일·커밋 규약)은
+   유지한다. 기존 린트 설정·CLAUDE.md에 프로젝트 고유 규약이 있으면 사용자 확인 후 반영해
+   `code-conventions.md`로 저장한다
+5. 두 카드의 `paths:` frontmatter가 **실제 소스 디렉토리**(Step 4 입력값)를 가리키는지
+   확인한다 — paths가 틀리면 카드는 영영 로드되지 않는다
+
+> 이 두 카드에는 `epcc-rule-version` 스탬프를 넣지 않는다. 스탬프가 없어야
+> `install-rules.sh`가 플러그인 갱신 시 이 파일들을 건드리지 않는다.
+
 ### Step 8: dev/ 디렉토리 생성
 
 ```
@@ -245,7 +281,7 @@ EPCC Devkit 초기 설정 완료!
 생성된 파일:
   ✅ epcc.config.json
   ✅ CLAUDE.md
-  ✅ .claude/rules/ (규칙 카드 N개)
+  ✅ .claude/rules/ (플러그인 규칙 카드 N개 + 프로젝트 전용 project-structure · code-conventions)
   ✅ .claude/skills/frontend-guide · backend-guide (생성한 경우)
   ✅ dev/ 디렉토리 구조
 
