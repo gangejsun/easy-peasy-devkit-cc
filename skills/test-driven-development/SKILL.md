@@ -61,30 +61,24 @@ After green only: Remove duplication, improve names, extract helpers. Keep tests
 
 ## Project Test Strategy
 
-### 테스트 인프라
+### 테스트 인프라 확인
 
-- **프레임워크**: Vitest (`pnpm test`)
-- **커버리지**: v8 provider, 임계값 30%
-- **CI**: GitHub Actions — type-check → lint → build → test
-- **Git 훅**: Husky pre-commit(lint-staged) + commit-msg(commitlint)
-- **Claude Code 훅**: stop-guard.sh — 소스 코드 변경 시 build/test 미실행 차단
+프로젝트의 테스트 명령은 `epcc.config.json`의 `techStack.commands.test`에서 읽는다.
+없으면 `package.json` scripts(JS/TS)나 `pyproject.toml`(Python)에서 확인하고,
+그것도 없으면 **테스트 인프라 셋업을 먼저 제안한다** — 검증 경로 없는 TDD는 성립하지 않는다.
+
+하네스 강제 장치: `build-gate` 훅(Stop)이 소스 변경 후 빌드/테스트 미실행을 차단한다.
 
 ### 테스트 우선순위 (확충 시)
 
-| 순위 | 대상               | 위치                         |
-| ---- | ------------------ | ---------------------------- |
-| 1    | Server Actions     | `src/lib/actions/**`         |
-| 2    | 공유 유틸/훅       | `packages/shared/src/`       |
-| 3    | API Route Handlers | `src/app/api/**`             |
-| 4    | 타입 가드/변환     | `packages/shared/src/types/` |
+| 순위 | 대상 | 이유 |
+| ---- | ---- | ---- |
+| 1 | 비즈니스 로직 (액션·서비스·도메인 함수) | 실패 비용이 가장 큼 |
+| 2 | 공유 유틸/훅 | 사용처가 많아 회귀 파급이 큼 |
+| 3 | API 핸들러/라우터 | 계약 위반 검출 |
+| 4 | 타입 가드/변환 | 경계 데이터 안전성 |
 
-### 테스트 명령어
-
-```bash
-pnpm test                    # 전체 테스트 실행
-pnpm test:watch              # 변경 감지 모드
-pnpm test:coverage           # 커버리지 보고서 생성
-```
+구체적 경로는 프로젝트의 frontend/backend-guide 스킬(스택 맞춤 생성본)을 따른다.
 
 ## Final Rule
 

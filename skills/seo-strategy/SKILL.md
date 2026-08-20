@@ -42,10 +42,13 @@ HTML 리포트를 로컬 서버로 오픈. 핵심 발견 사항 3-5개 요약 + 
 
 프로젝트가 Next.js 기반일 때 추가 검사 및 추천. 상세: `references/nextjs-seo-guide.md`
 
-## 참조 문서
+## 참조 문서 — 해당 시점에만 읽는다
 
-- 점수 산정 기준: [references/scoring-criteria.md](references/scoring-criteria.md)
-- 기술 SEO 체크리스트: [references/technical-seo-checklist.md](references/technical-seo-checklist.md)
-- Next.js SEO 가이드: [references/nextjs-seo-guide.md](references/nextjs-seo-guide.md)
-- AI SEO 최적화 가이드: [references/ai-seo-guide.md](references/ai-seo-guide.md)
-- 파이프라인 연동: `.claude/skills/marketing-workflow/SKILL.md`
+| 파일 | 언제 읽는가 |
+| --- | --- |
+| [references/scoring-criteria.md](references/scoring-criteria.md) | 점수를 산정하는 Step 4에서 |
+| [references/technical-seo-checklist.md](references/technical-seo-checklist.md) | Mode 2 (사이트 감사)일 때만 |
+| [references/nextjs-seo-guide.md](references/nextjs-seo-guide.md) | 대상이 Next.js 프로젝트일 때만 |
+| [references/ai-seo-guide.md](references/ai-seo-guide.md) | Mode 3 (AI SEO)일 때만 |
+
+파이프라인 연동: marketing-workflow 스킬 (Stage 3으로 호출됨)

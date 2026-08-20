@@ -22,6 +22,13 @@ Claude Code가 구현하고 Gemini가 검증하는 듀얼 AI 품질 보증 루�
 
 ### Step 0: 환경 확인
 
+```bash
+command -v gemini >/dev/null 2>&1 && gemini --version || echo "CLI 미설치 — 전제조건 참조"
+[ -n "$GEMINI_API_KEY" ] || echo "GEMINI_API_KEY 미설정 — 사용자에게 키 요청"
+```
+
+미설치·미설정이면 사용자에게 안내 후 이 스킬을 건너뛴다.
+
 ### Step 1~4: 공통 워크플로우
 
 `references/shared-workflow.md`의 Step 1, 3, 4를 따릅니다.
@@ -39,6 +46,9 @@ gemini -p "다음 코드 변경사항을 리뷰해주세요: $(git diff)" -m gem
 ```
 
 ### Step 6: 반복 개선
+
+`references/shared-workflow.md`의 Step 6을 따른다 — **재검증 최대 2회**,
+미해결 Critical은 사용자 tie-break.
 
 ## 명령어 참조
 
