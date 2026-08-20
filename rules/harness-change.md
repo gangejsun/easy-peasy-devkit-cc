@@ -7,7 +7,7 @@ paths:
   - "agents/**"
   - "skills/**"
 ---
-<!-- epcc-rule-version: 3.0.0 -->
+<!-- epcc-rule-version: 3.4.0 -->
 
 # 하네스 변경 카드
 
@@ -62,6 +62,16 @@ Q1의 "빌트인"은 실제로 확인한다. `/code-review`, `/simplify`, `/secu
 - 프로젝트에 있어야 하는 파일이면 `epcc-init`에 설치 단계가 있는가
 
 > v2에서 규칙 697줄이 4개월간 아무 프로젝트에도 도달하지 못했다. 원인은 이 검증의 부재다.
+
+## 자산 부재 판정 — 3-위치 검색
+
+Agent·Skill·Hook·플러그인이 "없다"고 단정하려면 세 곳을 **모두** 확인한다:
+
+1. 프로젝트 로컬 `.claude/`
+2. 플러그인 캐시 `~/.claude/plugins/cache/`
+3. 마켓플레이스 `~/.claude/plugins/marketplaces/`
+
+한 곳만 보고 "없음"이라 결론내지 않는다. 특히 부재를 근거로 새 자산을 만들기 전에.
 
 ## 에이전트 예외
 
