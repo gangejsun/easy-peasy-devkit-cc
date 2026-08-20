@@ -36,4 +36,4 @@
 | `src/**` 수정 | `.claude/rules/code-change.md` |
 | `.claude/**` · `scripts/**` 수정 | `.claude/rules/harness-change.md` |
 | 사용자가 접근을 지적함 | `.claude/rules/lessons.md` |
-| 하네스 상태 점검 | `bash scripts/doctor.sh` |
+| 하네스 상태 점검 | 세션 브리핑 '자기검증' 줄의 doctor 명령 (플러그인 루트 절대 경로) |

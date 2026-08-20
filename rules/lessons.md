@@ -30,7 +30,7 @@ paths:
 
 ## 승격
 
-집계와 승격 후보 판정은 **`bash scripts/doctor.sh --lessons`가 수행한다.**
+집계와 승격 후보 판정은 **doctor가 수행한다** (`bash "${CLAUDE_PLUGIN_ROOT:-.}/scripts/doctor.sh" --lessons` — 절대 경로는 세션 브리핑 '자기검증' 줄).
 규칙이 모델에게 세도록 시키지 않는다.
 
 동일 카테고리 3건 이상이면 doctor가 승격 후보로 보고한다. 승격은:

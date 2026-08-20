@@ -30,7 +30,7 @@ description: 하네스(그래프) 엔진을 경로 단위 5축으로 평가하�
 ### Step 1: 기계 판정 수집 — 다시 세지 않는다
 
 ```bash
-bash scripts/doctor.sh --all
+bash "${CLAUDE_PLUGIN_ROOT:-.}/scripts/doctor.sh" --all
 # P1 — 라우팅 어휘 (심각도 등급표 문맥은 제외하고 해석)
 grep -rn 'Small\|Medium\|Large' skills/*/SKILL.md
 # P3 — 반복 상한 (공유 파일 포함)

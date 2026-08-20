@@ -33,11 +33,13 @@
 
 ## 하네스
 
+<!-- <플러그인-루트> 절대 경로는 매 세션 브리핑의 '자기검증' 줄에 표시됩니다 -->
+
 운영 계약(되돌림 분류·진입 조건·최소 수정)은 **세션 시작 시 자동 주입**됩니다.
 작업 규칙은 `.claude/rules/`에서 편집 경로에 따라 조건부 로드됩니다.
 
 | 명령 | 용도 |
 | --- | --- |
-| `bash scripts/doctor.sh` | 하네스 자기검증 (훅·규칙·그래프) |
-| `bash scripts/doctor.sh --usage` | 훅 생존·스킬 호출·엣지 계측 |
-| `bash scripts/doctor.sh --lessons` | 교훈 집계 + 승격 후보 |
+| `bash <플러그인-루트>/scripts/doctor.sh` | 하네스 자기검증 (훅·규칙·그래프) |
+| `bash <플러그인-루트>/scripts/doctor.sh --usage` | 훅 생존·스킬 호출·엣지 계측 |
+| `bash <플러그인-루트>/scripts/doctor.sh --lessons` | 교훈 집계 + 승격 후보 |

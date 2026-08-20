@@ -158,8 +158,8 @@ BaaS 선택 시 DB·인증은 자동 추론 후 확인만 받는다. 자체 구�
 
 운영 계약은 세션 시작 시 자동 주입됩니다. 작업 규칙은 `.claude/rules/`에서 조건부 로드됩니다.
 
-- `bash scripts/doctor.sh` — 하네스 자기검증
-- `bash scripts/doctor.sh --usage` — 훅 생존·계측
+- `bash <플러그인-루트>/scripts/doctor.sh` — 하네스 자기검증 (절대 경로는 세션 브리핑에 표시)
+- `bash <플러그인-루트>/scripts/doctor.sh --usage` — 훅 생존·계측
 ```
 
 > **CLAUDE.md는 100행 내외로 유지하세요.** 프로젝트 구조 트리, 기술 특화 규칙,
@@ -249,7 +249,7 @@ EPCC Devkit 초기 설정 완료!
   ✅ dev/ 디렉토리 구조
 
 검증:
-  bash scripts/doctor.sh
+  bash "${CLAUDE_PLUGIN_ROOT}/scripts/doctor.sh"
 
 다음 단계:
   1. CLAUDE.md를 검토하고 프로젝트 고유 정보를 채우세요

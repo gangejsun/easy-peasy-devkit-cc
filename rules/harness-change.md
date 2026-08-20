@@ -41,13 +41,15 @@ Q1의 "빌트인"은 실제로 확인한다. `/code-review`, `/simplify`, `/secu
 새 훅·스크립트를 만들거나 고쳤으면 **아래를 실제로 실행**한다. 생략 불가.
 
 1. `scripts/lib/common.sh`를 source하고 `epcc_begin`으로 시작한다
+   (플러그인 밖 자체 훅이라면 이 lib에 의존하지 말고 같은 규율 — 루트 확정 실패 시 exit 2,
+   숫자 검증, 이벤트별 출력 규격 — 을 자체 구현한다)
    — 루트는 `epcc_root()`로만 구한다. `BASH_SOURCE`, `dirname ../..` **금지**
    — 숫자는 `epcc_num()`을 통과시킨다. `|| echo 0` **금지**
 2. 출력은 `epcc_emit_context` / `epcc_emit_block`으로만 한다
    — 이벤트마다 지원 필드가 다르다. 미지원 필드는 **조용히 무시**된다
    — Stop은 `decision`/`reason`을 지원하지 않는다 (`continue`+`systemMessage` 사용)
    — PreCompact/SessionEnd는 평문 stdout이 컨텍스트에 들어가지 않는다 (JSON 필요)
-3. `bash scripts/doctor.sh --fast && bash scripts/doctor.sh --self-test` → 통과 확인
+3. `bash "${CLAUDE_PLUGIN_ROOT:-.}/scripts/doctor.sh" --fast` + `--self-test` → 통과 확인
 4. hooks.json에 등록했으면 `workflow.graph.json`에도 노드/엣지를 추가한다
 
 ## 도달 경로 검증

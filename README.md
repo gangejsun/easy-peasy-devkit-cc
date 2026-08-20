@@ -2,7 +2,7 @@
 
 AI Native Dev Harness for Claude Code — 되돌림 가능성 축 워크플로우, 자기검증 훅, 그래프 계측.
 
-![version](https://img.shields.io/badge/version-3.3.1-blue)
+![version](https://img.shields.io/badge/version-3.3.2-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 ## 무엇인가
@@ -39,8 +39,11 @@ claude plugin install epcc-devkit
 
 ### 3. Verify
 
+새 세션의 브리핑에 표시되는 **'자기검증'** 줄의 명령을 그대로 실행합니다
+(플러그인 설치 경로 기준 절대 경로가 표시됩니다):
+
 ```bash
-bash scripts/doctor.sh
+bash "<플러그인-루트>/scripts/doctor.sh"
 ```
 
 `통과 N · 경고 N · 실패 0`이면 정상입니다. 실패가 있으면 무엇이 왜 깨졌는지 함께 출력됩니다.
@@ -109,9 +112,12 @@ T0을 훅 출력으로 둔 것이 핵심입니다 — 플러그인 소유라 자
 ## 자기검증 — `doctor`
 
 CI가 없는 프로젝트를 전제로 설계했습니다. 사용자가 직접 칠 수 있는 단일 명령입니다.
+소비자 프로젝트에서는 `<플러그인-루트>/scripts/doctor.sh`를 사용하세요 (세션 브리핑에 절대 경로 표시).
+플러그인 자산 검사(--fast·--graph·--self-test)는 플러그인 루트를, 프로젝트 상태
+검사(--usage·--lessons)는 현재 프로젝트를 자동으로 봅니다.
 
 ```bash
-bash scripts/doctor.sh              # 구조 검사 + 그래프 검증
+bash scripts/doctor.sh              # 구조 검사 + 그래프 검증 (devkit 저장소 개발 시)
 bash scripts/doctor.sh --self-test  # 훅에 이벤트별 픽스처 주입 → 효과 대조
 bash scripts/doctor.sh --graph      # 도달 불가 노드 · dangling 엣지 · 에러 엣지 누락
 bash scripts/doctor.sh --usage      # 훅 생존 · 스킬 호출 · 엣지 traversal
@@ -163,16 +169,23 @@ bash scripts/doctor.sh --all        # 전체
 | `python-fastapi` | FastAPI + SQLAlchemy + Pydantic | 가이드 **생성** (조합 확인 후) |
 | `blank` | Custom | 전체 차원 인터뷰 → 가이드 생성 |
 
-## Project Override
+## Project Override — 사용자 자산의 우선권
 
-플러그인 스킬을 커스터마이즈하려면 프로젝트의 `.claude/skills/`로 복사합니다:
+| 자산 | 우선 메커니즘 |
+|------|--------------|
+| 규칙 (`.claude/rules/`) | **프로젝트 소유** — install-rules가 사용자 수정본을 감지하면 보존 (버전 스탬프) |
+| 훅 (`settings.json`) | 프로젝트 훅과 플러그인 훅이 **모두** 실행됨 (병존, 충돌 없음) |
+| 스킬 | 플러그인 스킬은 `epcc-devkit:이름`으로, 프로젝트 스킬은 `이름`으로 **병존**합니다. 강한 우선권이 필요하면 **다른 이름 + description에 경계 선언**이 확실합니다 — 이 플러그인이 스택 가이드를 `frontend-guide`(프로젝트 생성)와 `nextjs-frontend-guide`(플러그인)로 나눈 것이 그 방식입니다 |
+
+커스터마이즈 예:
 
 ```bash
-mkdir -p .claude/skills/brainstorming
-# 커스텀 SKILL.md 작성
+mkdir -p .claude/skills/my-brainstorming
+# 커스텀 SKILL.md 작성 — description에 "브레인스토밍은 이 스킬을 우선 사용" 명시
 ```
 
-프로젝트 파일이 항상 플러그인 파일보다 우선합니다.
+플러그인 파일 자체는 수정하지 마세요 — 업데이트 시 덮어써집니다. 모든 커스터마이즈는
+프로젝트 쪽(`.claude/`)에서 하며, 플러그인은 이를 존중하도록 설계되어 있습니다.
 
 ## v2에서 업그레이드
 

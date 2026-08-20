@@ -15,7 +15,12 @@
 
 set -uo pipefail   # -e 없음: 모든 검사를 끝까지 돌려 전체 보고서를 낸다
 
-ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+# 루트가 둘이다 — 하나로 합치면 소비자 프로젝트에서 플러그인 구조 검사가 깨진다:
+#   PLUGIN_ROOT: 플러그인 자산 검사(fast/graph/self-test) — 스크립트 위치가 곧 진실
+#   PROJ:        프로젝트 상태 검사(usage/lessons) — 훅 로그·교훈은 소비자 쪽에 산다
+PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROJ="${CLAUDE_PROJECT_DIR:-$PWD}"
+ROOT="$PLUGIN_ROOT"
 cd "$ROOT" || exit 2
 
 FAIL=0; WARN=0; PASS=0
@@ -41,7 +46,7 @@ code_lines() {
 # --fast : 구조 검사
 # ════════════════════════════════════════════════════════════════════
 run_fast() {
-  printf "\n${C_D}epcc doctor --fast${C_0}  (root: %s)\n" "$ROOT"
+  printf "\n${C_D}epcc doctor --fast${C_0}  (plugin: %s)\n" "$ROOT"
 
   # ── 1. 금지 관용구 lint (§1.1 검출) ──
   sec "금지 관용구 (침묵 실패 원인)"
@@ -419,8 +424,8 @@ run_graph() {
 # --usage : 계측
 # ════════════════════════════════════════════════════════════════════
 run_usage() {
-  printf "\n${C_D}epcc doctor --usage${C_0}\n"
-  local d="$ROOT/.claude/.epcc"
+  printf "\n${C_D}epcc doctor --usage${C_0}  (project: %s)\n" "$PROJ"
+  local d="$PROJ/.claude/.epcc"
 
   sec "훅 하트비트"
   if [ -f "$d/hookrun.log" ]; then
@@ -470,7 +475,7 @@ run_lessons() {
   printf "\n${C_D}epcc doctor --lessons${C_0}\n"
   sec "교훈 집계"
 
-  local lf="$ROOT/docs/lessons.md"
+  local lf="$PROJ/docs/lessons.md"
   [ -f "$lf" ] || { warn "docs/lessons.md 없음"; return; }
 
   local threshold=3 found=0
@@ -485,11 +490,11 @@ run_lessons() {
       #      그 파일은 카테고리 *예시 목록*을 담고 있어서, 카탈로그를 규칙으로
       #      오인하면 승격되지 않은 것이 승격된 것으로 보고된다.
       local card=""
-      for d in rules .claude/rules; do
+      for d in "$PLUGIN_ROOT/rules" "$PROJ/.claude/rules"; do
         [ -f "$d/$cat.md" ] && card="$d/$cat.md" && break
       done
       if [ -z "$card" ]; then
-        card=$(grep -rli --include='*.md' --exclude='lessons.md' -- "$cat" rules .claude/rules 2>/dev/null | head -1)
+        card=$(grep -rli --include='*.md' --exclude='lessons.md' -- "$cat" "$PLUGIN_ROOT/rules" "$PROJ/.claude/rules" 2>/dev/null | head -1)
       fi
       if [ -n "$card" ]; then
         status="${C_G}승격됨 → ${card}${C_0}"
@@ -502,8 +507,8 @@ run_lessons() {
 
   local total; total=$(num "$(grep -c '^## \[category:' "$lf" 2>/dev/null)")
   printf "\n  총 %s건" "$total"
-  [ -f "$ROOT/docs/lessons-archive.md" ] \
-    && printf " · 아카이브 %s건\n" "$(num "$(grep -c '^## \[category:' "$ROOT/docs/lessons-archive.md" 2>/dev/null)")" \
+  [ -f "$PROJ/docs/lessons-archive.md" ] \
+    && printf " · 아카이브 %s건\n" "$(num "$(grep -c '^## \[category:' "$PROJ/docs/lessons-archive.md" 2>/dev/null)")" \
     || printf " · ${C_Y}아카이브 파일 없음${C_0}\n"
 
   [ "$found" -gt 0 ] && warn "승격 후보 ${found}건" "승격 시 lessons-archive.md로 물리 이동 (선언이 아니라 파일 이동으로 증명)"

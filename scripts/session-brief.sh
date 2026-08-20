@@ -66,7 +66,7 @@ if [ -f "$HOOKS_JSON" ] && command -v jq >/dev/null 2>&1; then
     SEEN=$(epcc_num "$(awk -F'|' '{print $1}' "$HB" 2>/dev/null | sort -u | wc -l)")
     FAILED=$(awk -F'|' '$4!="0" {print $1}' "$HB" 2>/dev/null | sort -u | tr '\n' ' ')
     if [ "$SEEN" -lt "$EXPECTED" ]; then
-      printf -- '- ⚠️ 훅 생존 %s/%s — 일부 훅이 실행된 적 없음. `bash scripts/doctor.sh --self-test` 확인\n' "$SEEN" "$EXPECTED"
+      printf -- '- ⚠️ 훅 생존 %s/%s — 일부 훅이 실행된 적 없음. `bash "%s/scripts/doctor.sh" --self-test` 확인\n' "$SEEN" "$EXPECTED" "$PLUGIN_ROOT"
       epcc_edge "session-start" "doctor"
     else
       printf -- '- 훅 %s/%s 정상\n' "$SEEN" "$EXPECTED"
@@ -82,13 +82,16 @@ if [ ! -f "$EPCC_ROOT/epcc.config.json" ]; then
   printf -- '- 미설정 프로젝트 — `/epcc-init`로 기술 스택(백엔드·DB 포함)을 선택하면 스택 맞춤 가이드가 생성됩니다\n'
 fi
 
+# ── 3.6 자기검증 진입점 (소비자 프로젝트에는 scripts/가 없다 — 절대 경로가 유일한 진실) ──
+printf -- '- 자기검증: `bash "%s/scripts/doctor.sh"`\n' "$PLUGIN_ROOT"
+
 # ── 4. 교훈 승격 후보 (임계 도달 시에만) ─────────────────────────────
 LF="$EPCC_ROOT/docs/lessons.md"
 if [ -f "$LF" ]; then
   CAND=$(grep -oE '\[category: [^]]+\]' "$LF" 2>/dev/null \
     | sed 's/\[category: //;s/\]//' | sort | uniq -c | sort -rn \
     | awk '$1>=3 {printf "%s(%s) ", $2, $1}')
-  [ -n "$CAND" ] && printf -- '- 교훈 승격 후보: %s→ `bash scripts/doctor.sh --lessons`\n' "$CAND"
+  [ -n "$CAND" ] && printf -- '- 교훈 승격 후보: %s→ `bash "%s/scripts/doctor.sh" --lessons`\n' "$CAND" "$PLUGIN_ROOT"
 fi
 
 exit 0
