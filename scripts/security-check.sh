@@ -116,6 +116,13 @@ if [ "$TOOL_NAME" = "Write" ] \
        "모든 외부 입력은 스키마로 검증하세요 (zod 등)"
 fi
 
+# XSS — dangerouslySetInnerHTML은 sanitize 동반 없이는 경고 (차단하지 않음:
+# 같은 파일의 기존 sanitize import는 이 diff에 안 보일 수 있다)
+if has 'dangerouslySetInnerHTML' && ! hasi 'dompurify|sanitize'; then
+  warn "dangerouslySetInnerHTML 감지: $FILE_PATH" \
+       "DOMPurify 등으로 sanitize하거나 텍스트 렌더링으로 대체하세요"
+fi
+
 # .env 직접 편집
 if [[ "$FILE_PATH" =~ \.env$ ]] || [[ "$FILE_PATH" =~ \.env\.(local|production)$ ]]; then
   warn ".env 파일 수정: $FILE_PATH" ".gitignore 포함 여부를 확인하세요 (.env.example은 OK)"
