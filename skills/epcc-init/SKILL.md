@@ -182,6 +182,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/install-rules.sh"
 | `reversibility.md` | 소스·마이그레이션·워크스페이스 편집 시 |
 | `harness-change.md` | `.claude/**` `scripts/**` 편집 시 |
 | `lessons.md` | `docs/lessons.md` 편집 시 |
+| `doc-dependency.md` | `dev/docs/{prd,database,design,architecture,api}/**` 편집 시 |
 
 **설치 후 반드시 확인**하세요:
 

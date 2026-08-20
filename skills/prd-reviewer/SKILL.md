@@ -1,6 +1,6 @@
 ---
 name: prd-reviewer
-description: 기존 PRD 문서의 품질을 진단하고 개선안을 도출합니다. 단일 PRD와 모듈형 PRD(prd-overload + Phase Sub PRD + Shared) 모두 지원합니다. 구현과의 정합성 검증, 요구사항 명확성 진단, 내부 일관성 검증, 모듈형 구조 정합성 검증, 설계 원칙 정합성 검증(축 F)을 수행하고, 각 개선안에 "PRD 반영 위치"를 섹션별로 명시한 진단 보고서를 생성합니다. PRD 수정 후 필수 실행 (task-workflow 트리거). 수동 호출도 가능 (/prd-reviewer).
+description: 기존 PRD 문서의 품질을 진단하고 개선안을 도출합니다. 단일 PRD와 모듈형 PRD(prd-overload + Phase Sub PRD + Shared) 모두 지원합니다. 구현과의 정합성 검증, 요구사항 명확성 진단, 내부 일관성 검증, 모듈형 구조 정합성 검증, 설계 원칙 정합성 검증(축 F)을 수행하고, 각 개선안에 "PRD 반영 위치"를 섹션별로 명시한 진단 보고서를 생성합니다. PRD 수정 후 필수 실행 (문서 의존성 카드 `.claude/rules/doc-dependency.md`가 트리거). 수동 호출도 가능 (/prd-reviewer).
 ---
 
 # PRD Reviewer
@@ -33,7 +33,7 @@ description: 기존 PRD 문서의 품질을 진단하고 개선안을 도출합�
 | 특정 섹션    | 사용자 지정 섹션만 집중 진단                                | Step 2 A→B→C (범위 한정) → Step 3→4 |
 | 구현 대조    | 코드베이스 대비 괴리 중심                                   | Step 2 D → Step 3→4                 |
 | 모듈형 구조  | prd-overload 기준 크로스 문서 정합성 (모듈형 전용)          | Step 2 E → Step 3→4                 |
-| 수정 후 검증 | PRD 수정 직후 일관성 + 설계 원칙 검증. task-workflow 트리거 | Step 2 C→E(모듈형)→F → Step 3→4     |
+| 수정 후 검증 | PRD 수정 직후 일관성 + 설계 원칙 검증. 문서 의존성 카드가 트리거 | Step 2 C→E(모듈형)→F → Step 3→4     |
 
 ### Step 2: PRD 품질 진단
 

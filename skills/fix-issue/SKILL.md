@@ -52,7 +52,7 @@ gh pr list --search "<NUMBER>" --json number,title,state
 
 ### Step 4: 수정 및 검증
 
-이 시점부터 일반 task-workflow의 build (구현) 규칙을 따름:
+이 시점부터 일반 build(구현) 단계 규칙을 따름 (코드 변경 카드가 편집 시 자동 로드됨):
 
 1. 근본 원인 식별 후 수정
 2. `/simplify` 코드 정리
