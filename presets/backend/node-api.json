@@ -1,0 +1,31 @@
+{
+  "axis": "backend",
+  "name": "node-api",
+  "displayName": "Node API 서버 (Express / NestJS)",
+  "description": "직접 운영하는 Node.js API 서버 — Express 또는 NestJS + PostgreSQL + Prisma/Drizzle. 프론트엔드와 언어를 공유한다.",
+  "techStack": {
+    "backend": {
+      "backendType": "cloud-server",
+      "cloudProvider": null,
+      "database": "PostgreSQL",
+      "dataAccess": "Prisma",
+      "auth": "",
+      "framework": "Express",
+      "language": "TypeScript",
+      "packageManager": "npm",
+      "commands": {
+        "build": "npm run build",
+        "test": "npm test",
+        "lint": "npm run lint"
+      },
+      "sourceDir": "src"
+    },
+    "additionalStack": ["Express 또는 NestJS", "Prisma 또는 Drizzle", "Zod", "Vitest 또는 Jest"]
+  },
+  "notes": {
+    "securityBoundary": "애플리케이션 층이 유일한 경계다 — 신뢰된 연결로 DB에 접근하므로 행 수준 정책에 기대지 않는다. 소유권 검사 누락이 곧 데이터 유출이다. 인증 방식(JWT 자체 발급·세션·외부 IdP)은 미정이므로 확인 질문 대상",
+    "serverCodeLocation": "이 저장소의 API 서버. 프론트엔드 축에 서버 런타임이 있어도(Next.js 등) API 소유권은 여기다 — 둘 중 어디에 로직을 둘지 가이드에서 경계를 먼저 못박는다",
+    "toolchain": "프론트엔드와 언어·패키지 매니저가 같은 경우가 많아 모노레포가 흔하다 — 공유 타입·스키마 패키지를 둘지 가이드에서 다룬다",
+    "variants": "프레임워크(Express/NestJS)와 ORM(Prisma/Drizzle) 선택이 가이드 내용을 크게 가른다 — Step 4.5에서 확정한다"
+  }
+}

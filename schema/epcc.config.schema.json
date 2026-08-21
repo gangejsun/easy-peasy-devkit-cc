@@ -192,6 +192,7 @@
                 "aws-serverless",
                 "gcp-serverless",
                 "fastapi",
+                "node-api",
                 "none"
               ],
               "description": "presets/backend/<name>.json"

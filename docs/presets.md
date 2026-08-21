@@ -32,6 +32,7 @@
 | `aws-serverless` | 서버리스 조립 | Lambda + API Gateway + DynamoDB + Cognito | **행 수준 정책 엔진 없음** — 애플리케이션 층 검사가 실질적 유일 경계 |
 | `gcp-serverless` | 서버리스 조립 | Cloud Run/Functions + Firestore + Identity Platform | IAM/토큰 검증 + (직접 접근 경로가 있으면) Security Rules |
 | `fastapi` | 자체 서버 | FastAPI + SQLAlchemy 2.0 + Pydantic v2 + Alembic + pytest | 애플리케이션 층이 유일한 경계 |
+| `node-api` | 자체 서버 | Express/NestJS + PostgreSQL + Prisma/Drizzle + Zod | 애플리케이션 층이 유일한 경계 |
 | `none` | — | 백엔드 없음 / 외부 REST API 소비 | 외부 API 토큰 보관 위치가 위험 지점 |
 
 **데이터 계층에 정책 엔진이 있는지가 가이드 내용을 가장 크게 가른다.** 있으면 애플리케이션

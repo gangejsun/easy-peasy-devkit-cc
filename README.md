@@ -2,7 +2,7 @@
 
 AI Native Dev Harness for Claude Code — 되돌림 가능성 축 워크플로우, 자기검증 훅, 그래프 계측.
 
-![version](https://img.shields.io/badge/version-3.8.0-blue)
+![version](https://img.shields.io/badge/version-3.8.1-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 ## 무엇인가
@@ -31,7 +31,7 @@ claude plugin install epcc-devkit
 ```
 
 대화형으로 진행됩니다:
-- 프리셋 선택 — 프론트엔드 축(nextjs·react-vite·vanilla·none) + 백엔드 축(supabase·firebase·aws-serverless·gcp-serverless·fastapi·none)
+- 프리셋 선택 — 프론트엔드 축(nextjs·react-vite·vanilla·none) + 백엔드 축(supabase·firebase·aws-serverless·gcp-serverless·fastapi·node-api·none)
 - 프로젝트 정보 수집
 - `epcc.config.json` + `CLAUDE.md` 생성
 - **`.claude/rules/`에 규칙 카드 설치** ← v3 신규
@@ -73,7 +73,7 @@ bash "<플러그인-루트>/scripts/doctor.sh"
 | **규칙** | T0 26줄 + T1 6개 830줄 | T0는 훅이 상시 주입(플러그인 소유), T1은 경로 매칭 시 조건부 로드 |
 | **에이전트** | 2 | `epcc-planner`(쓰기 없음) · `epcc-reviewer`(읽기 전용) |
 | **스킬** | 33 | 기획·구현·검증·보안·마케팅 워크플로우 + 스택 가이드 생성기 + 스킬 강화기 |
-| **프리셋** | 2축 4+6 | 프론트엔드: nextjs·react-vite·vanilla·none / 백엔드: supabase·firebase·aws-serverless·gcp-serverless·fastapi·none |
+| **프리셋** | 2축 4+7 | 프론트엔드: nextjs·react-vite·vanilla·none / 백엔드: supabase·firebase·aws-serverless·gcp-serverless·fastapi·node-api·none |
 
 ### 훅
 
