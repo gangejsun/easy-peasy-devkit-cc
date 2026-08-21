@@ -53,9 +53,30 @@ describe('createNoteSchema', () => {
 Import the exported `GET`/`POST` and call them with a real `NextRequest`. Mock only
 the module boundary: `@/lib/supabase/server`.
 
+**This is the canonical `queryResult` helper.** Define it once in a shared test helper
+(`tests/helpers/supabase.ts`) and import it everywhere — a per-file copy that omits a
+builder method breaks the moment a handler chains that method.
+
+```ts
+// tests/helpers/supabase.ts
+import { vi } from 'vitest'
+
+// Chainable, thenable builder mock — awaiting any chain resolves to `result`
+export function queryResult(result: { data?: unknown; error?: unknown; count?: number }) {
+  const builder: Record<string, unknown> = {}
+  const methods = ['select', 'insert', 'update', 'upsert', 'delete', 'eq', 'neq', 'in', 'is',
+    'ilike', 'or', 'order', 'range', 'limit', 'single', 'maybeSingle']
+  for (const m of methods) builder[m] = vi.fn(() => builder)
+  ;(builder as { then?: unknown }).then = (resolve: (v: unknown) => void) =>
+    resolve({ data: null, error: null, count: null, ...result })
+  return builder
+}
+```
+
 ```ts
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
+import { queryResult } from '@/tests/helpers/supabase'
 
 const { mockClient } = vi.hoisted(() => ({
   mockClient: { auth: { getUser: vi.fn() }, from: vi.fn() },
@@ -66,17 +87,6 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { POST } from '@/app/api/notes/route'
-
-// Chainable, thenable builder mock — awaiting any chain resolves to `result`
-function queryResult(result: { data?: unknown; error?: unknown; count?: number }) {
-  const builder: Record<string, unknown> = {}
-  for (const m of ['select', 'insert', 'update', 'delete', 'eq', 'order', 'range', 'limit', 'single', 'maybeSingle']) {
-    builder[m] = vi.fn(() => builder)
-  }
-  ;(builder as { then?: unknown }).then = (resolve: (v: unknown) => void) =>
-    resolve({ data: null, error: null, count: null, ...result })
-  return builder
-}
 
 const post = (body: unknown) =>
   POST(new NextRequest('http://test/api/notes', { method: 'POST', body: JSON.stringify(body) }))

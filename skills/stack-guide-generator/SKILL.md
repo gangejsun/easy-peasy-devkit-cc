@@ -49,7 +49,7 @@ description: 프로젝트의 기술 스택 조합(프론트엔드·백엔드 유
      검사가 이를 잡는다. 규격서(skeleton)와 충돌하면 항상 규격서를 따른다
 3. resources/를 규격서의 **리소스 슬롯 표**에 따라 구성한다 — 필수 슬롯 7개를
    전용 파일 또는 병합으로 커버하고(확신 부족 슬롯은 비우되 보고에 명시),
-   4~10개 파일로 분할해 Navigation Guide에 전부 매핑한다
+   슬롯 수에서 도출한 6~10개 파일로 분할해 Navigation Guide에 전부 매핑한다
 4. 산출 위치: 프로젝트의 `.claude/skills/frontend-guide/` · `.claude/skills/backend-guide/`
 5. **관계형 DB면 데이터 모델링 카드와 연결한다 — 복사하지 않는다.** 정본은
    T1 규칙 카드(`.claude/rules/` 아래 `data-modeling.md`)로 epcc-init이 모든 프리셋에

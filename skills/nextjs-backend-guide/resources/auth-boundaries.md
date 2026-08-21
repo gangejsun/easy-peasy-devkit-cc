@@ -16,7 +16,9 @@ Middleware redirects are **UX**, handler checks are **authorization**, RLS is
 ## Middleware — session refresh
 
 Server Components can't write cookies, so refreshed tokens must be persisted by
-middleware on every matched request:
+middleware on every matched request. Middleware runs on the **Edge Runtime** — no Node
+built-ins, no TCP database drivers, no heavy work; see `resources/edge-and-operations.md`
+for what that rules out.
 
 ```ts
 // middleware.ts
@@ -32,17 +34,26 @@ export const config = {
 }
 ```
 
+The matcher above is **deny-by-default**: everything except static assets is gated, so a
+new protected route is safe the day it is added, but a public landing page at `/`, marketing
+pages, and shared links must each be added to the public list or signed-out visitors get
+bounced to `/login`. The inverse — a `matcher` listing only protected prefixes — never
+surprises a public page but silently leaves a forgotten route unguarded. Pick deny-by-default
+unless the app is mostly public; either way the handler's own `getUser()` check is what
+actually protects data.
+
 ```ts
 // lib/supabase/middleware.ts
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { publicEnv } from '@/lib/env.public'
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    publicEnv.NEXT_PUBLIC_SUPABASE_URL,
+    publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() {
@@ -63,16 +74,27 @@ export async function updateSession(request: NextRequest) {
   // getUser() is the call that refreshes an expired token.
   const { data: { user } } = await supabase.auth.getUser()
 
-  const isPublic =
-    request.nextUrl.pathname.startsWith('/login') ||
-    request.nextUrl.pathname.startsWith('/auth')
+  const { pathname } = request.nextUrl
+  const isPublic = pathname.startsWith('/login') || pathname.startsWith('/auth')
+
   if (!user && !isPublic) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
+    const loginUrl = request.nextUrl.clone()
+    loginUrl.pathname = '/login'
     // Preserve the blocked path so sign-in can return the user (consumed in the
     // sign-in action below — which validates it against open redirects)
-    url.searchParams.set('redirect', request.nextUrl.pathname)
-    return NextResponse.redirect(url)
+    loginUrl.searchParams.set('redirect', pathname)
+
+    // JSON API clients must receive the error envelope, never a login page: a 307 to
+    // /login answers with HTML and breaks the contract in resources/api-routes.md.
+    const res = pathname.startsWith('/api')
+      ? NextResponse.json(
+          { error: { code: 'unauthenticated', message: 'Sign in required' } },
+          { status: 401 },
+        )
+      : NextResponse.redirect(loginUrl)
+    // A new response must carry the refreshed cookies over (see the note below)
+    supabaseResponse.cookies.getAll().forEach((cookie) => res.cookies.set(cookie))
+    return res
   }
 
   // Return supabaseResponse as-is. If you must build a new response, copy
@@ -121,18 +143,34 @@ export async function signIn(
   })
   if (error) return { ok: false, formError: 'Invalid email or password' } // generic on purpose
 
-  // Open-redirect guard: internal paths only — '//evil.com' and '/\evil.com' both
-  // parse as external URLs in browsers, so reject anything but a plain '/path'
-  const to = parsed.data.redirect
-  const safe = to !== undefined && to.startsWith('/')
-    && !to.startsWith('//') && !to.startsWith('/\\')
-  redirect(safe ? to : '/')
+  redirect(safeInternalPath(parsed.data.redirect))
+}
+
+// lib/safe-redirect.ts
+// Open-redirect guard. Prefix checks alone are not enough: the WHATWG URL parser strips
+// tab/CR/LF anywhere in a URL, so '/%09/evil.com' decodes to '/\t/evil.com', passes every
+// startsWith test, and is then read by the browser as '//evil.com'. Strip the control
+// characters first, then let the parser decide — and compare the resulting origin.
+export function safeInternalPath(to: string | undefined, fallback = '/') {
+  if (!to) return fallback
+  const cleaned = to.replace(/[\u0000-\u001F\u007F]/g, '') // chars the parser drops
+  if (!cleaned.startsWith('/')) return fallback
+  const base = 'https://internal.invalid'
+  let url: URL
+  try {
+    url = new URL(cleaned, base)
+  } catch {
+    return fallback
+  }
+  if (url.origin !== base) return fallback          // '//evil.com', 'https://evil.com', …
+  return `${url.pathname}${url.search}${url.hash}`  // rebuilt from parsed parts, not raw input
 }
 ```
 
 - **Return path:** middleware stored the blocked path in `?redirect=` (see above); the
   login page copies it into a hidden `<input name="redirect">`, and the action consumes
-  it — the internal-path check above is what prevents an open redirect.
+  it — `safeInternalPath` above is what prevents an open redirect. Use the same helper
+  anywhere a user-supplied value reaches `redirect()`.
 - `signUp` follows the same shape via `supabase.auth.signUp`, then redirects to a
   "verify your email" page. Keep profile fields in a `profiles` row — not in
   `user_metadata` (user-editable, see the roles table below).
@@ -148,9 +186,12 @@ export async function signIn(
 - `getSession()` returns the session **from the cookie as-is** — it does attempt a
   refresh when the token is expired, but the server never verifies the cookie's claims,
   so a tampered or forged payload passes. Acceptable only as a UI hint on the client.
-- `getUser()` sends the JWT to the Auth server for verification and refresh. It is the
-  **only** acceptable identity check in middleware, Route Handlers, Server Actions,
-  and Server Components.
+- `getUser()` sends the JWT to the Auth server for verification and refresh. Default to it
+  in middleware, Route Handlers, Server Actions, and Server Components.
+- On projects using **asymmetric JWT signing keys**, recent supabase-js v2 releases also
+  offer `getClaims()`, which verifies the signature locally against the cached JWKS — a
+  verified identity without the network round trip. It is the one sanctioned alternative;
+  `getSession()` is still never one.
 - Check identity **in the handler/action itself**, even for routes the middleware
   already gates — middleware matchers drift, and Server Actions bypass page routing.
 
@@ -215,14 +256,17 @@ create policy "notes_delete_own" on notes for delete
 
 ```ts
 // lib/supabase/admin.ts
+import 'server-only'
 import { createClient } from '@supabase/supabase-js'
+import { serverEnv } from '@/lib/env'          // server-only module (secrets)
+import { publicEnv } from '@/lib/env.public'
 import type { Database } from '@/types/database'
 
 // Server-only. Bypasses RLS entirely. No cookies, no user context.
 export function createAdminClient() {
   return createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!, // never NEXT_PUBLIC_*
+    publicEnv.NEXT_PUBLIC_SUPABASE_URL,
+    serverEnv.SUPABASE_SERVICE_ROLE_KEY,       // never NEXT_PUBLIC_*
     { auth: { autoRefreshToken: false, persistSession: false } },
   )
 }

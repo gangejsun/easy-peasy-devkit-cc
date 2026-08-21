@@ -85,8 +85,8 @@ export async function getProfile(id: string): Promise<Profile | null> {
   return data
 }
 
-// Server Action: 반환 계약을 타입으로 고정
-type ActionState = { error: string | null }
+// Server Action: 반환 계약을 타입으로 고정 (전체 정의는 resources/complete-example.md §6)
+import type { ActionState } from '@/app/(main)/tasks/actions'
 export async function deleteTask(id: string): Promise<ActionState> {/* … */}
 
 // 컴포넌트: 반환 타입 생략 (JSX 자동 추론)
@@ -140,7 +140,7 @@ const displayName = user?.name ?? 'Anonymous' // nullish coalescing (||와 다�
 
 // 조기 반환으로 좁히기 — non-null 단언(!)보다 우선
 function renderUser(user: User | null) {
-  if (!user) return <EmptyState />
+  if (!user) return <EmptyState title="사용자를 찾을 수 없습니다." />   // 정의: component-patterns.md §5
   return <UserCard user={user} />             // 여기서 user는 non-null
 }
 ```

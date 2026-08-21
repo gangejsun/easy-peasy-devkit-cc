@@ -6,24 +6,37 @@ The flow to internalize: **validate → authenticate → process → respond.**
 
 ## 1. Migration — table, constraints, RLS, realtime
 
-Structural design (columns, keys, naming) follows the **T1 data-modeling card**;
-shown here is only what this example needs.
+Structural design (columns, keys, naming) follows the **T1 data-modeling card** at
+`.claude/rules/data-modeling.md`; shown here is only what this example needs. This is the
+canonical `notes` schema the other resource files' snippets assume.
 
 ```sql
 -- supabase/migrations/20260821000000_create_notes.sql
 create table notes (
-  id         uuid primary key default gen_random_uuid(),
-  user_id    uuid not null references auth.users (id) on delete cascade,
-  title      text not null check (char_length(title) between 1 and 200),
-  content    text not null default '' check (char_length(content) <= 10000),
-  tags       text[] not null default '{}'
-             check (array_length(tags, 1) is null or array_length(tags, 1) <= 20),
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users (id) on delete cascade,
+  title       text not null check (char_length(title) between 1 and 200),
+  content     text not null default '' check (char_length(content) <= 10000),
+  tags        text[] not null default '{}'
+              check (array_length(tags, 1) is null or array_length(tags, 1) <= 20),
+  archived_at timestamptz,
+  created_at  timestamptz not null default now()
+);
+
+-- Audit trail written by the archive_note RPC (resources/database-patterns.md)
+create table note_events (
+  id         bigint generated always as identity primary key,
+  note_id    uuid not null references notes (id) on delete cascade,
+  kind       text not null check (kind in ('archived', 'restored')),
   created_at timestamptz not null default now()
 );
 
 create index notes_user_id_created_at_idx on notes (user_id, created_at desc);
+create index notes_active_idx on notes (created_at desc) where archived_at is null;
+create index note_events_note_id_idx on note_events (note_id);
 
 alter table notes enable row level security;
+alter table note_events enable row level security;
 
 create policy "notes_select_own" on notes for select
   using ((select auth.uid()) = user_id);
@@ -35,13 +48,17 @@ create policy "notes_update_own" on notes for update
 create policy "notes_delete_own" on notes for delete
   using ((select auth.uid()) = user_id);
 
+-- Events are readable through ownership of the parent note; writes go through the RPC
+create policy "note_events_select_own" on note_events for select
+  using (exists (select 1 from notes n
+                 where n.id = note_events.note_id and n.user_id = (select auth.uid())));
+
 alter publication supabase_realtime add table notes;
 ```
 
-Note how every Zod rule below has a constraint twin here (title 1–200, content ≤10000,
-tags ≤20) — that is the DB-constraint-duplication rule in action.
-
-Then regenerate types: `npx supabase gen types typescript --local > types/database.ts`
+Every Zod rule below has a constraint twin here (title 1–200, content ≤10000, tags ≤20) —
+the DB-constraint-duplication rule in action. Then regenerate types:
+`npx supabase gen types typescript --local > types/database.ts`
 
 ## 2. Validation schema (shared by handler, action, tests)
 
@@ -61,6 +78,9 @@ export const updateNoteSchema = createNoteSchema.partial()
 export const noteListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   perPage: z.coerce.number().int().min(1).max(100).default(20),
+  q: z.string().trim().min(1).max(200).optional(),   // consumed by the GET below
+  sort: z.enum(['created_at', 'title']).default('created_at'),  // whitelist, never raw input
+  order: z.enum(['asc', 'desc']).default('desc'),
 })
 
 export type CreateNoteInput = z.infer<typeof createNoteSchema>
@@ -81,9 +101,7 @@ import { createNoteSchema, noteListQuerySchema } from '@/lib/validations/note'
 
 export async function GET(request: NextRequest) {
   // validate
-  const parsed = noteListQuerySchema.safeParse(
-    Object.fromEntries(request.nextUrl.searchParams),
-  )
+  const parsed = noteListQuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams))
   if (!parsed.success) {
     return fail(400, 'validation_error', 'Invalid query parameters',
       z.flattenError(parsed.error).fieldErrors)
@@ -95,13 +113,16 @@ export async function GET(request: NextRequest) {
   if (!user) return fail(401, 'unauthenticated', 'Sign in required')
 
   // process (RLS scopes rows to this user; the eq() makes intent explicit)
-  const { page, perPage } = parsed.data
+  const { page, perPage, q, sort, order } = parsed.data
   const from = (page - 1) * perPage
-  const { data, error, count } = await supabase
-    .from('notes')
-    .select('id, title, tags, created_at', { count: 'exact' })
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
+  let query = supabase
+    .from('notes').select('id, title, tags, created_at', { count: 'exact' })
+    .eq('user_id', user.id).is('archived_at', null)
+  // Search: applied only when provided; escape LIKE wildcards the user may have typed
+  if (q) query = query.ilike('title', `%${q.replace(/[%_]/g, '\\$&')}%`)
+  // Sort: enum members only — a raw string here would let a caller probe columns
+  const { data, error, count } = await query
+    .order(sort, { ascending: order === 'asc' })
     .range(from, from + perPage - 1)
   if (error) return fromSupabaseError(error)
 
@@ -112,11 +133,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   // validate
   let body: unknown
-  try {
-    body = await request.json()
-  } catch {
-    return fail(400, 'invalid_json', 'Request body must be valid JSON')
-  }
+  try { body = await request.json() }
+  catch { return fail(400, 'invalid_json', 'Request body must be valid JSON') }
   const parsed = createNoteSchema.safeParse(body)
   if (!parsed.success) {
     return fail(400, 'validation_error', 'Invalid input',
@@ -130,10 +148,8 @@ export async function POST(request: NextRequest) {
 
   // process — ownership comes from the verified user, never the body
   const { data, error } = await supabase
-    .from('notes')
-    .insert({ ...parsed.data, user_id: user.id })
-    .select('id, title, content, tags, created_at')
-    .single()
+    .from('notes').insert({ ...parsed.data, user_id: user.id })
+    .select('id, title, content, tags, created_at').single()
   if (error) return fromSupabaseError(error)
 
   // respond
@@ -149,10 +165,13 @@ type RouteContext = { params: Promise<{ id: string }> }
 
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const { id } = await params
-  const parsed = updateNoteSchema.safeParse(await request.json().catch(() => null))
+  let body: unknown
+  try { body = await request.json() }
+  // malformed JSON stays distinct from a Zod failure
+  catch { return fail(400, 'invalid_json', 'Request body must be valid JSON') }
+  const parsed = updateNoteSchema.safeParse(body)
   if (!parsed.success) {
-    return fail(400, 'validation_error', 'Invalid input',
-      z.flattenError(parsed.error).fieldErrors)
+    return fail(400, 'validation_error', 'Invalid input', z.flattenError(parsed.error).fieldErrors)
   }
 
   const supabase = await createClient()
@@ -160,12 +179,9 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   if (!user) return fail(401, 'unauthenticated', 'Sign in required')
 
   const { data, error } = await supabase
-    .from('notes')
-    .update(parsed.data)
-    .eq('id', id)
-    .eq('user_id', user.id)   // explicit ownership filter — RLS is the backup, not the only guard
-    .select('id, title, content, tags')
-    .single()                 // PGRST116 (0 rows: missing or not yours) → 404
+    .from('notes').update(parsed.data)
+    .eq('id', id).eq('user_id', user.id)  // ownership filter — RLS is the backup, not the only guard
+    .select('id, title, content, tags').single()  // PGRST116 (missing or not yours) → 404
   if (error) return fromSupabaseError(error)
   return ok(data)
 }
@@ -177,13 +193,10 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
   if (!user) return fail(401, 'unauthenticated', 'Sign in required')
 
   const { data, error } = await supabase
-    .from('notes')
-    .delete()
-    .eq('id', id)
-    .eq('user_id', user.id)   // explicit ownership filter — RLS is the backup
+    .from('notes').delete().eq('id', id).eq('user_id', user.id)
     .select('id')             // confirm what was deleted — [] means nothing was
   if (error) return fromSupabaseError(error)
-  if (!data?.length) return fail(404, 'not_found', 'Resource not found') // missing or RLS-hidden: same 404
+  if (!data?.length) return fail(404, 'not_found', 'Resource not found') // missing or hidden: same 404
   return ok({ deleted: true })
 }
 ```
@@ -200,25 +213,18 @@ import { createClient } from '@/lib/supabase/server'
 import { createNoteSchema } from '@/lib/validations/note'
 import type { ActionResult } from '@/lib/api/types'
 
-export async function createNote(
-  _prev: ActionResult | null,
-  formData: FormData,
-): Promise<ActionResult> {
+export async function createNote(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
   const parsed = createNoteSchema.safeParse({
     title: formData.get('title'),
     content: formData.get('content') ?? '',
   })
-  if (!parsed.success) {
-    return { ok: false, fieldErrors: z.flattenError(parsed.error).fieldErrors }
-  }
+  if (!parsed.success) return { ok: false, fieldErrors: z.flattenError(parsed.error).fieldErrors }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { ok: false, formError: 'Sign in required' }
 
-  const { error } = await supabase
-    .from('notes')
-    .insert({ ...parsed.data, user_id: user.id })
+  const { error } = await supabase.from('notes').insert({ ...parsed.data, user_id: user.id })
   if (error) {
     console.error('[createNote]', error)
     return { ok: false, formError: 'Something went wrong. Please try again.' }
@@ -234,29 +240,22 @@ component patterns belong to the frontend guide.
 
 ## 5. Test
 
+The chainable `queryResult` builder mock is defined once in `resources/testing.md`
+(Layer 2) — import it from a shared test helper rather than re-declaring a narrower copy
+per test file.
+
 ```ts
 // app/api/notes/route.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
+import { queryResult } from '@/tests/helpers/supabase' // canonical: resources/testing.md
 
 const { mockClient } = vi.hoisted(() => ({
   mockClient: { auth: { getUser: vi.fn() }, from: vi.fn() },
 }))
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(async () => mockClient),
-}))
+vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => mockClient) }))
 
 import { POST } from '@/app/api/notes/route'
-
-function queryResult(result: { data?: unknown; error?: unknown }) {
-  const builder: Record<string, unknown> = {}
-  for (const m of ['select', 'insert', 'eq', 'order', 'range', 'single']) {
-    builder[m] = vi.fn(() => builder)
-  }
-  ;(builder as { then?: unknown }).then = (resolve: (v: unknown) => void) =>
-    resolve({ data: null, error: null, count: null, ...result })
-  return builder
-}
 
 const post = (body: unknown) =>
   POST(new NextRequest('http://test/api/notes', { method: 'POST', body: JSON.stringify(body) }))
@@ -286,11 +285,13 @@ describe('POST /api/notes', () => {
 
 ## Recap checklist
 
-- [ ] Migration: constraints duplicate every Zod rule; RLS enabled with 4 policies
+- [ ] Migration: constraints duplicate every Zod rule; RLS enabled on **every** table
 - [ ] One schema file feeds the handler, the action, and the tests
 - [ ] Handler order: validate → authenticate → process → respond
 - [ ] Ownership (`user_id`) always from `getUser()`, never from input
-- [ ] PATCH/DELETE scope by `id` **and** `user_id`; DELETE confirms rows via `.select()`
-- [ ] Errors mapped through `fromSupabaseError`; nothing internal leaks
+- [ ] Every query scopes by `id` **and** `user_id`; DELETE confirms rows via `.select()`
+- [ ] Every declared query param is consumed; `sort` is an enum, never a raw string
+- [ ] Malformed JSON → `invalid_json`; Zod failure → `validation_error`
+- [ ] Errors mapped through `fromSupabaseError`, with the top-level `route()` catch behind it
 - [ ] Action returns `ActionResult` and revalidates; handler returns the envelope
 - [ ] Tests cover 400 / 401 / 201 (+ RLS integration per `resources/testing.md`)

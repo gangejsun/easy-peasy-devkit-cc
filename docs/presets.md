@@ -10,7 +10,7 @@ Presets provide framework-specific skills, security patterns, and default config
 
 **Active Skills**:
 - `/nextjs-frontend-guide` — Server/Client Components, App Router, Tailwind, Zustand
-- `/nextjs-backend-guide` — Route Handlers, Server Actions, Supabase, Zod
+- `/nextjs-backend-guide` — Route Handlers, Server Actions, Supabase, RLS 정책, 마이그레이션, Zod
 - `/ui-ux-design` — UI/UX design intelligence with 67 styles, 96 palettes
 
 **Default Security Patterns**:

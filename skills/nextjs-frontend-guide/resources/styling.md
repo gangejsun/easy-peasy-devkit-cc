@@ -136,7 +136,7 @@ export function Badge({ className, variant, ...props }: BadgeProps) {
   — `prettier-plugin-tailwindcss`를 쓰면 자동 정렬된다
 - 조건부 클래스는 항상 `cn()` — 문자열 템플릿 조합 금지 (충돌 병합이 안 된다)
 - 반복되는 클래스 묶음은 CSS로 추상화하지 말고 **컴포넌트로 추출**한다
-  (resources/component-patterns.md의 2회 규칙)
+  (resources/component-patterns.md의 2회 검토 · 3회 필수 규칙)
 
 ## 7. 금지 패턴
 

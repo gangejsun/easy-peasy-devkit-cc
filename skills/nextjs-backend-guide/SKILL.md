@@ -1,6 +1,6 @@
 ---
 name: nextjs-backend-guide
-description: "[Preset: nextjs-supabase] Next.js App Router backend development guide. Covers API Route Handlers, Server Actions, Supabase data access, Zod validation, middleware, and error handling patterns. Use when creating or modifying Route Handlers, Server Actions, Supabase queries, input validation, middleware, backend testing, or any server-side logic. Use ONLY when the active preset matches."
+description: "[Preset: nextjs-supabase] Next.js App Router backend guide. Covers Route Handlers, Server Actions, Supabase data access, RLS policies, SQL migrations, RPC functions, Zod validation, middleware, and error handling. Use when creating or modifying Route Handlers, Server Actions, Supabase queries, RLS policies, migrations, input validation, middleware, webhooks, backend testing, or any server-side logic. Use ONLY when the active preset matches."
 ---
 
 # Backend Development Guide
@@ -21,7 +21,7 @@ description: "[Preset: nextjs-supabase] Next.js App Router backend development g
 **New Server Action:**
 
 - [ ] Create `actions.ts` colocated with the feature, `'use server'` at the top
-- [ ] Signature compatible with `useActionState`: `(prevState, formData)`
+- [ ] Pick the shape: form action `(prevState, formData)` for `useActionState`, or a directly-called action `(id, …args)` for button handlers (`resources/api-routes.md`) — both need their own auth check
 - [ ] Validate `formData` with the shared Zod schema — never trust the client form
 - [ ] Auth-check with `getUser()` inside the action (actions are public HTTP endpoints)
 - [ ] Mutate via the server client; map DB errors into the typed `ActionResult`
@@ -50,8 +50,9 @@ Request
 
 Responsibility boundaries:
 
-- **Middleware** refreshes the auth token and redirects signed-out visitors. It never
-  decides *what* a user may touch.
+- **Middleware** refreshes the auth token and redirects signed-out visitors — except on
+  `/api/*`, which gets a 401 envelope, never a login page. It runs on the Edge Runtime and
+  never decides *what* a user may touch.
 - **Handlers/Actions** own validation, authorization, business logic, and the response
   contract. They are the only place that talks to Supabase.
 - **Postgres (RLS + constraints)** is the enforcement layer that holds even when
@@ -77,7 +78,8 @@ lib/
     middleware.ts                # updateSession (token refresh)
   validations/
     <feature>.ts                 # Zod schemas shared by handlers and actions
-  env.ts                         # Zod-validated env — the only process.env access point
+  env.ts                         # server-only secrets (Zod-validated, `import 'server-only'`)
+  env.public.ts                  # NEXT_PUBLIC_* (static member access — browser-safe)
   api/
     errors.ts                    # ok / fail / fromSupabaseError helpers
     types.ts                     # ActionResult, envelope types
@@ -229,7 +231,8 @@ import type { Database } from '@/types/database'
 | 403 | signed in but not allowed (RLS `42501`) | `forbidden` |
 | 404 | missing — or hidden by RLS (`PGRST116`); don't leak existence | `not_found` |
 | 409 | unique conflict (`23505`) | `conflict` |
-| 500 | unexpected — log internals, return a generic message | `internal_error` |
+| 429 | rate limited (external store, never in-memory) | `rate_limited` |
+| 500 | unexpected — top-level catch logs internals, returns a generic message | `internal_error` |
 
 **Anti-patterns (never do):**
 
@@ -245,23 +248,28 @@ import type { Database } from '@/types/database'
 - A table without RLS enabled
 - Multi-statement mutations without an RPC (supabase-js has no transactions)
 - Returning raw Postgres/Supabase error messages (`error.message`) to the client
-- Direct `process.env` access in app code — import the validated `env` from `lib/env.ts`
-- Redirecting to a user-supplied URL without an internal-path check (open redirect)
+- Direct `process.env` access in app code — import `serverEnv` (`lib/env.ts`, `server-only`) or `publicEnv` (`lib/env.public.ts`)
+- Redirecting to a user-supplied URL without parsing it and comparing origins (prefix checks alone are bypassable)
+- Middleware that answers an `/api/*` request with an HTML redirect instead of a 401 envelope
+- An in-memory (module-scope `Map`) rate limiter — Edge isolates share no memory
+- `security definer` / any Postgres function without `set search_path = ''`
+- Passing an unvalidated `sort`/`order` query param to `.order()`
 
 ## Navigation Guide
 
 | If you need to... | Read |
 | --- | --- |
-| Create/modify a Route Handler; handler vs action; webhooks; caching; CORS | `resources/api-routes.md` |
-| Write a Server Action (form mutations, revalidation, redirect, file upload) | `resources/api-routes.md` |
+| Create/modify a Route Handler; handler vs action; webhooks + signature verification; caching | `resources/api-routes.md` |
+| Write a Server Action — form action vs directly-called action, revalidation, redirect, file upload | `resources/api-routes.md` |
 | Query/insert/update/delete via Supabase; filters; pagination; RPC transactions | `resources/database-patterns.md` |
 | Upload files or issue signed URLs (Storage); avoid N+1; index queries | `resources/database-patterns.md` |
 | Enable table change events (Realtime) | `resources/database-patterns.md` |
-| Design or alter a table schema | **T1 data-modeling card (hub rule)** — not duplicated in this skill |
+| Design or alter a table schema | **T1 data-modeling card** at `.claude/rules/data-modeling.md` — auto-loads only on DB paths (`supabase/**`, `**/migrations/**`, `db/**`, `prisma/**`, `drizzle/**`); from `app/api/**` open it by path. Not duplicated in this skill |
 | Define validation schemas; FormData quirks; duplicate rules as DB constraints | `resources/validation-and-errors.md` |
-| Validate env vars (`lib/env.ts`); advanced Zod recipes | `resources/validation-and-errors.md` |
-| Map errors to status codes; error envelope; Supabase error code table | `resources/validation-and-errors.md` |
+| Validate env vars (`lib/env.ts` + `lib/env.public.ts` split); advanced Zod recipes | `resources/validation-and-errors.md` |
+| Map errors to status codes; error envelope; Supabase error code table; the top-level `route()` catch that guarantees a JSON 500 | `resources/validation-and-errors.md` |
 | Middleware/session refresh; authorization; RLS policies; service-role client | `resources/auth-boundaries.md` |
 | Build the auth flow (sign-in/up/out actions, post-login redirect) | `resources/auth-boundaries.md` |
+| Know what may run in middleware (Edge Runtime limits); rate limiting; security headers; CORS; request ids; structured logging | `resources/edge-and-operations.md` |
 | Write backend tests (schemas, handlers, actions, RLS integration) | `resources/testing.md` |
-| See one endpoint end-to-end (validate → process → respond) | `resources/complete-example.md` |
+| See one endpoint end-to-end (validate → process → respond); the canonical `notes` schema | `resources/complete-example.md` |

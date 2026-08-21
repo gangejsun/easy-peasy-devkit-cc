@@ -31,7 +31,7 @@ import하면 빌드 에러가 나지만, **일반 서버 코드는 에러 없이
 클라이언트 래퍼가 필요해도 내부 콘텐츠는 서버에 남길 수 있다.
 
 ```tsx
-// app/tasks/page.tsx (Server Component)
+// app/(main)/tasks/page.tsx (Server Component)
 <CollapsiblePanel title="Tasks">
   <TaskList tasks={tasks} />   {/* Server Component인 채로 통과 */}
 </CollapsiblePanel>
@@ -66,7 +66,7 @@ export function CollapsiblePanel({ title, children }: CollapsiblePanelProps) {
 Server → Client로는 JSON 직렬화 가능한 값과 Server Action 참조만 전달한다.
 일반 함수·클래스 인스턴스·Supabase 클라이언트 객체는 전달 금지.
 
-## 3. 반복 UI 추출 (2회 규칙) — 필수 규칙의 심화
+## 3. 반복 UI 추출 (2회 검토 · 3회 필수) — 필수 규칙의 심화
 
 같은 마크업 패턴이 **2회 등장하면 추출을 검토하고, 3회면 반드시 추출**한다.
 추출 목적지는 반복의 범위로 결정한다.
@@ -157,7 +157,7 @@ export function PageHeader({ title, backHref, rightSlot }: PageHeaderProps) {
 
 ```tsx
 // 사용처: 모든 sub 페이지가 동일 인터페이스를 공유한다
-<PageHeader title="게시글" backHref="/posts" />
+<PageHeader title="할 일" backHref="/tasks" />
 <PageHeader title="설정" backHref="/" rightSlot={<SaveButton />} />
 ```
 
@@ -165,8 +165,8 @@ export function PageHeader({ title, backHref, rightSlot }: PageHeaderProps) {
 // Bad: 같은 헤더를 페이지마다 인라인 복제 —
 // 높이·폰트가 페이지마다 어긋나기 시작한다 (h-12/h-14/h-16, text-lg/text-base 혼재)
 <header className="sticky top-0 …">
-  <Link href="/posts"><ChevronLeft /></Link>
-  <h1 className="text-lg font-semibold">게시글</h1>
+  <Link href="/tasks"><ChevronLeft /></Link>
+  <h1 className="text-lg font-semibold">할 일</h1>
 </header>
 ```
 
@@ -204,7 +204,7 @@ export function SearchInput({ defaultValue, ref, onSearch }: SearchInputProps) {
 ### 로딩 — 라우트 단위는 `loading.tsx`, 부분 단위는 `<Suspense>`
 
 ```tsx
-// app/tasks/loading.tsx — 라우트 전환 시 자동 표시 (자동 Suspense 경계)
+// app/(main)/tasks/loading.tsx — 라우트 전환 시 자동 표시 (자동 Suspense 경계)
 import { Skeleton } from '@/components/ui/skeleton'
 
 export default function TasksLoading() {
@@ -224,23 +224,40 @@ export default function TasksLoading() {
 
 ### 빈 상태 — "0건"은 에러가 아니다
 
+빈 상태는 화면마다 반복되는 대표적 UI다 — §3의 규칙대로 `components/common/`에 추출한다.
+
 ```tsx
-if (tasks.length === 0) {
+// components/common/empty-state.tsx (Server Component — 훅 불필요)
+interface EmptyStateProps {
+  title: string
+  description?: string
+  action?: React.ReactNode        // 다음 행동 유도 버튼·링크
+}
+
+export function EmptyState({ title, description, action }: EmptyStateProps) {
   return (
     <div className="rounded-lg border border-dashed p-8 text-center">
-      <p className="text-sm text-muted-foreground">아직 등록된 항목이 없습니다.</p>
-      <p className="mt-1 text-xs text-muted-foreground">위 폼에서 첫 항목을 추가해 보세요.</p>
+      <p className="text-sm text-muted-foreground">{title}</p>
+      {description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}
+      {action && <div className="mt-4">{action}</div>}
     </div>
   )
 }
 ```
 
-빈 상태에는 다음 행동 안내(첫 항목 추가 유도 등)를 함께 표시한다.
+```tsx
+// 사용처: 조기 반환으로 빈 상태를 먼저 처리한다
+if (tasks.length === 0) {
+  return <EmptyState title="아직 등록된 항목이 없습니다." description="위 폼에서 첫 항목을 추가해 보세요." />
+}
+```
+
+빈 상태에는 다음 행동 안내(첫 항목 추가 유도 등)를 함께 표시한다 — `description`이나 `action`이 그 자리다.
 
 ### 에러 — `error.tsx` 경계
 
 ```tsx
-// app/tasks/error.tsx — 이 세그먼트에서 throw된 에러를 잡는다
+// app/(main)/tasks/error.tsx — 이 세그먼트에서 throw된 에러를 잡는다
 'use client'
 
 import { Button } from '@/components/ui/button'

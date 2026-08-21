@@ -17,7 +17,7 @@ App Router 라우트 정의·중첩 레이아웃·보호 라우트·metadata.
 ## 2. 동적 라우트 — `params`·`searchParams`는 Promise
 
 ```tsx
-// app/tasks/[id]/page.tsx
+// app/(main)/tasks/[id]/page.tsx — URL: /tasks/<id>
 import { notFound } from 'next/navigation'
 import { getTask } from '@/lib/queries/tasks'
 
@@ -41,13 +41,14 @@ export default async function TaskDetailPage({ params }: PageProps) {
 
 ```
 app/
-├── (marketing)/          # 괄호 = URL에 미포함, 그룹별 layout 분리용
-│   ├── layout.tsx        # 마케팅 전용 레이아웃 (예: 랜딩 헤더)
-│   └── about/page.tsx    # URL: /about
-├── (app)/
-│   ├── layout.tsx        # 앱 전용 레이아웃 (예: 사이드바)
-│   └── tasks/page.tsx    # URL: /tasks
-└── tasks/_components/    # 밑줄 접두사 = 라우팅에서 제외 (콜로케이션용)
+├── (auth)/                        # 괄호 = URL에 미포함, 그룹별 layout 분리용
+│   ├── layout.tsx                 # 인증 전용 레이아웃 (앱 크롬 없음)
+│   └── login/page.tsx             # URL: /login
+└── (main)/
+    ├── layout.tsx                 # 앱 전용 레이아웃 (헤더·사이드바)
+    └── tasks/
+        ├── page.tsx               # URL: /tasks
+        └── _components/           # 밑줄 접두사 = 라우팅에서 제외 (콜로케이션용)
 ```
 
 - 라우트 그룹 `(name)`: URL 구조를 바꾸지 않고 레이아웃 경계를 나눈다
@@ -56,14 +57,18 @@ app/
 ## 4. 중첩 레이아웃
 
 ```tsx
-// app/(app)/layout.tsx — (app) 그룹의 모든 페이지가 공유
+// app/(main)/layout.tsx — (main) 그룹의 모든 페이지가 공유
 import { AppSidebar } from '@/components/layout/app-sidebar'
+import { AppHeader } from '@/components/layout/app-header'
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <AppSidebar />
-      <div className="flex-1">{children}</div>
+      <div className="flex-1">
+        <AppHeader />
+        {children}
+      </div>
     </div>
   )
 }
@@ -72,6 +77,39 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 - 레이아웃은 중첩된다: 루트 layout → 그룹 layout → 페이지
 - 레이아웃은 내비게이션 간 상태를 유지하고 리렌더되지 않는다 —
   현재 페이지에 의존하는 UI(활성 메뉴 강조)는 `usePathname`을 쓰는 클라이언트 잎으로 분리
+
+### 인증 조건부 헤더 — 서버에서 분기한다
+
+로그인 여부에 따라 사용자 메뉴/로그인 버튼을 가르는 헤더는 **Server Component**로 만든다.
+클라이언트에서 세션을 조회하면 첫 렌더에 로그인 버튼이 잠깐 보였다가 바뀐다(깜빡임).
+
+```tsx
+// components/layout/app-header.tsx (Server Component — 'use client' 없음)
+import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
+import { Button } from '@/components/ui/button'
+import { UserMenu } from './user-menu'          // 'use client' — 드롭다운·로그아웃 버튼
+
+export async function AppHeader() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()   // 인증 확인은 직접 호출 허용
+
+  return (
+    <header className="flex h-14 items-center justify-between border-b px-4">
+      <Link href="/" className="font-semibold">Tasks</Link>
+      {user ? (
+        <UserMenu email={user.email ?? ''} />                {/* 직렬화 가능한 값만 전달 */}
+      ) : (
+        <Button asChild size="sm"><Link href="/login">로그인</Link></Button>
+      )}
+    </header>
+  )
+}
+```
+
+- `user` 객체 전체를 클라이언트로 넘기지 말고 필요한 필드만 props로 내린다
+- 역할·권한 표시는 `user.user_metadata`가 아니라 서버에서 조회한 프로필 행을 근거로 한다
+  (`user_metadata`는 사용자가 수정할 수 있다 — 권한 판정 금지, backend-guide 관할)
 
 ## 5. 내비게이션
 
@@ -155,7 +193,7 @@ export async function updateSession(request: NextRequest) {
 ```
 
 ```tsx
-// 보호 페이지에서의 재확인 (미들웨어만 믿지 않는다)
+// app/(main)/tasks/page.tsx — 보호 페이지에서의 재확인 (미들웨어만 믿지 않는다)
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 

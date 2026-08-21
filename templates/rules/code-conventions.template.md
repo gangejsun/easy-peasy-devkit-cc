@@ -43,7 +43,7 @@ paths:
 | 컴포넌트/클래스 파일   | PascalCase                               | `ProductCard`, `OrderService`    |
 | 함수/변수/유틸/훅 파일 | camelCase                                | `formatPrice`, `useCart.ts`      |
 | 상수                   | UPPER_SNAKE_CASE                         | `MAX_RETRIES`, `API_BASE_URL`    |
-| DB 네이밍              | snake_case · 복수형 테이블 · `_at` 접미사 | 상세: backend-guide 스킬의 data-modeling 리소스 §6 |
+| DB 네이밍              | snake_case · 복수형 테이블 · `_at` 접미사 | 상세: `.claude/rules/data-modeling.md` (T1 카드 — DB 경로 편집 시 자동 로드) |
 | 타입/인터페이스        | PascalCase + 접미사                      | `OrderResponse`, `UserProfile`   |
 | 상태 스토어            | use~Store                                | `useAuthStore`                   |
 

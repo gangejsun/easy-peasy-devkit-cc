@@ -15,17 +15,12 @@ Both run on the server, validate input, and call `getUser()` — neither is "mor
 
 ## Response contract (all Route Handlers)
 
-Every JSON response uses one envelope, produced by `lib/api/errors.ts` helpers:
+One envelope from the `lib/api/errors.ts` helpers: success `{ "data": … }`, failure
+`{ "error": { "code": "validation_error", "message": "Invalid input", "details": { "title": ["Required"] } } }`.
 
-```jsonc
-// success                          // failure
-{ "data": { ... } }                 { "error": { "code": "validation_error",
-                                                 "message": "Invalid input",
-                                                 "details": { "title": ["Required"] } } }
-```
-
-- `code` is stable and machine-readable; `message` is generic and human-readable — never a raw Postgres/Supabase error message (log those server-side).
+- `code` is stable and machine-readable; `message` is generic — never a raw Postgres/Supabase error message (log those server-side).
 - Status codes: table in SKILL.md; mapping helpers in `resources/validation-and-errors.md`.
+- It holds for **every** JSON response on an `/api/*` path — the 401 middleware returns for unauthenticated API requests (`resources/auth-boundaries.md`) and the 500 from the top-level catch (`resources/validation-and-errors.md`) included.
 
 ## Collection handler — canonical shape
 
@@ -65,9 +60,9 @@ export async function POST(request: NextRequest) {
 }
 ```
 
-The order is fixed: **parse → validate → authenticate → query → respond.**
-Validation failures return before any auth or DB work happens. The GET (list) twin —
-query-param validation + pagination — follows the same order; full listing in
+The order is fixed: **parse → validate → authenticate → query → respond.** Validation
+failures return before any auth or DB work. The GET (list) twin — query-param validation,
+sort whitelist, pagination — follows the same order; full listing in
 `resources/complete-example.md`.
 
 ## Item handler — async params (Next.js 15)
@@ -98,6 +93,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     .from('notes')
     .select('id, title, content, tags, created_at')
     .eq('id', id)
+    .eq('user_id', user.id)       // reads scope by owner too — RLS is the backup, not the only guard
     .single()
   // PGRST116 (0 rows) → 404 — also when RLS hides the row. Do not leak existence.
   if (error) return fromSupabaseError(error)
@@ -106,7 +102,13 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const { id } = await params
-  const parsed = updateNoteSchema.safeParse(await request.json().catch(() => null))
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return fail(400, 'invalid_json', 'Request body must be valid JSON')  // same split as POST
+  }
+  const parsed = updateNoteSchema.safeParse(body)
   if (!parsed.success) {
     return fail(400, 'validation_error', 'Invalid input',
       z.flattenError(parsed.error).fieldErrors)
@@ -146,9 +148,11 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
 }
 ```
 
-Mutations scope by `id` **and** `user_id` — the explicit filter keeps intent visible and
-survives a broken RLS policy. A delete without `.select()` claims success even when it
-deleted nothing; always confirm the affected rows.
+Every owner-scoped query — reads included — filters by `id` **and** `user_id`: the explicit
+filter keeps intent visible and survives a broken RLS policy. A delete without `.select()`
+claims success even when it deleted nothing; always confirm the affected rows.
+Malformed JSON is `invalid_json`, not `validation_error` — keep that split on every method
+that reads a body (`.catch(() => null)` collapses the two).
 
 ## Caching behavior
 
@@ -157,25 +161,11 @@ deleted nothing; always confirm the affected rows.
 - Public, auth-free data may opt in: `export const dynamic = 'force-static'` +
   `export const revalidate = 60`. Never on a handler that reads cookies.
 
-## CORS — only when external origins call the API
+## CORS, security headers, rate limiting
 
-Same-origin apps need none of this. For a route consumed from another origin:
-
-```ts
-const CORS = {
-  'Access-Control-Allow-Origin': 'https://app.example.com', // never '*' on authenticated endpoints
-  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-}
-
-// Preflight — browsers send OPTIONS before non-simple requests; without this they never
-// reach your GET/POST
-export async function OPTIONS() {
-  return new Response(null, { status: 204, headers: CORS })
-}
-```
-
-Spread the same headers into every real response of that route: `NextResponse.json({ data }, { headers: CORS })`.
+Same-origin apps need no CORS at all. Cross-origin routes, the `OPTIONS` preflight handler,
+security headers, request ids, and rate limiting all live in
+`resources/edge-and-operations.md`.
 
 ## Server Actions — canonical shape
 
@@ -224,13 +214,24 @@ export async function createNote(
 }
 ```
 
+### Two action shapes — pick by call site
+
+| | Form action | Directly-called action |
+| --- | --- | --- |
+| Signature | `(prevState, formData) => Promise<ActionResult>` | `(id: string, …args) => Promise<ActionResult>` |
+| Called from | `useActionState` / `<form action={…}>` | `onClick`, `useTransition`, an event handler |
+| Input source | `FormData` — validate with the shared Zod schema | plain arguments — validate them the same way (`z.uuid().safeParse(id)`) |
+
+Both are equally public: **arguments are client input**, so a directly-called `deleteNote(id)`
+still opens with `z.uuid().safeParse(id)` → `getUser()` → `.eq('id', id).eq('user_id', user.id)`
+— never "the button only renders for owners". The argument shape needs JS (no progressive
+enhancement), so prefer the form shape whenever the UI is a form.
+
 Rules that differ from Route Handlers:
 
-- Signature `(prevState, formData)` keeps the action compatible with `useActionState`.
 - Return values must be **serializable** — plain objects only, no `Error` instances.
 - `redirect()` and `notFound()` throw internally — never call them inside `try/catch`.
-- After every successful mutation, revalidate (`revalidatePath`/`revalidateTag`) or the
-  UI will show stale cached data.
+- Revalidate (`revalidatePath`/`revalidateTag`) after every successful mutation, or the UI shows stale cached data.
 - An action used by external clients is a smell — promote it to a Route Handler.
 
 ## File-upload Server Action
@@ -241,17 +242,12 @@ Rules that differ from Route Handlers:
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB — mirror the cap in the bucket settings
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
-export async function uploadAvatar(
-  _prev: ActionResult | null,
-  formData: FormData,
-): Promise<ActionResult> {
+export async function uploadAvatar(_p: ActionResult | null, formData: FormData): Promise<ActionResult> {
   const file = formData.get('avatar')
-  if (!(file instanceof File) || file.size === 0)
-    return { ok: false, formError: 'No file provided' }
+  if (!(file instanceof File) || file.size === 0) return { ok: false, formError: 'No file provided' }
   if (file.size > MAX_SIZE) return { ok: false, formError: 'File too large (max 5MB)' }
   // file.type is client-supplied — a first filter, not proof; keep bucket MIME limits on
-  if (!ALLOWED_TYPES.includes(file.type))
-    return { ok: false, formError: 'Unsupported file type' }
+  if (!ALLOWED_TYPES.includes(file.type)) return { ok: false, formError: 'Unsupported file type' }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -259,10 +255,9 @@ export async function uploadAvatar(
 
   const path = `${user.id}/${crypto.randomUUID()}.${file.type.split('/')[1]}`
   const { error } = await supabase.storage
-    .from('avatars')
-    .upload(path, file, { contentType: file.type })
+    .from('avatars').upload(path, file, { contentType: file.type })
   if (error) {
-    console.error('[uploadAvatar]', error)
+    console.error('[uploadAvatar]', error)   // detail stays server-side
     return { ok: false, formError: 'Upload failed. Please try again.' }
   }
   revalidatePath('/settings/profile')
@@ -284,6 +279,7 @@ export async function POST(request: NextRequest) {
   // 1. Read the RAW body first — signatures are computed over exact bytes
   const raw = await request.text()
   const signature = request.headers.get('x-provider-signature')
+  // verifySignature must compare digests in CONSTANT TIME (below)
   if (!signature || !(await verifySignature(raw, signature))) {
     return fail(401, 'invalid_signature', 'Signature verification failed')
   }
@@ -297,4 +293,8 @@ export async function POST(request: NextRequest) {
 }
 ```
 
-Verify the signature **before** acting on anything; make processing idempotent (providers retry deliveries); return 200 quickly and queue slow work.
+Verify **before** acting; make processing idempotent (providers retry); return 200 fast and queue slow work.
+Compare digests in **constant time** — `expected === received` leaks the first differing byte
+and is forgeable byte-by-byte. Use the provider SDK's verify helper, or Node's
+`crypto.timingSafeEqual` on equal-length buffers (unequal length = immediate reject).
+This handler needs the Node runtime; middleware cannot do it (`resources/edge-and-operations.md`).

@@ -13,7 +13,7 @@ Next.js 15(App Router) + React 19 + TypeScript strict + Tailwind CSS v4 + shadcn
 - [ ] Server Component로 시작 — 상호작용(이벤트·훅·브라우저 API)이 필요할 때만 `'use client'`
 - [ ] 배치 결정: 한 라우트 전용이면 `app/<route>/_components/`, 공유면 `components/`
 - [ ] 새 공통 컴포넌트를 만들기 전 `components/layout/`·`components/common/`을 grep으로 확인 — 있으면 재사용
-- [ ] 같은 UI가 2회 이상 반복되면 공통 컴포넌트로 추출 (Core Principle 3)
+- [ ] 같은 UI가 2회 반복되면 추출을 검토하고, 3회면 반드시 공통 컴포넌트로 추출 (Core Principle 3)
 - [ ] Props는 `interface XxxProps`로 파일 상단에 정의 (TypeScript strict, `any` 금지)
 - [ ] 기존 shadcn/ui 컴포넌트(`components/ui/`)를 먼저 재사용 — 없으면 CLI로 추가
 - [ ] 스타일은 Tailwind 유틸리티 + `cn()` 조합, 시맨틱 토큰(`bg-background` 등) 우선
@@ -21,8 +21,9 @@ Next.js 15(App Router) + React 19 + TypeScript strict + Tailwind CSS v4 + shadcn
 
 ### New Page (Route)
 
-- [ ] `app/<경로>/page.tsx` 생성 — 폴더 구조가 곧 URL
-- [ ] 데이터 페칭은 Server Component에서 `lib/queries/` 함수 호출로 (컴포넌트 인라인 쿼리 금지)
+- [ ] `app/(main)/<경로>/page.tsx` 생성 — 폴더 구조가 곧 URL (괄호 그룹은 URL에 미포함)
+- [ ] 데이터 조회는 Server Component에서 `lib/queries/` 함수 호출로 (컴포넌트 인라인 데이터 쿼리 금지)
+- [ ] 인증 확인(`auth.getUser()`)은 예외 — 페이지·레이아웃에서 직접 호출한다 (쿼리 계층 경유 아님)
 - [ ] `params`·`searchParams`는 Promise — 반드시 `await` (Next.js 15)
 - [ ] `loading.tsx` 또는 `<Suspense>`로 로딩 UI 정의
 - [ ] `error.tsx`로 에러 경계 정의 (`'use client'` 필수)
@@ -59,16 +60,19 @@ Next.js 15 App Router (React 19)
 ```
 app/
 ├── layout.tsx              # 루트 레이아웃 (globals.css·폰트·Provider)
-├── page.tsx
 ├── globals.css             # Tailwind v4 진입점 (@import "tailwindcss")
 ├── (auth)/                 # 라우트 그룹 — URL에 미포함
-│   └── login/page.tsx
-└── tasks/
-    ├── page.tsx            # Server Component (데이터 페칭)
-    ├── loading.tsx         # 라우트 로딩 UI
-    ├── error.tsx           # 라우트 에러 경계
-    ├── actions.ts          # Server Actions (변이)
-    └── _components/        # 이 라우트 전용 컴포넌트 (라우팅 제외)
+│   ├── layout.tsx          # 인증 화면 전용 레이아웃 (앱 크롬 없음)
+│   └── login/page.tsx      # URL: /login
+└── (main)/                 # 앱 본체 그룹
+    ├── layout.tsx          # 헤더·사이드바 등 앱 공통 크롬
+    ├── page.tsx            # URL: /
+    └── tasks/
+        ├── page.tsx        # Server Component (데이터 페칭) — URL: /tasks
+        ├── loading.tsx     # 라우트 로딩 UI
+        ├── error.tsx       # 라우트 에러 경계
+        ├── actions.ts      # Server Actions (변이)
+        └── _components/    # 이 라우트 전용 컴포넌트 (라우팅 제외)
 components/
 ├── ui/                     # shadcn/ui 생성 컴포넌트 (CLI로 추가)
 ├── layout/                 # 페이지 골격 공통 (PageHeader·사이드바 등)
@@ -91,6 +95,7 @@ middleware.ts               # 세션 갱신 + 보호 라우트 matcher
 
 ```tsx
 // Good: 페이지는 서버에서 페칭, 상호작용 부분만 클라이언트
+// app/(main)/tasks/page.tsx
 export default async function TasksPage() {
   const tasks = await getTasks()
   return <TaskList tasks={tasks} />        // 데이터는 props로 주입
@@ -113,9 +118,11 @@ useEffect(() => {
 }, [])
 ```
 
-예외는 realtime 구독·인증 상태 UI뿐 — resources/data-fetching.md 참조.
+예외는 두 가지뿐이다. ① 인증 확인 — `auth.getUser()`는 페이지·레이아웃·액션에서 직접 호출한다
+(쿼리 계층 경유 대상이 아니다). ② 클라이언트의 realtime 구독·인증 상태 UI.
+resources/data-fetching.md 참조.
 
-### 3. 반복 UI는 공통 컴포넌트·레이아웃으로 추출 (2회 규칙)
+### 3. 반복 UI는 공통 컴포넌트·레이아웃으로 추출 (2회 검토 · 3회 필수)
 
 ```tsx
 // Bad: 같은 섹션 골격을 페이지마다 복사 (3번째 중복)
@@ -175,7 +182,7 @@ import { redirect, notFound } from 'next/navigation'
 import { cache } from 'react'
 
 // ── 클라이언트 컴포넌트 ('use client' 파일)
-import { useState, useActionState, useOptimistic } from 'react'
+import { useState, useActionState, useOptimistic, useTransition } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useUiStore } from '@/stores/ui-store-provider'
@@ -196,10 +203,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 ```tsx
 import { getTasks } from '@/lib/queries/tasks'
 
-interface TasksPanelProps { userId: string }
-
-export async function TasksPanel({ userId }: TasksPanelProps) {
-  const tasks = await getTasks(userId)
+export async function TasksPanel() {
+  const tasks = await getTasks()             // RLS가 본인 행만 반환 — userId 인자 불필요
   if (tasks.length === 0) return <p className="text-sm text-muted-foreground">아직 항목이 없습니다.</p>
   return <ul className="space-y-2">{tasks.map((t) => <li key={t.id}>{t.title}</li>)}</ul>
 }
@@ -234,10 +239,12 @@ export function ToggleChip({ label, onToggle }: ToggleChipProps) {
 | 반복 UI 추출, 공통 레이아웃(PageHeader)·섹션 컴포넌트 | resources/component-patterns.md |
 | 로딩·빈·에러 3상태 처리 (스켈레톤·에러 경계) | resources/component-patterns.md |
 | 데이터 페칭, 쿼리 계층(lib/queries), 캐싱·재검증, 변이 후 갱신 | resources/data-fetching.md |
-| 페이지·레이아웃 추가, 동적 라우트, 보호 라우트, metadata | resources/routing.md |
+| 서버 측 검색·필터·페이지네이션(count·range), 낙관적 UI(useOptimistic) | resources/data-fetching.md |
+| 페이지·레이아웃 추가, 동적 라우트, 보호 라우트, 인증 조건부 헤더, metadata | resources/routing.md |
 | 클라이언트 상태 설계, Zustand 스토어·Provider·persist, RHF+Zod 폼 경계 | resources/state-management.md |
+| URL 상태(searchParams 읽기·쓰기), 버튼형 변이의 pending 처리(useTransition) | resources/state-management.md |
 | 스타일링, Tailwind v4 토큰, shadcn/ui 추가·변형(CVA), 다크 모드 | resources/styling.md |
 | 이미지·dynamic import·메모이제이션·디바운스 등 성능 최적화 | resources/performance.md |
 | 타입 설계, any 제거, 유틸리티 타입, Supabase 생성 타입 | resources/typescript-standards.md |
-| 파일 배치·파일명 규칙, 디렉토리 구조, import 순서 | resources/file-organization.md |
+| 파일 배치·파일명 규칙, 디렉토리 구조, import 순서, export 방식, 파일 내부 작성 순서 | resources/file-organization.md |
 | 기능 하나를 처음부터 끝까지 (목록 + 생성 관통 예제) | resources/complete-example.md |

@@ -19,8 +19,8 @@ import Image from 'next/image'
 // 반응형 (fill) — 부모에 relative + 비율 지정, sizes로 다운로드 크기 축소
 <div className="relative aspect-video">
   <Image
-    src={post.imageUrl}
-    alt={post.title}
+    src={imageUrl}
+    alt={title}
     fill
     className="rounded-lg object-cover"
     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -72,21 +72,49 @@ export function EditToggle({ content }: { content: string }) {
 ## 4. useMemo · useCallback — 필요한 곳에만
 
 ```tsx
+// app/(main)/tasks/_components/task-stats.tsx
 'use client'
 
-import { useMemo, useCallback } from 'react'
+import { memo, useCallback, useMemo, useState } from 'react'
+import { cn } from '@/lib/utils'
+import type { Task } from '@/lib/queries/tasks'
 
-// Good: 비싼 계산에만 useMemo
-const stats = useMemo(
-  () => ({
-    total: items.length,
-    doneCount: items.filter((i) => i.done).length,
-  }),
-  [items]
-)
+export function TaskStats({ tasks }: { tasks: Task[] }) {
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
-// Good: memo된 자식에 전달하는 핸들러에만 useCallback
-const handleDelete = useCallback((id: string) => deleteItem(id), [])
+  // Good: 비싼 계산에만 useMemo
+  const stats = useMemo(
+    () => ({ total: tasks.length, doneCount: tasks.filter((t) => t.done).length }),
+    [tasks]
+  )
+
+  // Good: memo된 자식에 전달하는 핸들러에만 useCallback
+  //       (핸들러 참조가 매 렌더 바뀌면 자식의 memo가 무력화된다)
+  const handleSelect = useCallback((id: string) => setSelectedId(id), [])
+
+  return (
+    <div className="space-y-1">
+      <p className="text-sm text-muted-foreground">{stats.doneCount} / {stats.total} 완료</p>
+      {tasks.map((task) => (
+        <TaskRow key={task.id} task={task} selected={task.id === selectedId} onSelect={handleSelect} />
+      ))}
+    </div>
+  )
+}
+
+interface TaskRowProps {
+  task: Task
+  selected: boolean
+  onSelect: (id: string) => void
+}
+
+const TaskRow = memo(function TaskRow({ task, selected, onSelect }: TaskRowProps) {
+  return (
+    <button onClick={() => onSelect(task.id)} className={cn('block w-full text-left text-sm', selected && 'font-semibold')}>
+      {task.title}
+    </button>
+  )
+})
 ```
 
 ```tsx
@@ -133,40 +161,67 @@ export function useDebounce<T>(value: T, delay = 300): T {
 ```
 
 ```tsx
+// app/(main)/tasks/_components/search-bar.tsx
 'use client'
 
-// 검색 입력 → 300ms 정지 후에만 URL 갱신(서버 재조회)
-const [query, setQuery] = useState('')
-const debouncedQuery = useDebounce(query, 300)
+import { useEffect, useState } from 'react'
+import { useDebounce } from '@/hooks/use-debounce'
+import { useQueryParams } from '@/hooks/use-query-params'   // 정의: resources/state-management.md §7
+import { Input } from '@/components/ui/input'
 
-useEffect(() => {
-  if (debouncedQuery) setQueryParam('q', debouncedQuery)   // searchParams 갱신
-}, [debouncedQuery])
+export function SearchBar() {
+  const { searchParams, setQueryParam } = useQueryParams()
+  const initial = searchParams.get('q') ?? ''
+  const [query, setQuery] = useState(initial)
+  const debouncedQuery = useDebounce(query, 300)            // 300ms 정지 후에만 URL 갱신
+
+  useEffect(() => {
+    if (debouncedQuery !== initial) setQueryParam('q', debouncedQuery)  // searchParams 갱신 → 서버 재조회
+  }, [debouncedQuery, initial, setQueryParam])
+
+  return <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="검색" />
+}
 ```
+
+URL이 바뀌면 Server Component가 새 `searchParams`로 다시 실행된다 — 클라이언트 재페칭 코드는
+필요 없다. 서버 쪽 검색 쿼리 작성은 resources/data-fetching.md의 검색·페이지네이션 절 참조.
 
 ## 7. 리소스 정리 — Memory Leak 방지
 
 `useEffect`에서 만든 구독·타이머·리스너는 반드시 cleanup으로 해제한다.
 
 ```tsx
+// components/common/live-status.tsx
 'use client'
 
-useEffect(() => {
-  const interval = setInterval(poll, 5000)             // 인터벌
-  return () => clearInterval(interval)
-}, [])
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 
-useEffect(() => {
-  const controller = new AbortController()             // fetch 취소
-  fetch(url, { signal: controller.signal }).then(/* … */).catch(() => {})
-  return () => controller.abort()
-}, [url])
+export function LiveStatus({ statusUrl }: { statusUrl: string }) {
+  const router = useRouter()
+  const [narrow, setNarrow] = useState(false)
 
-useEffect(() => {
-  const handler = () => {/* … */}                      // 이벤트 리스너
-  window.addEventListener('resize', handler)
-  return () => window.removeEventListener('resize', handler)
-}, [])
+  useEffect(() => {
+    const interval = setInterval(() => router.refresh(), 5000)   // 인터벌
+    return () => clearInterval(interval)
+  }, [router])
+
+  // 아래 fetch는 "cleanup 기법 시연"이다 — 이 스택의 데이터 조회는 Server Component가 한다.
+  // 클라이언트 fetch는 Supabase 밖의 외부 API(상태 배지·서드파티 위젯)에만 쓴다.
+  useEffect(() => {
+    const controller = new AbortController()                     // 요청 취소
+    fetch(statusUrl, { signal: controller.signal }).catch(() => {})
+    return () => controller.abort()
+  }, [statusUrl])
+
+  useEffect(() => {
+    const handler = () => setNarrow(window.innerWidth < 768)     // 이벤트 리스너
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
+
+  return <span className="text-xs text-muted-foreground">{narrow ? '모바일' : '데스크톱'}</span>
+}
 ```
 
 Supabase realtime 채널도 동일하다 — `removeChannel`로 해제 (resources/data-fetching.md).
@@ -175,10 +230,10 @@ Supabase realtime 채널도 동일하다 — `removeChannel`로 해제 (resource
 
 ```tsx
 // Good: 안정적인 고유 key
-{tasks.map((task) => <TaskItem key={task.id} task={task} />)}
+{tasks.map((task) => <TaskCard key={task.id} task={task} />)}
 
 // Bad: 인덱스 key — 항목 추가/삭제/정렬 시 상태가 어긋난다
-{tasks.map((task, index) => <TaskItem key={index} task={task} />)}
+{tasks.map((task, index) => <TaskCard key={index} task={task} />)}
 ```
 
 ## 9. 성능 체크리스트
