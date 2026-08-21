@@ -1,0 +1,26 @@
+{
+  "axis": "frontend",
+  "name": "vanilla",
+  "displayName": "Vanilla JS/TS (프레임워크 없음)",
+  "description": "프레임워크 없는 브라우저 프론트엔드 — 표준 DOM API + ES 모듈. 랜딩 페이지·위젯·경량 사이트용. 번들러는 Vite를 기본으로 둔다.",
+  "techStack": {
+    "framework": "없음 (Vanilla)",
+    "language": "JavaScript",
+    "packageManager": "npm",
+    "commands": {
+      "build": "npm run build",
+      "test": "npm test",
+      "lint": "npm run lint"
+    },
+    "additionalStack": ["Vite (번들러)"]
+  },
+  "domains": {
+    "sourceDir": "src",
+    "importAlias": ""
+  },
+  "notes": {
+    "serverCode": "서버 런타임 없음 — 서버 로직은 백엔드 축이 전적으로 소유한다. 백엔드가 BaaS면 브라우저에서 SDK를 직접 호출하므로 데이터 계층 정책이 유일한 경계다",
+    "language": "기본은 JavaScript다. TypeScript를 고르면 타입 표준 슬롯이 살아나고, JavaScript면 그 슬롯은 JSDoc 주석 규약으로 대체된다",
+    "guideShape": "컴포넌트·상태 관리 슬롯을 프레임워크 관용구가 아니라 DOM 조작 경계·모듈 패턴·이벤트 위임으로 채운다. 라우팅은 History API 또는 다중 HTML 진입점"
+  }
+}

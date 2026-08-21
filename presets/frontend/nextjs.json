@@ -12,13 +12,18 @@
       "test": "pnpm test",
       "lint": "pnpm lint"
     },
-    "additionalStack": ["Tailwind CSS v4", "shadcn/ui", "Zustand"]
+    "additionalStack": [
+      "Tailwind CSS v4",
+      "shadcn/ui",
+      "Zustand"
+    ]
   },
   "domains": {
     "sourceDir": "src",
     "importAlias": "@/"
   },
   "notes": {
-    "serverCode": "framework-builtin — Route Handlers·Server Actions가 서버 코드의 기본 위치다. 백엔드 축이 BaaS여도 서버 로직은 여기 산다"
+    "serverCode": "framework-builtin — Route Handlers·Server Actions가 서버 코드의 기본 위치다. 백엔드 축이 BaaS여도 서버 로직은 여기 산다",
+    "language": "기본은 TypeScript strict다. JavaScript를 고르면 타입 표준 슬롯이 JSDoc 규약과 런타임 검증(스키마 라이브러리)으로 대체되고, 생성 타입(DB 스키마→타입) 절은 빠진다"
   }
 }

@@ -26,13 +26,31 @@ trigger: manual
 ① 프론트엔드를 고르세요:
   1. nextjs      — Next.js 15 App Router + React 19 + Tailwind v4 + shadcn/ui + Zustand
   2. react-vite  — React + Vite SPA (SSR 없음) + Tailwind + React Router + Zustand
-  3. none        — 프론트엔드 없음 (API 전용 프로젝트)
+  3. vanilla     — 프레임워크 없음, 표준 DOM + ES 모듈 (랜딩·위젯·경량 사이트)
+  4. none        — 프론트엔드 없음 (API 전용 프로젝트)
+
+   └ 언어: TypeScript(기본) / JavaScript — 프리셋 선택 후 확인합니다
 
 ② 백엔드를 고르세요:
-  1. supabase    — BaaS: PostgreSQL + RLS + Auth + Storage + Realtime
-  2. fastapi     — 자체 서버: FastAPI + SQLAlchemy 2.0 + Pydantic v2 + Alembic
-  3. none        — 백엔드 없음 / 외부 REST API 소비
+  1. supabase        — BaaS: PostgreSQL + RLS + Auth + Storage + Realtime
+  2. firebase        — BaaS: Firestore + Auth + Storage + Cloud Functions
+  3. aws-serverless  — AWS 조립: Lambda + API Gateway + DynamoDB + Cognito
+  4. gcp-serverless  — GCP 조립: Cloud Run/Functions + Firestore + Identity Platform
+  5. fastapi         — 자체 서버: FastAPI + SQLAlchemy 2.0 + Pydantic v2 + Alembic
+  6. none            — 백엔드 없음 / 외부 REST API 소비
 ```
+
+백엔드 축은 **형태가 세 가지**다. 이름만 다른 동급 항목이 아니므로 선택 시 구분해 안내한다:
+
+| 형태 | 해당 | 특징 |
+| --- | --- | --- |
+| BaaS | supabase · firebase | 벤더가 DB·인증·스토리지를 함께 제공. 데이터 계층에 정책 엔진이 있다 |
+| 서버리스 조립 | aws-serverless · gcp-serverless | 관리형 서비스를 직접 조합. **행 수준 정책 엔진이 없을 수 있어** 애플리케이션 층 검사 비중이 커진다 |
+| 자체 서버 | fastapi | 상주 서버를 운영. 애플리케이션 층이 유일한 경계 |
+
+**언어(TypeScript/JavaScript)는 프리셋이 아니라 차원이다.** 프리셋 기본값을 표시하고
+Step 4에서 확인받는다 — 이 값에 따라 가이드의 타입 표준 슬롯이 살아나거나 JSDoc 규약으로
+대체된다.
 
 > **왜 2축인가**: 가이드 내용은 한 축의 함수가 아니라 **조합의 함수**다. 같은 Supabase라도
 > Next.js와 짝지으면 Route Handlers·Server Actions 중심이고, React+Vite SPA와 짝지으면

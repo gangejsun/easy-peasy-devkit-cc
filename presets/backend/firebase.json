@@ -1,0 +1,35 @@
+{
+  "axis": "backend",
+  "name": "firebase",
+  "displayName": "Firebase (BaaS)",
+  "description": "Firebase BaaS — Firestore + Authentication + Storage + Cloud Functions. 서버를 따로 운영하지 않는다.",
+  "techStack": {
+    "backend": {
+      "backendType": "baas",
+      "cloudProvider": "GCP",
+      "database": "Firestore (NoSQL 문서형)",
+      "dataAccess": "Firebase SDK",
+      "auth": "Firebase Authentication"
+    },
+    "additionalStack": ["Firebase (Firestore + Auth + Storage)"]
+  },
+  "security": {
+    "secretPatterns": [
+      {
+        "name": "Google/Firebase Service Account Key",
+        "pattern": "\"type\"\\s*:\\s*\"service_account\"",
+        "action": "block"
+      },
+      {
+        "name": "Service Account private_key_id",
+        "pattern": "\"private_key_id\"\\s*:\\s*\"[a-f0-9]{40}\"",
+        "action": "block"
+      }
+    ]
+  },
+  "notes": {
+    "securityBoundary": "Security Rules가 최종 방어선이다 — 선언형 규칙이 데이터 계층에서 접근을 강제한다. 규칙이 없으면 전면 개방이 기본값이라는 점이 RLS(정책 없으면 전면 차단)와 정반대이므로 가이드에서 반드시 짚는다",
+    "serverCodeLocation": "프론트엔드 축이 서버 런타임을 제공하면 거기에, 아니면 Cloud Functions에",
+    "dataModeling": "NoSQL 문서형이므로 T1 데이터 모델링 카드(관계형)는 paths 미매칭으로 휴면한다 — 문서 설계·비정규화·컬렉션 그룹 쿼리 패턴을 리소스에 직접 작성한다"
+  }
+}

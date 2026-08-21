@@ -12,13 +12,18 @@
       "test": "npm test",
       "lint": "npm run lint"
     },
-    "additionalStack": ["Tailwind CSS", "React Router", "Zustand"]
+    "additionalStack": [
+      "Tailwind CSS",
+      "React Router",
+      "Zustand"
+    ]
   },
   "domains": {
     "sourceDir": "src",
     "importAlias": "@/"
   },
   "notes": {
-    "serverCode": "SPA에는 서버 런타임이 없다 — 서버 로직은 백엔드 축이 전적으로 소유한다. 백엔드가 BaaS면 브라우저에서 SDK를 직접 호출하므로 데이터 계층 보안(행 수준 정책)이 유일한 경계다"
+    "serverCode": "SPA에는 서버 런타임이 없다 — 서버 로직은 백엔드 축이 전적으로 소유한다. 백엔드가 BaaS면 브라우저에서 SDK를 직접 호출하므로 데이터 계층 보안(행 수준 정책)이 유일한 경계다",
+    "language": "기본은 TypeScript다. JavaScript를 고르면 타입 표준 슬롯이 JSDoc 규약으로 대체된다"
   }
 }

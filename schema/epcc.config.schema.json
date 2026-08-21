@@ -99,17 +99,19 @@
               "type": "string",
               "enum": [
                 "baas",
+                "serverless",
                 "cloud-server",
-                "framework-builtin"
+                "framework-builtin",
+                ""
               ],
-              "description": "BaaS (Supabase/Firebase), self-managed cloud API server, or framework-builtin (Route Handlers etc.)"
+              "description": "baas(Supabase·Firebase — 벤더가 DB·인증·스토리지를 함께 제공) / serverless(AWS Lambda·GCP Cloud Functions — 함수 단위 배포, 상주 서버 없음) / cloud-server(직접 운영하는 API 서버 — FastAPI·Express 등) / framework-builtin(Next.js Route Handlers 등 프론트 프레임워크 내장)"
             },
             "cloudProvider": {
               "type": [
                 "string",
                 "null"
               ],
-              "description": "AWS / GCP / Azure / Vercel / self-hosted (required when backendType is cloud-server)"
+              "description": "AWS / GCP / Azure / Vercel / 자체 호스팅 (serverless·cloud-server일 때 필수)"
             },
             "database": {
               "type": "string",
@@ -177,6 +179,7 @@
               "enum": [
                 "nextjs",
                 "react-vite",
+                "vanilla",
                 "none"
               ],
               "description": "presets/frontend/<name>.json"
@@ -185,6 +188,9 @@
               "type": "string",
               "enum": [
                 "supabase",
+                "firebase",
+                "aws-serverless",
+                "gcp-serverless",
                 "fastapi",
                 "none"
               ],
@@ -205,7 +211,8 @@
               "description": "Next.js 15 (App Router) / React + Vite / ..."
             },
             "language": {
-              "type": "string"
+              "type": "string",
+              "description": "TypeScript / JavaScript — 가이드의 타입 표준 슬롯이 이 값에 따라 달라진다"
             },
             "packageManager": {
               "type": "string",

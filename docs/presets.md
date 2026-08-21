@@ -12,17 +12,31 @@
 
 | 이름 | 스택 | 서버 코드 위치 |
 | --- | --- | --- |
-| `nextjs` | Next.js 15 App Router + React 19 + TS strict + Tailwind v4 + shadcn/ui + Zustand | 프레임워크 내장 (Route Handlers·Server Actions) |
-| `react-vite` | React + Vite SPA (SSR 없음) + TS + Tailwind + React Router + Zustand | 없음 — 백엔드 축이 전적으로 소유 |
+| `nextjs` | Next.js 15 App Router + React 19 + Tailwind v4 + shadcn/ui + Zustand | 프레임워크 내장 (Route Handlers·Server Actions) |
+| `react-vite` | React + Vite SPA (SSR 없음) + Tailwind + React Router + Zustand | 없음 — 백엔드 축이 전적으로 소유 |
+| `vanilla` | 프레임워크 없음 — 표준 DOM + ES 모듈 (Vite 번들) | 없음 |
 | `none` | 프론트엔드 없음 (API 전용 프로젝트) | — |
+
+**언어는 프리셋이 아니라 차원이다.** 모든 프론트엔드 프리셋은 TypeScript를 기본값으로
+두되(`vanilla`만 JavaScript 기본), `/epcc-init` Step 4에서 바꿀 수 있다. JavaScript를 고르면
+가이드의 타입 표준 슬롯이 JSDoc 규약과 런타임 스키마 검증으로 대체되고 생성 타입 절은 빠진다.
 
 ## 백엔드 축 (`presets/backend/`)
 
-| 이름 | 스택 | 보안 경계 |
-| --- | --- | --- |
-| `supabase` | BaaS: PostgreSQL + RLS + Auth + Storage + Realtime | RLS가 최종 방어선. 서버 런타임이 있으면 애플리케이션 층 검사와 이중 방어 |
-| `fastapi` | 자체 서버: FastAPI + SQLAlchemy 2.0 + Pydantic v2 + Alembic + pytest | 애플리케이션 층이 유일한 경계 |
-| `none` | 백엔드 없음 / 외부 REST API 소비 | 외부 API 토큰 보관 위치가 위험 지점 |
+백엔드는 **형태가 세 가지**다 — 이름만 다른 동급 항목이 아니다.
+
+| 이름 | 형태 | 스택 | 보안 경계 |
+| --- | --- | --- | --- |
+| `supabase` | BaaS | PostgreSQL + RLS + Auth + Storage + Realtime | RLS가 최종 방어선. 정책이 없으면 **전면 차단** |
+| `firebase` | BaaS | Firestore + Auth + Storage + Cloud Functions | Security Rules가 최종 방어선. 규칙이 없으면 **전면 개방**(RLS와 정반대) |
+| `aws-serverless` | 서버리스 조립 | Lambda + API Gateway + DynamoDB + Cognito | **행 수준 정책 엔진 없음** — 애플리케이션 층 검사가 실질적 유일 경계 |
+| `gcp-serverless` | 서버리스 조립 | Cloud Run/Functions + Firestore + Identity Platform | IAM/토큰 검증 + (직접 접근 경로가 있으면) Security Rules |
+| `fastapi` | 자체 서버 | FastAPI + SQLAlchemy 2.0 + Pydantic v2 + Alembic + pytest | 애플리케이션 층이 유일한 경계 |
+| `none` | — | 백엔드 없음 / 외부 REST API 소비 | 외부 API 토큰 보관 위치가 위험 지점 |
+
+**데이터 계층에 정책 엔진이 있는지가 가이드 내용을 가장 크게 가른다.** 있으면 애플리케이션
+검사를 이중 방어로 쓰지만, 없으면 소유권 검사 누락이 곧 데이터 유출이다. 두 서술을 뒤바꾸면
+안전하다는 착각을 만들기 때문에 생성 시 이 값을 반드시 전달한다.
 
 `frontend: none` + `backend: none`은 이전의 `blank` 프리셋에 해당한다.
 

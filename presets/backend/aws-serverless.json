@@ -1,0 +1,31 @@
+{
+  "axis": "backend",
+  "name": "aws-serverless",
+  "displayName": "AWS 서버리스 (Lambda + API Gateway)",
+  "description": "AWS에서 조립하는 서버리스 백엔드 — Lambda + API Gateway + DynamoDB + Cognito. 상주 서버 없이 함수 단위로 배포한다.",
+  "techStack": {
+    "backend": {
+      "backendType": "serverless",
+      "cloudProvider": "AWS",
+      "database": "DynamoDB",
+      "dataAccess": "AWS SDK v3",
+      "auth": "Amazon Cognito",
+      "language": "TypeScript",
+      "packageManager": "npm",
+      "commands": {
+        "build": "npm run build",
+        "test": "npm test",
+        "lint": "npm run lint"
+      },
+      "sourceDir": "src"
+    },
+    "additionalStack": ["AWS Lambda", "API Gateway", "DynamoDB", "Amazon Cognito", "IaC (CDK 또는 SAM)"]
+  },
+  "notes": {
+    "securityBoundary": "**행 수준 정책 엔진이 없다** — DynamoDB에는 RLS 같은 데이터 계층 강제가 없으므로 애플리케이션 층 권한 검사가 실질적 유일 경계다(IAM 조건 키로 일부 제한은 가능하나 범용 대체가 아니다). BaaS 조합의 '이중 방어' 서술을 그대로 쓰면 틀린다 — 가이드는 소유권 검사 누락이 곧 데이터 유출임을 전제로 써야 한다",
+    "serverCodeLocation": "Lambda 핸들러(API Gateway 뒤). 프론트엔드 축에 서버 런타임이 있어도 이 백엔드가 API를 소유한다",
+    "runtimeConstraints": "콜드 스타트, 함수별 IAM 역할, 실행 시간 상한, 상주 커넥션 부재 — 관계형 DB로 바꿀 경우 커넥션 풀링(RDS Proxy 등)이 필수 주제가 된다",
+    "dataModeling": "DynamoDB는 단일 테이블 설계·파티션/정렬 키·GSI가 핵심이라 T1 카드(관계형)는 휴면한다 — 접근 패턴 우선 설계를 리소스에 직접 작성한다",
+    "variants": "컨테이너 기반(ECS/Fargate + RDS)으로 갈 경우 backendType을 cloud-server로 바꾸고 DB·데이터 액세스를 다시 확정한다"
+  }
+}
