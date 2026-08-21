@@ -53,22 +53,16 @@
       "properties": {
         "preset": {
           "type": "string",
-          "enum": [
-            "nextjs-supabase",
-            "react-vite",
-            "python-fastapi",
-            "blank"
-          ],
-          "default": "blank",
-          "description": "Preset name for framework-specific skills and defaults"
+          "default": "none+none",
+          "description": "레거시 단일축 이름('nextjs-supabase' 등) 또는 복합 표기 '<frontend>+<backend>'. 신규 설정은 presets 객체를 정본으로 쓰고 이 필드는 하위 호환용으로 함께 기록한다"
         },
         "framework": {
           "type": "string",
-          "description": "Primary framework (e.g., 'Next.js 15 (App Router)')"
+          "description": "프로젝트 대표 프레임워크 (축별 상세는 techStack.frontend/backend). 하위 호환 유지 필드"
         },
         "language": {
           "type": "string",
-          "description": "Primary language (e.g., 'TypeScript (strict mode)')"
+          "description": "프로젝트 대표 언어 (축별 상세는 techStack.frontend/backend). 하위 호환 유지 필드"
         },
         "packageManager": {
           "type": "string",
@@ -94,19 +88,27 @@
             "lint": {
               "type": "string"
             }
-          }
+          },
+          "description": "프로젝트 대표 명령. build-gate·health-check가 읽는 값이므로 반드시 채운다. 축별로 툴체인이 다르면 각 축의 commands에 따로 기록하고 여기에는 대표값을 둔다"
         },
         "backend": {
           "type": "object",
-          "description": "Backend dimension choices. Preset values are defaults, not fixed — set by epcc-init Step 4.5 or stack-guide-generator interview",
+          "description": "백엔드 축. 프리셋 값은 기본값이며 인터뷰에서 확정된다. 자체 서버 조합이면 프론트엔드와 다른 툴체인(언어·패키지 매니저·명령)을 가질 수 있다",
           "properties": {
             "backendType": {
               "type": "string",
-              "enum": ["baas", "cloud-server", "framework-builtin"],
+              "enum": [
+                "baas",
+                "cloud-server",
+                "framework-builtin"
+              ],
               "description": "BaaS (Supabase/Firebase), self-managed cloud API server, or framework-builtin (Route Handlers etc.)"
             },
             "cloudProvider": {
-              "type": ["string", "null"],
+              "type": [
+                "string",
+                "null"
+              ],
               "description": "AWS / GCP / Azure / Vercel / self-hosted (required when backendType is cloud-server)"
             },
             "database": {
@@ -120,6 +122,42 @@
             "auth": {
               "type": "string",
               "description": "Supabase Auth / NextAuth / Cognito / custom"
+            },
+            "framework": {
+              "type": "string",
+              "description": "자체 서버일 때의 프레임워크 (FastAPI / Express / ...). BaaS면 빈 값"
+            },
+            "language": {
+              "type": "string"
+            },
+            "packageManager": {
+              "type": "string",
+              "enum": [
+                "npm",
+                "pnpm",
+                "yarn",
+                "bun",
+                "uv",
+                "pip",
+                ""
+              ]
+            },
+            "commands": {
+              "type": "object",
+              "properties": {
+                "build": {
+                  "type": "string"
+                },
+                "test": {
+                  "type": "string"
+                },
+                "lint": {
+                  "type": "string"
+                }
+              }
+            },
+            "sourceDir": {
+              "type": "string"
             }
           }
         },
@@ -129,6 +167,80 @@
             "type": "string"
           },
           "description": "Additional technologies (e.g., 'Tailwind CSS v4', 'Supabase')"
+        },
+        "presets": {
+          "type": "object",
+          "description": "2축 프리셋 선택. 두 축이 모두 정해져야 스택 조합이 확정되고, 가이드는 그 조합 전체를 보고 생성된다",
+          "properties": {
+            "frontend": {
+              "type": "string",
+              "enum": [
+                "nextjs",
+                "react-vite",
+                "none"
+              ],
+              "description": "presets/frontend/<name>.json"
+            },
+            "backend": {
+              "type": "string",
+              "enum": [
+                "supabase",
+                "fastapi",
+                "none"
+              ],
+              "description": "presets/backend/<name>.json"
+            }
+          },
+          "required": [
+            "frontend",
+            "backend"
+          ]
+        },
+        "frontend": {
+          "type": "object",
+          "description": "프론트엔드 축. 프리셋 값은 기본값이며 인터뷰에서 확정된다",
+          "properties": {
+            "framework": {
+              "type": "string",
+              "description": "Next.js 15 (App Router) / React + Vite / ..."
+            },
+            "language": {
+              "type": "string"
+            },
+            "packageManager": {
+              "type": "string",
+              "enum": [
+                "npm",
+                "pnpm",
+                "yarn",
+                "bun",
+                ""
+              ]
+            },
+            "commands": {
+              "type": "object",
+              "properties": {
+                "build": {
+                  "type": "string"
+                },
+                "test": {
+                  "type": "string"
+                },
+                "lint": {
+                  "type": "string"
+                }
+              }
+            },
+            "sourceDir": {
+              "type": "string"
+            },
+            "additionalStack": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
         }
       },
       "required": [
@@ -154,7 +266,11 @@
         },
         "repoTopology": {
           "type": "string",
-          "enum": ["monorepo", "single", "msa"],
+          "enum": [
+            "monorepo",
+            "single",
+            "msa"
+          ],
           "description": "Repository topology chosen at epcc-init (drives the generated project-structure rule card)"
         }
       }

@@ -1,0 +1,16 @@
+{
+  "axis": "frontend",
+  "name": "none",
+  "displayName": "없음 (API 전용 프로젝트)",
+  "description": "프론트엔드 없음. 백엔드 API만 개발하는 프로젝트 — frontend-guide는 생성하지 않는다.",
+  "techStack": {
+    "framework": "",
+    "language": "",
+    "packageManager": "",
+    "commands": { "build": "", "test": "", "lint": "" },
+    "additionalStack": []
+  },
+  "notes": {
+    "serverCode": "프론트엔드 소비자가 이 저장소 밖에 있다 — API 계약(버전·호환성·문서)을 백엔드 가이드에서 더 비중 있게 다룬다"
+  }
+}

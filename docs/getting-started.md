@@ -17,7 +17,7 @@ Start Claude Code in your project directory, then run:
 ```
 
 This will interactively:
-- Ask you to choose a preset (nextjs-supabase, react-vite, python-fastapi, or blank)
+- Ask you to choose a frontend preset (nextjs / react-vite / none) and a backend preset (supabase / fastapi / none)
 - Collect project information
 - Generate `epcc.config.json` and `CLAUDE.md`
 - Install rule cards into `.claude/rules/`
@@ -43,12 +43,22 @@ The plugin works without `epcc.config.json` — the five hooks and the reversibi
 
 ## Available Presets
 
-| Preset | Stack | Active Skills |
-|--------|-------|---------------|
-| `nextjs-supabase` | Next.js 15 + Supabase + Tailwind + shadcn/ui | frontend, backend, ui-ux-design |
-| `react-vite` | React + Vite + Tailwind | frontend, backend |
-| `python-fastapi` | FastAPI + SQLAlchemy + Pydantic | backend |
-| `blank` | Custom | None (Core only) |
+Presets are chosen on two axes — pick one from each.
+
+| Frontend | Stack |
+|----------|-------|
+| `nextjs` | Next.js 15 App Router + React 19 + Tailwind v4 + shadcn/ui + Zustand |
+| `react-vite` | React + Vite SPA + Tailwind + React Router + Zustand |
+| `none` | API-only project |
+
+| Backend | Stack |
+|---------|-------|
+| `supabase` | PostgreSQL + RLS + Auth + Storage + Realtime (BaaS) |
+| `fastapi` | FastAPI + SQLAlchemy 2.0 + Pydantic v2 + Alembic (self-hosted) |
+| `none` | No backend / external REST API |
+
+The **combination** decides the guides: `nextjs` × `supabase` uses the plugin's pre-built
+guides; every other combination generates project-owned guides. See `docs/presets.md`.
 
 ## Project Override
 

@@ -17,26 +17,46 @@ trigger: manual
 - `epcc.config.json` — 있으면 "이미 설정되어 있습니다. 재설정하시겠습니까?" 확인
 - `CLAUDE.md` — 있으면 백업 후 덮어쓸지 확인
 
-### Step 2: 프리셋 선택 (대화형)
+### Step 2: 프리셋 선택 (대화형 — 2축)
 
-사용자에게 프리셋을 선택하도록 안내합니다:
+스택은 **프론트엔드 축과 백엔드 축 두 개**로 이루어진다. 둘을 각각 고르게 하고,
+**두 축이 모두 정해진 뒤에야 조합이 확정된다.**
 
 ```
-사용 가능한 프리셋:
+① 프론트엔드를 고르세요:
+  1. nextjs      — Next.js 15 App Router + React 19 + Tailwind v4 + shadcn/ui + Zustand
+  2. react-vite  — React + Vite SPA (SSR 없음) + Tailwind + React Router + Zustand
+  3. none        — 프론트엔드 없음 (API 전용 프로젝트)
 
-1. nextjs-supabase  — Full-Stack JS/TS: Next.js 15 + Supabase + Tailwind + shadcn/ui
-2. react-vite       — SPA Frontend: React + Vite + Tailwind + REST API
-3. python-fastapi   — Python Backend: FastAPI + SQLAlchemy + Pydantic
-4. blank            — 최소 설정, 직접 구성
-
-어떤 프리셋을 사용하시겠습니까?
+② 백엔드를 고르세요:
+  1. supabase    — BaaS: PostgreSQL + RLS + Auth + Storage + Realtime
+  2. fastapi     — 자체 서버: FastAPI + SQLAlchemy 2.0 + Pydantic v2 + Alembic
+  3. none        — 백엔드 없음 / 외부 REST API 소비
 ```
 
-### Step 3: 프리셋 기본값 로드
+> **왜 2축인가**: 가이드 내용은 한 축의 함수가 아니라 **조합의 함수**다. 같은 Supabase라도
+> Next.js와 짝지으면 Route Handlers·Server Actions 중심이고, React+Vite SPA와 짝지으면
+> Edge Functions·브라우저 직접 호출 중심으로 **완전히 다른 가이드**가 된다. 두 축을 먼저
+> 확정해야 서로를 고려한 가이드를 만들 수 있다.
 
-선택된 프리셋 파일을 읽습니다:
-- **플러그인 경로**: `${CLAUDE_PLUGIN_ROOT}/presets/<preset-name>.json`
-- 이 파일의 `techStack`, `domains`, `security` 값을 `epcc.config.json`의 기본값으로 사용
+`frontend: none` + `backend: none` 조합은 이전의 `blank` 프리셋에 해당한다.
+
+### Step 3: 프리셋 기본값 로드 (병합)
+
+세 파일을 읽어 이 순서로 병합한다 (뒤가 앞을 덮어씀):
+
+1. `${CLAUDE_PLUGIN_ROOT}/presets/base.json` — 공통 domains·보안 패턴
+2. `${CLAUDE_PLUGIN_ROOT}/presets/frontend/<선택>.json`
+3. `${CLAUDE_PLUGIN_ROOT}/presets/backend/<선택>.json`
+
+병합 규칙:
+
+- `security.secretPatterns`는 **덮어쓰지 않고 누적**한다 (base + 축별 패턴)
+- `additionalStack`도 누적한다
+- `domains.sourceDir`은 프론트엔드 축의 값을 우선한다. 프론트엔드가 `none`이면
+  백엔드 축의 `sourceDir`을 쓴다. 두 축이 모두 있고 값이 다르면 사용자에게 확인받는다
+- 각 프리셋의 `notes`는 config에 기록하지 않는다 — Step 9.5에서 가이드 생성 에이전트에
+  **조합 맥락으로 전달**한다 (서로를 고려한 가이드를 만드는 근거)
 
 ### Step 4: 프로젝트 정보 수집 (대화형)
 
@@ -45,30 +65,30 @@ trigger: manual
 1. **프로젝트 이름** (필수)
 2. **응답 언어** — ko / en / ja / zh (기본: en)
 3. **경험 수준** — senior / mid / junior (기본: senior)
-4. **프레임워크** (프리셋 기본값 확인)
-5. **언어** (프리셋 기본값 확인)
-6. **패키지 매니저** (프리셋 기본값 확인)
-7. **빌드/테스트/린트 명령어** (프리셋 기본값 확인)
-8. **소스 디렉토리** (기본: src)
-9. **공유 패키지 경로** (선택)
+4. **축별 프레임워크·언어·패키지 매니저** (병합된 프리셋 기본값 확인)
+5. **빌드/테스트/린트 명령어** (프리셋 기본값 확인)
+6. **소스 디렉토리** (Step 3 병합 규칙의 결과를 확인)
+7. **공유 패키지 경로** (선택)
 
-### Step 4.5: 백엔드 차원 확인 (대화형 — Supabase 고정 아님)
+**툴체인이 둘인 조합** (예: react-vite + fastapi — TypeScript/npm과 Python/uv)은 축마다
+명령이 다르다. 이때는 축별 명령을 각각 받고, **프로젝트 대표 명령**(`techStack.commands`)을
+따로 확인한다 — build-gate와 health-check가 읽는 값이라 반드시 채워져야 한다.
+모노레포면 대표 명령이 두 축을 함께 도는 루트 스크립트인 경우가 많다.
 
-프리셋의 백엔드는 **기본값이지 고정이 아니다.** 기본값을 표시하고 반드시 확인한다:
+### Step 4.5: 백엔드 미확정 차원 채우기
 
-```
-백엔드 구성을 확인합니다 (프리셋 기본값: Supabase BaaS + PostgreSQL):
+백엔드 **유형**은 Step 2에서 이미 정해졌다 — 여기서 다시 묻지 않는다. 선택한 백엔드
+프리셋이 비워둔 차원만 채운다:
 
-1. 백엔드 유형 — BaaS(Supabase/Firebase) / 클라우드 자체 구축(AWS·GCP·Azure) / 프레임워크 내장
-2. (자체 구축 시) 클라우드/호스팅 — AWS / GCP / Azure / 자체
-3. DB — PostgreSQL / MySQL / MongoDB / DynamoDB / 기타
-4. 데이터 액세스 — Prisma / Drizzle / SQLAlchemy / SDK 직접
-5. 인증 — Supabase Auth / NextAuth / Cognito / 자체 구현
+| 백엔드 축 | 확정된 것 | 여기서 물을 것 |
+| --- | --- | --- |
+| `supabase` | backendType·database·dataAccess·auth 전부 | 없음 — 표시하고 확인만 |
+| `fastapi` | backendType·database·dataAccess | **인증 방식**(JWT 자체 발급·OAuth 제공자·세션) · 호스팅(선택) |
+| `none` | — | 외부 API를 쓴다면 그 인증 방식(토큰 보관 위치가 보안 지점) |
 
-기본값 그대로 진행할까요, 바꾸시겠습니까?
-```
-
-BaaS 선택 시 DB·인증은 자동 추론 후 확인만 받는다. 자체 구축 선택 시 2~5를 필수로 묻는다.
+프리셋 밖 조합(MongoDB·Prisma·Cognito 등)으로 바꾸고 싶다는 요청이 나오면 그 자리에서
+차원을 받아 `techStack.backend`에 기록한다 — 프리셋은 출발점이지 상한이 아니다.
+이 경우 조합이 사전 제작 대상에서 벗어나므로 Step 9.5는 생성 경로를 탄다.
 
 ### Step 4.7: 레포 구조 확인 (대화형)
 
@@ -100,23 +120,36 @@ BaaS 선택 시 DB·인증은 자동 추론 후 확인만 받는다. 자체 구�
   },
 
   "techStack": {
-    "preset": "<선택된 프리셋>",
-    "framework": "<입력값 또는 프리셋 기본값>",
-    "language": "<입력값 또는 프리셋 기본값>",
-    "packageManager": "<입력값 또는 프리셋 기본값>",
-    "commands": {
-      "build": "<입력값>",
-      "test": "<입력값>",
-      "lint": "<입력값>"
+    "presets": { "frontend": "<Step 2 선택>", "backend": "<Step 2 선택>" },
+    "preset": "<frontend>+<backend>",           // 하위 호환 표기 — presets가 정본
+
+    // 프로젝트 대표값 — build-gate·health-check가 읽는다. 반드시 채운다
+    "framework": "<대표 프레임워크>",
+    "language": "<대표 언어>",
+    "packageManager": "<대표 패키지 매니저>",
+    "commands": { "build": "<입력값>", "test": "<입력값>", "lint": "<입력값>" },
+
+    "frontend": {                                // 프론트엔드 축 (none이면 빈 값)
+      "framework": "<입력값 또는 프리셋 기본값>",
+      "language": "<입력값 또는 프리셋 기본값>",
+      "packageManager": "<입력값 또는 프리셋 기본값>",
+      "commands": { "build": "", "test": "", "lint": "" },
+      "sourceDir": "<프리셋 기본값>",
+      "additionalStack": []
     },
-    "backend": {
-      "backendType": "<baas | cloud-server | framework-builtin>",
-      "cloudProvider": "<Step 4.5 입력값 또는 null>",
-      "database": "<Step 4.5 입력값>",
-      "dataAccess": "<Step 4.5 입력값>",
-      "auth": "<Step 4.5 입력값>"
+    "backend": {                                 // 백엔드 축
+      "backendType": "<baas | cloud-server | 빈 값>",
+      "cloudProvider": "<입력값 또는 null>",
+      "database": "<프리셋 기본값 또는 입력값>",
+      "dataAccess": "<프리셋 기본값 또는 입력값>",
+      "auth": "<Step 4.5 입력값>",
+      "framework": "<자체 서버일 때만>",
+      "language": "<자체 서버일 때만>",
+      "packageManager": "<자체 서버일 때만>",
+      "commands": { "build": "", "test": "", "lint": "" },
+      "sourceDir": "<자체 서버일 때만>"
     },
-    "additionalStack": []
+    "additionalStack": []                        // base + 두 축 누적
   },
 
   "domains": {
@@ -265,18 +298,30 @@ dev/
 
 확정된 조합을 요약하고 가이드 생성 여부를 확인한다:
 
+확정된 조합(`techStack.presets` + 백엔드 차원)으로 **조합 매핑 테이블**을 조회한다:
+
+| 조합 | 동작 |
+| --- | --- |
+| `nextjs` × `supabase` (백엔드 차원이 프리셋 기본값 그대로) | **사전 제작본 사용** — 플러그인의 `nextjs-frontend-guide`·`nextjs-backend-guide`가 곧 이 조합의 가이드다. 생성하지 않고 안내만 한다 |
+| `none` × `none` | 가이드 없음 (구 blank) |
+| 그 외 모든 조합 | **생성** — `stack-guide-generator` 호출 |
+
+사전 제작본이 있는 조합은 즉시 끝난다. 생성 경로일 때만 아래를 안내하고 승인받는다:
+
 ```
-확정된 스택: <프론트엔드> + <백엔드 유형> + <DB> + <데이터 액세스>
-이 조합에 맞는 frontend-guide / backend-guide 스킬을 .claude/skills/에 생성할까요?
+확정된 조합: <프론트엔드 프리셋> × <백엔드 프리셋> (+ 변경된 차원)
+이 조합에 맞는 frontend-guide / backend-guide를 .claude/skills/에 생성할까요?
 
 생성 방식: 규격서 기반 신선 생성 → 기계 검증 게이트 → 독립 적대적 감사 → 수리 → 재검증
 (가이드당 생성 1 + 감사 1개의 서브에이전트를 쓰므로 몇 분 걸립니다)
 ```
 
-- 승인 시 **stack-guide-generator 스킬을 호출**한다 (Step 1 인터뷰는 config가 채워졌으므로
-  생략됨). 그 스킬의 Step 3~6 검증 루프는 **생략하지 않는다** — 실측에서 매 라운드
+- 승인 시 **stack-guide-generator를 호출**한다. config가 채워졌으므로 그 스킬의 Step 1
+  인터뷰는 생략되지만, **Step 3~6 검증 루프는 생략하지 않는다** — 실측에서 매 라운드
   자기보고 통과 산출물에 실결함이 남아 있었다
-- 정확히 Next.js+Supabase 조합이면 생성 없이 플러그인 원본 사용을 안내한다
+- 호출 시 **두 축의 프리셋 `notes`를 함께 전달한다.** 가이드는 한 축의 함수가 아니라
+  조합의 함수이기 때문이다 — 서버 코드가 어디 사는지(프론트 축의 `serverCode`),
+  보안 경계가 어디인지(백엔드 축의 `securityBoundary`)가 두 가이드의 내용을 함께 결정한다
 - 거절 시 나중에 `/stack-guide-generator`로 생성 가능함을 안내한다
 
 ### Step 10: 완료 보고

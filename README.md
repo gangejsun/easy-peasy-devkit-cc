@@ -2,7 +2,7 @@
 
 AI Native Dev Harness for Claude Code — 되돌림 가능성 축 워크플로우, 자기검증 훅, 그래프 계측.
 
-![version](https://img.shields.io/badge/version-3.6.0-blue)
+![version](https://img.shields.io/badge/version-3.7.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 ## 무엇인가
@@ -31,7 +31,7 @@ claude plugin install epcc-devkit
 ```
 
 대화형으로 진행됩니다:
-- 프리셋 선택 (nextjs-supabase, react-vite, python-fastapi, blank)
+- 프리셋 선택 — 프론트엔드 축(nextjs·react-vite·none) + 백엔드 축(supabase·fastapi·none)
 - 프로젝트 정보 수집
 - `epcc.config.json` + `CLAUDE.md` 생성
 - **`.claude/rules/`에 규칙 카드 설치** ← v3 신규
@@ -73,7 +73,7 @@ bash "<플러그인-루트>/scripts/doctor.sh"
 | **규칙** | T0 26줄 + T1 6개 830줄 | T0는 훅이 상시 주입(플러그인 소유), T1은 경로 매칭 시 조건부 로드 |
 | **에이전트** | 2 | `epcc-planner`(쓰기 없음) · `epcc-reviewer`(읽기 전용) |
 | **스킬** | 33 | 기획·구현·검증·보안·마케팅 워크플로우 + 스택 가이드 생성기 + 스킬 강화기 |
-| **프리셋** | 4 | nextjs-supabase · react-vite · python-fastapi · blank |
+| **프리셋** | 2축 3+3 | 프론트엔드: nextjs·react-vite·none / 백엔드: supabase·fastapi·none |
 
 ### 훅
 
@@ -168,10 +168,9 @@ bash scripts/doctor.sh --all        # 전체
 
 | Preset | Stack | Skills |
 |--------|-------|--------|
-| `nextjs-supabase` | Next.js 15 + Supabase + Tailwind + shadcn/ui | 플러그인 가이드 원본 사용 |
-| `react-vite` | React + Vite + Tailwind | 가이드 **생성** (조합 확인 후) |
-| `python-fastapi` | FastAPI + SQLAlchemy + Pydantic | 가이드 **생성** (조합 확인 후) |
-| `blank` | Custom | 전체 차원 인터뷰 → 가이드 생성 |
+| `nextjs` × `supabase` | Next.js 15 + Supabase + Tailwind + shadcn/ui | 사전 제작본 사용 |
+| `none` × `none` | Custom | 가이드 없음 (Core만) |
+| 그 외 모든 조합 | 두 축의 조합 | 가이드 **생성** (검증 루프 포함) |
 
 ## Project Override — 사용자 자산의 우선권
 

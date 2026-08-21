@@ -1,0 +1,16 @@
+{
+  "name": "base",
+  "description": "모든 조합에 공통 적용되는 기본값. 축 프리셋(frontend/*, backend/*)이 이 위에 병합된다.",
+  "domains": {
+    "sourceDir": "src",
+    "sharedPackage": "",
+    "importAlias": ""
+  },
+  "security": {
+    "secretPatterns": [
+      { "name": "AWS Key", "pattern": "AKIA[0-9A-Z]{16}", "action": "block" },
+      { "name": "GitHub PAT", "pattern": "ghp_[a-zA-Z0-9]{36}", "action": "block" },
+      { "name": "Generic API Key", "pattern": "sk-[a-zA-Z0-9]{20,}", "action": "warn" }
+    ]
+  }
+}

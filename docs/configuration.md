@@ -17,7 +17,9 @@ The configuration file lives at the project root. All fields are optional except
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `preset` | string | (required) | Preset name: `nextjs-supabase`, `react-vite`, `python-fastapi`, `blank` |
+| `presets` | object | (required) | Two-axis selection: `{frontend, backend}`. See `docs/presets.md` |
+| `preset` | string | | Legacy/compat notation `<frontend>+<backend>` |
+| `frontend` | object | | Frontend axis: framework, language, packageManager, commands, sourceDir, additionalStack |
 | `framework` | string | | Primary framework |
 | `language` | string | | Primary language |
 | `packageManager` | string | `"npm"` | Package manager: `npm`, `pnpm`, `yarn`, `bun`, `uv`, `pip` |
@@ -83,7 +85,8 @@ Array of skill names to disable. Disabled skills are excluded from SessionStart 
     "experienceLevel": "senior"
   },
   "techStack": {
-    "preset": "nextjs-supabase",
+    "presets": { "frontend": "nextjs", "backend": "supabase" },
+    "preset": "nextjs+supabase",
     "framework": "Next.js 15 (App Router)",
     "language": "TypeScript (strict mode)",
     "packageManager": "pnpm",

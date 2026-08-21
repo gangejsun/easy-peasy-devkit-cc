@@ -142,4 +142,23 @@ v2 프로젝트에는 스택 맞춤 가이드가 없다. 마이그레이션 완�
 
 - `epcc.config.json`에 `techStack.backend` 차원이 없으면 `/stack-guide-generator` 실행을 권한다
   (백엔드 유형·DB·데이터 액세스를 확인하고 frontend/backend-guide를 생성)
-- 정확히 Next.js+Supabase 조합이면 플러그인 원본이 담당하므로 생성 불필요
+- `nextjs` × `supabase` 조합이면 플러그인 사전 제작본이 담당하므로 생성 불필요
+
+## 2축 프리셋 마이그레이션 (구 단일축 config)
+
+`techStack.preset`이 구 단일축 이름이고 `techStack.presets`가 없으면 다음으로 변환한다.
+구 필드는 지우지 않는다 — `preset`은 하위 호환 표기로 남긴다.
+
+| 구 `preset` | 신 `presets` | 비고 |
+| --- | --- | --- |
+| `nextjs-supabase` | `{frontend: "nextjs", backend: "supabase"}` | |
+| `react-vite` | `{frontend: "react-vite", backend: "none"}` | 구 프리셋의 백엔드는 "REST API client"뿐이었다 — 실제로 자체 백엔드가 있으면 사용자에게 확인해 `supabase`/`fastapi`로 정정 |
+| `python-fastapi` | `{frontend: "none", backend: "fastapi"}` | 프론트엔드가 별도로 있으면 확인해 정정 |
+| `blank` | `{frontend: "none", backend: "none"}` | |
+
+변환 시 함께 처리한다:
+
+- `techStack.frontend`를 신설하고 기존 최상위 `framework`·`language`·`packageManager`·
+  `commands`를 복사한다 (프론트엔드가 `none`이면 백엔드 축으로 복사)
+- 최상위 `commands`는 **그대로 둔다** — build-gate·health-check가 읽는 프로젝트 대표값이다
+- `preset`을 `"<frontend>+<backend>"` 복합 표기로 갱신한다

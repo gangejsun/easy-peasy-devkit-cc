@@ -1,0 +1,29 @@
+{
+  "axis": "backend",
+  "name": "supabase",
+  "displayName": "Supabase (BaaS)",
+  "description": "Supabase BaaS — PostgreSQL + RLS + Auth + Storage + Realtime. 서버를 따로 운영하지 않는다.",
+  "techStack": {
+    "backend": {
+      "backendType": "baas",
+      "cloudProvider": null,
+      "database": "PostgreSQL",
+      "dataAccess": "Supabase SDK",
+      "auth": "Supabase Auth"
+    },
+    "additionalStack": ["Supabase (PostgreSQL + RLS + Auth)"]
+  },
+  "security": {
+    "secretPatterns": [
+      {
+        "name": "Supabase Service Role",
+        "pattern": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\\.[A-Za-z0-9_-]{50,}",
+        "action": "block"
+      }
+    ]
+  },
+  "notes": {
+    "securityBoundary": "RLS가 최종 방어선이다. 서버 런타임이 있는 프론트엔드(Next.js 등)와 짝지으면 애플리케이션 층 권한 검사를 이중으로 걸고, SPA와 짝지으면 RLS가 사실상 유일한 경계가 된다 — 조합에 따라 가이드 내용이 크게 달라지는 지점",
+    "serverCodeLocation": "프론트엔드 축이 서버 런타임을 제공하면 거기에(Route Handlers·Server Actions), 아니면 Edge Functions에"
+  }
+}

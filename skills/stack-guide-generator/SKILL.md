@@ -31,10 +31,14 @@ description: 프로젝트의 기술 스택 조합(프론트엔드·백엔드 유
 
 우선순위: `epcc.config.json`의 `techStack` → 부족한 차원만 인터뷰.
 
+epcc-init을 거쳤으면 `techStack.presets`(2축 선택)과 `techStack.frontend`/`backend`가 이미
+채워져 있다. **두 축을 모두 읽어 조합으로 다룬다** — 한 축만 보고 생성하면 서로를
+고려하지 못한 가이드가 나온다 (아래 조합 의존성 참조).
+
 | 차원 | 선택지 예 | 의존 규칙 |
 | --- | --- | --- |
 | 프론트엔드 | Next.js · React+Vite · SvelteKit · 없음(API 전용) | — |
-| 백엔드 유형 | BaaS(Supabase·Firebase) · 클라우드 자체 구축 · 프레임워크 내장 | **기본값이 있어도 반드시 확인 질문** — 프리셋의 Supabase는 기본값이지 고정이 아니다 |
+| 백엔드 유형 | BaaS(Supabase·Firebase) · 클라우드 자체 구축 · 프레임워크 내장 | `techStack.presets.backend`가 있으면 **이미 확정** — 다시 묻지 않는다. 이 스킬을 단독 호출해 프리셋이 없으면 필수 질문 |
 | 클라우드/호스팅 | AWS · GCP · Azure · Vercel · 자체 | 자체 구축 선택 시 필수 |
 | DB | PostgreSQL · MySQL · MongoDB · DynamoDB | BaaS면 자동 추론 후 확인만, 자체 구축이면 필수 질문 |
 | 데이터 액세스 | Prisma · Drizzle · SQLAlchemy · SDK 직접 | DB 확정 후 |
@@ -46,19 +50,44 @@ description: 프로젝트의 기술 스택 조합(프론트엔드·백엔드 유
 
 | 조합 | 동작 |
 | --- | --- |
-| **정확히** Next.js + Supabase(+PostgreSQL) | **생성하지 않음** — 플러그인의 nextjs-frontend/backend-guide가 곧 이 조합의 가이드다. 중복 생성은 낭비이자 드리프트 원천 |
-| Next.js + 다른 백엔드 | frontend-guide + backend-guide 생성 |
-| 프론트엔드 없음 (API 전용) | backend-guide만 |
-| 백엔드 없음 (정적/SPA+외부 API) | frontend-guide만 (API 클라이언트 패턴 포함) |
-| 기존 생성본 존재 | Step 5의 스탬프 대조 — 수동 편집 감지 시 덮어쓰지 않고 diff 제시 |
+| `nextjs` × `supabase` (차원이 프리셋 기본값 그대로) | **생성하지 않음** — 플러그인의 nextjs-frontend/backend-guide가 사전 제작본이다. 중복 생성은 낭비이자 드리프트 원천 |
+| 프론트엔드 `none` (API 전용) | backend-guide만 |
+| 백엔드 `none` (정적/SPA+외부 API) | frontend-guide만 (API 클라이언트 패턴 포함) |
+| 두 축 모두 `none` | 생성 없음 |
+| 그 외 모든 조합 | frontend-guide + backend-guide **둘 다** 생성 |
+| 기존 생성본 존재 | Step 7의 스탬프 대조 — 수동 편집 감지 시 덮어쓰지 않고 diff 제시 |
+
+### 조합 의존성 — 두 가이드는 서로의 함수다
+
+**축이 하나 바뀌면 다른 축의 가이드도 달라진다.** 실측 근거: 같은 Supabase 백엔드인데
+Next.js와 짝지으면 Route Handlers·Server Actions·미들웨어 세션 갱신 중심이 되고,
+React+Vite SPA와 짝지으면 Edge Functions·브라우저 직접 호출·RLS 단독 방어 중심으로
+**완전히 다른 backend-guide**가 나왔다.
+
+생성 서브에이전트에 반드시 함께 전달할 두 가지:
+
+| 항목 | 출처 | 두 가이드에 미치는 영향 |
+| --- | --- | --- |
+| **서버 코드가 어디 사는가** | 프론트엔드 프리셋의 `notes.serverCode` | backend-guide의 "표준 핸들러 형태" 슬롯 전체. 프론트에 서버 런타임이 있으면 거기에, 없으면 BaaS 함수나 자체 서버에 |
+| **보안 경계가 어디인가** | 백엔드 프리셋의 `notes.securityBoundary` | 양쪽의 인증/권한 슬롯. 서버 런타임이 있으면 애플리케이션 층 검사 + 데이터 층 정책 이중 방어, SPA면 데이터 층 정책이 사실상 유일한 경계 |
+
+frontend-guide의 **데이터 페칭·라우팅/인증·완전 예제** 슬롯은 백엔드 선택에 종속된다.
+backend-guide의 **API 엔드포인트·완전 예제** 슬롯은 프론트엔드 선택에 종속된다.
+나머지 슬롯(스타일링·상태 관리·컴포넌트 패턴 / 데이터 액세스·검증·테스트)은 축 내부에서
+닫힌다 — 조합이 바뀌어도 대체로 유지된다.
 
 ## Step 3: 생성 — 격리 서브에이전트에 위임 (원칙 5)
 
 가이드마다 **Task tool 서브에이전트 1개**를 띄운다 (2개 생성이면 병렬). 메인 세션이
 직접 쓰지 않는 이유는 Step 4~5의 검증이 자기 채점이 되지 않게 하기 위함이다.
 
-전달할 것: 확정 스택 명세(버전 포함) · 규격서 절대 경로 · 산출 위치 · 아래 생성 규칙 ·
+전달할 것: **두 축 전체의 확정 스택 명세**(버전 포함) · Step 2의 조합 의존성 2항목
+(서버 코드 위치 · 보안 경계) · 규격서 절대 경로 · 산출 위치 · 아래 생성 규칙 ·
 "최종 텍스트는 데이터로 반환(파일 목록·줄 수·슬롯 매핑·공백 슬롯)".
+
+frontend-guide를 만드는 에이전트에게도 **백엔드 축을 알려준다**(그 반대도 마찬가지).
+한 축만 알려주면 데이터 페칭·인증 슬롯을 채울 수 없거나 틀리게 채운다.
+
 **전달하지 않을 것**: 인터뷰 대화 맥락, 다른 프리셋 이야기 (맥락 관성 차단).
 
 생성 규칙 (서브에이전트에게 그대로 지시한다):

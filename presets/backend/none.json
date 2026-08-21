@@ -1,0 +1,19 @@
+{
+  "axis": "backend",
+  "name": "none",
+  "displayName": "없음 / 외부 API",
+  "description": "이 저장소에 백엔드가 없다. 정적 사이트이거나 외부 REST API를 소비하는 프론트엔드 — backend-guide는 생성하지 않고, API 클라이언트 패턴은 frontend-guide가 담는다.",
+  "techStack": {
+    "backend": {
+      "backendType": "",
+      "cloudProvider": null,
+      "database": "",
+      "dataAccess": "REST API client",
+      "auth": ""
+    },
+    "additionalStack": []
+  },
+  "notes": {
+    "securityBoundary": "외부 API의 인증 토큰을 브라우저에 두는 방식이 위험 지점 — frontend-guide의 데이터 페칭 슬롯에서 다룬다"
+  }
+}

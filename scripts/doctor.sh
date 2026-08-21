@@ -299,7 +299,7 @@ run_fast() {
                      || ok "매니페스트 단일"
 
   # 스키마의 미구현 필드
-  if grep -q 'disabledSkills\|activeSkills' schema/epcc.config.schema.json presets/*.json 2>/dev/null; then
+  if grep -q 'disabledSkills\|activeSkills' schema/epcc.config.schema.json presets/*.json presets/*/*.json 2>/dev/null; then
     warn "미구현 필드(activeSkills/disabledSkills)가 스키마·프리셋에 존재" \
          "이를 읽어 스킬을 켜고 끄는 코드가 없음. 게이팅은 작동하지 않음"
   else
