@@ -1,285 +1,141 @@
 # Component Patterns
 
-## Server vs Client Components
+컴포넌트 설계 표준: Server/Client 경계, 반복 UI 추출, props 컨벤션,
+그리고 로딩·빈·에러 3상태 처리(이 파일에 병합).
 
-### Server Component (기본)
+## 1. Server / Client 결정 기준
 
-```typescript
-// 기본적으로 모든 컴포넌트는 Server Component
-// "use client" 선언이 없으면 서버에서 렌더링됨
+| 필요한 것 | 종류 |
+| --- | --- |
+| 데이터 조회, 세션 확인, 정적 마크업 | Server Component (기본) |
+| `onClick` 등 이벤트 핸들러 | Client Component |
+| `useState` / `useActionState` 등 훅 | Client Component |
+| 브라우저 API (localStorage, IntersectionObserver…) | Client Component |
+| Zustand 스토어 구독 | Client Component |
 
-import { createClient } from "@/lib/supabase/server";
-import type { Post } from "@/types/post";
+원칙: **기본은 서버.** `'use client'`는 상호작용이 실제로 일어나는
+최소 단위(잎 컴포넌트)에만 선언한다. 페이지·레이아웃 파일에는 원칙적으로 붙이지 않는다.
 
-export default async function PostList() {
-  const supabase = await createClient();
-  const { data: posts } = await supabase
-    .from("posts")
-    .select("*")
-    .eq("published", true);
+## 2. 경계 설계 패턴
 
+### `'use client'`는 전이된다
+
+`'use client'` 파일이 import하는 모든 모듈은 클라이언트 번들에 포함된다.
+`next/headers`를 쓰는 서버 코드(`lib/supabase/server.ts`)는 클라이언트 컴포넌트에서
+import하면 빌드 에러가 나지만, **일반 서버 코드는 에러 없이 조용히 번들될 수 있다** —
+서버 전용 모듈(`lib/queries/` 등)은 파일 상단에 `import 'server-only'`를 선언해
+실수를 빌드 에러로 승격시킨다. 서버 데이터는 항상 **props로** 넘긴다.
+
+### Server Component를 children으로 통과시키기
+
+클라이언트 래퍼가 필요해도 내부 콘텐츠는 서버에 남길 수 있다.
+
+```tsx
+// app/tasks/page.tsx (Server Component)
+<CollapsiblePanel title="Tasks">
+  <TaskList tasks={tasks} />   {/* Server Component인 채로 통과 */}
+</CollapsiblePanel>
+```
+
+```tsx
+// components/common/collapsible-panel.tsx (Client Component)
+'use client'
+
+import { useState } from 'react'
+
+interface CollapsiblePanelProps {
+  title: string
+  children: React.ReactNode
+}
+
+export function CollapsiblePanel({ title, children }: CollapsiblePanelProps) {
+  const [open, setOpen] = useState(true)
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {posts?.map((post) => (
-        <PostCard key={post.id} post={post} />
-      ))}
-    </div>
-  );
+    <section className="rounded-xl border">
+      <button onClick={() => setOpen((o) => !o)} className="w-full p-4 text-left font-semibold">
+        {title}
+      </button>
+      {open && <div className="border-t p-4">{children}</div>}
+    </section>
+  )
 }
 ```
 
-### Client Component ("use client" 필요 시)
+### 경계를 넘는 props는 직렬화 가능해야 한다
 
-다음 경우에만 Client Component 사용:
-- `useState`, `useEffect`, `useRef` 등 React 훅
-- 이벤트 핸들러 (onClick, onChange 등)
-- 브라우저 API (localStorage, window 등)
-- 서드파티 클라이언트 라이브러리
-- Zustand 스토어 접근
+Server → Client로는 JSON 직렬화 가능한 값과 Server Action 참조만 전달한다.
+일반 함수·클래스 인스턴스·Supabase 클라이언트 객체는 전달 금지.
 
-```typescript
-"use client";
+## 3. 반복 UI 추출 (2회 규칙) — 필수 규칙의 심화
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+같은 마크업 패턴이 **2회 등장하면 추출을 검토하고, 3회면 반드시 추출**한다.
+추출 목적지는 반복의 범위로 결정한다.
 
-interface CounterProps {
-  initialCount?: number;
-}
+| 반복 범위 | 목적지 |
+| --- | --- |
+| 한 라우트 내부 | `app/<route>/_components/` |
+| 페이지 골격 공통 (헤더·컨테이너·하단 액션바) | `components/layout/` — `PageHeader`, `PageContainer`, `BottomActionBar` |
+| 도메인 무관 본문 UI (섹션 골격, 빈 상태, 카드) | `components/common/` — `PageSection`, `EmptyState` |
+| 특정 도메인의 공유 컴포넌트 (여러 라우트에서 사용) | `components/<domain>/` |
+| 라우트 세그먼트 전체의 공통 틀 (네비·사이드바 배치) | 해당 세그먼트의 `layout.tsx` |
+| 원시 UI 요소 (버튼·입력·다이얼로그) | shadcn/ui 재사용 (`components/ui/`) |
 
-export default function Counter({ initialCount = 0 }: CounterProps) {
-  const [count, setCount] = useState(initialCount);
-
-  return (
-    <div className="flex items-center gap-2">
-      <Button onClick={() => setCount((c) => c - 1)}>-</Button>
-      <span className="text-lg font-medium">{count}</span>
-      <Button onClick={() => setCount((c) => c + 1)}>+</Button>
-    </div>
-  );
-}
+```tsx
+// Bad: 페이지마다 반복되는 섹션 골격 (3번째 복사-붙여넣기)
+<div className="rounded-xl border bg-card p-6">
+  <div className="mb-4 flex items-center justify-between">
+    <h2 className="text-lg font-semibold">Tasks</h2>
+    <Button size="sm">추가</Button>
+  </div>
+  …
+</div>
 ```
 
----
+```tsx
+// Good: 골격은 한 곳에, 차이는 props로
+// components/common/page-section.tsx (Server Component — 훅 불필요)
+interface PageSectionProps {
+  title: string
+  action?: React.ReactNode
+  children: React.ReactNode
+}
 
-## Component Declaration
-
-`function` 키워드를 선호한다 (프로젝트 컨벤션).
-
-```typescript
-// good: function 키워드
-function UserAvatar({ user, size = "md" }: UserAvatarProps) {
+export function PageSection({ title, action, children }: PageSectionProps) {
   return (
-    <Image
-      src={user.avatarUrl ?? "/default-avatar.png"}
-      alt={user.name}
-      width={size === "md" ? 40 : 24}
-      height={size === "md" ? 40 : 24}
-      className="rounded-full"
-    />
-  );
-}
-export default UserAvatar;
-
-// bad: arrow function + React.FC
-const UserAvatar: React.FC<UserAvatarProps> = ({ user }) => {
-  // ...
-};
-```
-
----
-
-## Component Structure
-
-권장 순서:
-
-```typescript
-"use client"; // 1. 클라이언트 지시어 (필요 시)
-
-import { useState, useCallback } from "react"; // 2. React imports
-import { Button } from "@/components/ui/button"; // 3. UI imports
-import { cn } from "@/lib/utils";                // 4. Utility imports
-import type { Post } from "@/types/post";         // 5. Type imports
-
-// 6. Props 타입 정의
-interface PostFormProps {
-  initialData?: Post;
-  onSubmit: (data: Post) => void;
-  className?: string;
-}
-
-// 7. 컴포넌트 함수
-function PostForm({ initialData, onSubmit, className }: PostFormProps) {
-  // 8. State
-  const [title, setTitle] = useState(initialData?.title ?? "");
-
-  // 9. Handlers
-  const handleSubmit = useCallback(/* ... */);
-
-  // 10. Render
-  return (
-    <form className={cn("space-y-4", className)}>
-      {/* ... */}
-    </form>
-  );
-}
-
-// 11. Export
-export default PostForm;
-```
-
----
-
-## Composition Pattern: Server + Client
-
-Server Component가 데이터를 패칭하고, Client Component에 props로 전달:
-
-```typescript
-// app/posts/[id]/page.tsx (Server Component)
-import { createClient } from "@/lib/supabase/server";
-import { notFound } from "next/navigation";
-import PostDetail from "@/components/post/PostDetail";
-import LikeButton from "@/components/post/LikeButton";
-
-export default async function PostPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const supabase = await createClient();
-
-  const { data: post } = await supabase
-    .from("posts")
-    .select("*, author:profiles(name, avatar_url)")
-    .eq("id", id)
-    .single();
-
-  if (!post) notFound();
-
-  return (
-    <div>
-      <PostDetail post={post} />        {/* Server Component */}
-      <LikeButton postId={post.id} />   {/* Client Component */}
-    </div>
-  );
-}
-```
-
----
-
-## Conditional Rendering
-
-```typescript
-// good: 조건부 렌더링
-function StatusBadge({ status }: { status: string }) {
-  const variants: Record<string, string> = {
-    active: "bg-green-100 text-green-800",
-    pending: "bg-yellow-100 text-yellow-800",
-    closed: "bg-gray-100 text-gray-800",
-  };
-
-  return (
-    <span className={cn("px-2 py-1 rounded-full text-xs font-medium", variants[status])}>
-      {status}
-    </span>
-  );
-}
-
-// good: 리스트 렌더링
-function PostGrid({ posts }: { posts: Post[] }) {
-  if (posts.length === 0) {
-    return (
-      <div className="text-center text-muted-foreground py-12">
-        게시글이 없습니다
+    <section className="rounded-xl border bg-card p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-semibold">{title}</h2>
+        {action}
       </div>
-    );
-  }
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {posts.map((post) => (
-        <PostCard key={post.id} post={post} />
-      ))}
-    </div>
-  );
+      {children}
+    </section>
+  )
 }
 ```
 
----
+추출 시 규칙:
 
-## Export Patterns
+- 변형이 필요하면 boolean props 증식(`isSmall`, `isDanger`…) 대신
+  `variant` prop 하나로 통제한다 (CVA 패턴 — resources/styling.md)
+- 공통 레이아웃(`layout.tsx`)은 내비게이션 간 리렌더되지 않는다 —
+  페이지 상태에 의존하는 UI는 layout이 아니라 page 쪽에 둔다
+- 2회 미만 반복을 미리 추상화하지 않는다 (사변적 일반화 금지)
 
-```typescript
-// 페이지 컴포넌트: default export 필수
-export default function PostPage() { /* ... */ }
+### 공통 레이아웃 시스템 — PageHeader
 
-// 일반 컴포넌트: default export 권장
-export default function PostCard({ post }: PostCardProps) { /* ... */ }
+상세/설정/프로필 같은 sub 페이지의 상단 헤더(뒤로가기 + 타이틀)는 대표적인 반복 UI다.
+**새 공통 컴포넌트를 만들기 전에 `components/layout/`·`components/common/`을
+grep으로 확인한다** — 이미 있으면 재사용하고, 없을 때만 추가한다.
 
-// 여러 컴포넌트를 export하는 경우: named export
-export function PostCardSkeleton() { /* ... */ }
-export function PostCardCompact({ post }: PostCardProps) { /* ... */ }
-```
-
----
-
-## Anti-Patterns
-
-```typescript
-// bad: 불필요한 "use client"
-"use client"; // 상태도, 이벤트도, 브라우저 API도 없음
-export default function StaticContent() {
-  return <div>Just static text</div>;
-}
-
-// bad: Server Component에서 useState
-export default function Page() {
-  const [count, setCount] = useState(0); // 에러!
-}
-
-// bad: any 타입 사용
-function UserCard({ user }: { user: any }) { /* ... */ }
-
-// bad: 상대 경로 import
-import { Button } from "../../components/ui/button";
-
-// bad: arrow function 컴포넌트
-const UserCard = ({ user }: UserCardProps) => { /* ... */ };
-```
-
----
-
-## Shared Layout Components (반복 UI 추출)
-
-같은 종류의 화면(상세/목록/설정 등)에 **상단 헤더(뒤로가기 + 타이틀)·하단 액션바·빈 상태 등 반복 UI**가 등장하면 인라인 복제 금지. 즉시 공통 컴포넌트로 추출한다.
-
-### Rule of Three (3회 반복 시 즉시 추출)
-
-신규 페이지 작성 시 다음을 자가 점검한다:
-
-1. 동일 형태의 헤더/푸터/카드를 **2개 이상 페이지**에서 작성하고 있는가? → 다음 페이지에서 동일 형태가 또 등장하면 **즉시 추출**
-2. 이미 비슷한 컴포넌트가 `components/layout/`, `components/common/`에 존재하는가? → 새로 만들기 전에 grep으로 확인
-
-### 표준 위치
-
-| 컴포넌트 종류        | 경로                 | 예시                                                           |
-| -------------------- | -------------------- | -------------------------------------------------------------- |
-| 페이지 공통 레이아웃 | `components/layout/` | `PageHeader`, `PageContainer`, `BackButton`, `BottomActionBar` |
-| 도메인 무관 재사용   | `components/common/` | `EmptyState`, `ErrorBoundary`, `LoadingSpinner`                |
-| shadcn primitive     | `components/ui/`     | shadcn add로 생성된 원자 컴포넌트만                            |
-
-### PageHeader 예시 (인라인 중복 → 공통화)
-
-```typescript
+```tsx
 // components/layout/page-header.tsx
-import { ChevronLeft } from "lucide-react";
-import Link from "next/link";
+import { ChevronLeft } from 'lucide-react'
+import Link from 'next/link'
 
 interface PageHeaderProps {
-  title: string;
-  backHref?: string;
-  rightSlot?: React.ReactNode;
+  title: string
+  backHref?: string
+  rightSlot?: React.ReactNode
 }
 
 export function PageHeader({ title, backHref, rightSlot }: PageHeaderProps) {
@@ -289,65 +145,124 @@ export function PageHeader({ title, backHref, rightSlot }: PageHeaderProps) {
         <Link href={backHref} aria-label="뒤로가기">
           <ChevronLeft className="h-6 w-6" />
         </Link>
-      ) : <span className="w-6" />}
+      ) : (
+        <span className="w-6" />
+      )}
       <h1 className="text-base font-semibold">{title}</h1>
       <div className="w-6">{rightSlot}</div>
     </header>
-  );
+  )
 }
+```
 
-// 사용처: 상세/설정/프로필 등 모든 sub 페이지가 동일 인터페이스 공유
-// app/posts/[id]/page.tsx
+```tsx
+// 사용처: 모든 sub 페이지가 동일 인터페이스를 공유한다
 <PageHeader title="게시글" backHref="/posts" />
-// app/settings/page.tsx
-<PageHeader title="설정" backHref="/" />
+<PageHeader title="설정" backHref="/" rightSlot={<SaveButton />} />
 ```
 
-### 디자인 토큰 일관성
+```tsx
+// Bad: 같은 헤더를 페이지마다 인라인 복제 —
+// 높이·폰트가 페이지마다 어긋나기 시작한다 (h-12/h-14/h-16, text-lg/text-base 혼재)
+<header className="sticky top-0 …">
+  <Link href="/posts"><ChevronLeft /></Link>
+  <h1 className="text-lg font-semibold">게시글</h1>
+</header>
+```
 
-헤더 높이·타이틀 폰트 크기·여백은 페이지마다 임의 지정 금지. `tailwind.config` 또는 `globals.css`의 토큰(`h-14`, `text-base font-semibold` 등)을 PageHeader에 **한 곳에서만** 정의하고, 페이지는 props로만 제어한다.
+디자인 토큰 일관성:
 
-추가 정의가 필요한 토큰(예: 모바일 헤더 전용 높이)은 `ui-ux-design` 스킬로 생성된 디자인 시스템 문서(`dev/docs/design/`)와 정합해야 한다.
+- 헤더 높이·타이틀 폰트·여백(`h-14`, `text-base font-semibold` 등)은
+  **PageHeader 한 곳에서만** 정의한다 — 페이지는 props로만 제어
+- 추가 토큰이 필요하면(예: 모바일 헤더 전용 높이) 디자인 시스템 산출물
+  (`dev/docs/design/`, ui-ux-design 스킬 생성)과 정합해야 한다
 
----
+## 4. Props·타입 컨벤션
 
-## Anti-Patterns
+- Props 타입은 `interface XxxProps`로 컴포넌트 파일 상단에 선언 — export는 재사용될 때만
+- `children`은 `React.ReactNode`
+- 서버 데이터의 타입은 `lib/queries/`가 export하는 타입을 import해 재사용 (중복 정의 금지)
+- 이벤트 핸들러 prop은 `onXxx`, 내부 핸들러는 `handleXxx`
+- React 19: `ref`는 일반 prop이다 — `forwardRef` 래핑 불필요
 
-```typescript
-// bad: 불필요한 "use client"
-"use client"; // 상태도, 이벤트도, 브라우저 API도 없음
-export default function StaticContent() {
-  return <div>Just static text</div>;
+```tsx
+interface SearchInputProps {
+  defaultValue?: string
+  ref?: React.Ref<HTMLInputElement>   // React 19: ref as prop
+  onSearch: (query: string) => void
 }
 
-// bad: Server Component에서 useState
-export default function Page() {
-  const [count, setCount] = useState(0); // 에러!
+export function SearchInput({ defaultValue, ref, onSearch }: SearchInputProps) {
+  // …
 }
+```
 
-// bad: any 타입 사용
-function UserCard({ user }: { user: any }) { /* ... */ }
+## 5. 로딩·빈·에러 3상태
 
-// bad: 상대 경로 import
-import { Button } from "../../components/ui/button";
+데이터를 표시하는 모든 화면은 **로딩·빈·에러** 3가지 상태를 처리해야 완성이다.
 
-// bad: arrow function 컴포넌트
-const UserCard = ({ user }: UserCardProps) => { /* ... */ };
+### 로딩 — 라우트 단위는 `loading.tsx`, 부분 단위는 `<Suspense>`
 
-// bad: 같은 헤더(뒤로가기 + 타이틀)를 페이지마다 인라인 복제
-export default function PostDetail() {
+```tsx
+// app/tasks/loading.tsx — 라우트 전환 시 자동 표시 (자동 Suspense 경계)
+import { Skeleton } from '@/components/ui/skeleton'
+
+export default function TasksLoading() {
   return (
-    <>
-      <header className="sticky top-0 ..."> {/* 다른 페이지에도 동일 구조 */}
-        <Link href="/posts"><ChevronLeft /></Link>
-        <h1 className="text-base font-semibold">게시글</h1>
-      </header>
-      {/* ... */}
-    </>
-  );
+    <div className="space-y-3 p-6">
+      <Skeleton className="h-8 w-40" />
+      <Skeleton className="h-24 w-full" />
+      <Skeleton className="h-24 w-full" />
+    </div>
+  )
 }
-// good: components/layout/page-header.tsx로 추출 → <PageHeader title="게시글" backHref="/posts" />
-
-// bad: 헤더 높이·폰트를 페이지마다 다르게 (h-12 / h-14 / h-16 혼재, text-lg / text-base 혼재)
-// good: PageHeader 한 곳에서 토큰 정의, 페이지는 props만 전달
 ```
+
+- 스켈레톤은 실제 콘텐츠의 형태를 닮게 만든다 (스피너 단독 사용 지양)
+- 페이지 일부만 느리면 그 부분을 별도 서버 컴포넌트로 분리해
+  `<Suspense fallback={…}>`로 감싼다 — resources/data-fetching.md의 스트리밍 절 참조
+
+### 빈 상태 — "0건"은 에러가 아니다
+
+```tsx
+if (tasks.length === 0) {
+  return (
+    <div className="rounded-lg border border-dashed p-8 text-center">
+      <p className="text-sm text-muted-foreground">아직 등록된 항목이 없습니다.</p>
+      <p className="mt-1 text-xs text-muted-foreground">위 폼에서 첫 항목을 추가해 보세요.</p>
+    </div>
+  )
+}
+```
+
+빈 상태에는 다음 행동 안내(첫 항목 추가 유도 등)를 함께 표시한다.
+
+### 에러 — `error.tsx` 경계
+
+```tsx
+// app/tasks/error.tsx — 이 세그먼트에서 throw된 에러를 잡는다
+'use client'
+
+import { Button } from '@/components/ui/button'
+
+interface TasksErrorProps {
+  error: Error & { digest?: string }
+  reset: () => void
+}
+
+export default function TasksError({ error, reset }: TasksErrorProps) {
+  return (
+    <div className="p-8 text-center">
+      <p className="text-sm text-destructive">목록을 불러오지 못했습니다.</p>
+      <Button variant="outline" onClick={reset} className="mt-4">
+        다시 시도
+      </Button>
+    </div>
+  )
+}
+```
+
+- `error.tsx`는 반드시 `'use client'`
+- 쿼리 함수는 에러를 throw한다 → 가장 가까운 `error.tsx`가 잡는다 (컴포넌트 내 try/catch 지양)
+- **폼 제출 에러는 경계로 보내지 않는다** — `useActionState`의 반환값으로
+  인라인 표시한다 (resources/data-fetching.md의 변이 절 참조)

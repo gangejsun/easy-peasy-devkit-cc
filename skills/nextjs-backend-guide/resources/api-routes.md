@@ -1,295 +1,300 @@
-# API Route Handlers
+# API Endpoints — Route Handlers & Server Actions
 
-## Route Handler Basics
+Standard handler shapes and the request/response contract for this stack.
 
-Next.js App Router의 Route Handler는 `app/api/` 디렉토리에 `route.ts` 파일로 정의한다.
+## Route Handler vs Server Action
 
-### 파일 구조
+| Use a Route Handler when... | Use a Server Action when... |
+| --- | --- |
+| External clients consume it (mobile, webhooks, third parties) | The mutation is triggered from your own React forms/components |
+| You need full control of status codes, headers, streaming | You want progressive enhancement + `useActionState` |
+| The endpoint is a GET (actions are POST-only) | The mutation should revalidate cached pages in the same call |
+| You return files / redirects to external URLs / non-JSON | The payload is a `FormData` from your own UI |
 
+Both run on the server, validate input, and call `getUser()` — neither is "more secure"; a Server Action is a public HTTP endpoint too.
+
+## Response contract (all Route Handlers)
+
+Every JSON response uses one envelope, produced by `lib/api/errors.ts` helpers:
+
+```jsonc
+// success                          // failure
+{ "data": { ... } }                 { "error": { "code": "validation_error",
+                                                 "message": "Invalid input",
+                                                 "details": { "title": ["Required"] } } }
 ```
-app/api/
-├── users/
-│   ├── route.ts            # GET (목록), POST (생성)
-│   └── [id]/
-│       └── route.ts        # GET (상세), PUT (수정), DELETE (삭제)
-├── posts/
-│   ├── route.ts
-│   └── [id]/
-│       └── route.ts
-└── webhooks/
-    └── payment/
-        └── route.ts        # POST (외부 웹훅)
-```
 
-### 기본 패턴
+- `code` is stable and machine-readable; `message` is generic and human-readable — never a raw Postgres/Supabase error message (log those server-side).
+- Status codes: table in SKILL.md; mapping helpers in `resources/validation-and-errors.md`.
 
-```typescript
-import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { z } from "zod";
+## Collection handler — canonical shape
 
-// GET /api/users
-export async function GET(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const { searchParams } = request.nextUrl;
-    const page = Number(searchParams.get("page") ?? "1");
-    const limit = Number(searchParams.get("limit") ?? "10");
-    const offset = (page - 1) * limit;
+```ts
+// app/api/notes/route.ts
+import { NextRequest } from 'next/server'
+import { z } from 'zod'
+import { createClient } from '@/lib/supabase/server'
+import { ok, fail, fromSupabaseError } from '@/lib/api/errors'
+import { createNoteSchema } from '@/lib/validations/note'
 
-    const { data, error, count } = await supabase
-      .from("users")
-      .select("*", { count: "exact" })
-      .range(offset, offset + limit - 1)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ data, total: count, page, limit });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 }
-    );
-  }
-}
-
-// POST /api/users
 export async function POST(request: NextRequest) {
+  let body: unknown
   try {
-    const supabase = await createClient();
-    const body = await request.json();
-
-    const schema = z.object({
-      email: z.string().email(),
-      name: z.string().min(1).max(100),
-    });
-    const validated = schema.parse(body);
-
-    const { data, error } = await supabase
-      .from("users")
-      .insert(validated)
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    return NextResponse.json(data, { status: 201 });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
-    }
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 }
-    );
+    body = await request.json()
+  } catch {
+    return fail(400, 'invalid_json', 'Request body must be valid JSON')
   }
-}
-```
+  const parsed = createNoteSchema.safeParse(body)
+  if (!parsed.success) {
+    return fail(400, 'validation_error', 'Invalid input',
+      z.flattenError(parsed.error).fieldErrors)
+  }
 
-### Dynamic Route
-
-```typescript
-// app/api/users/[id]/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
-
-// GET /api/users/:id
-export async function GET(request: NextRequest, { params }: RouteParams) {
-  const { id } = await params;
-  const supabase = await createClient();
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return fail(401, 'unauthenticated', 'Sign in required')
 
   const { data, error } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", id)
-    .single();
+    .from('notes')
+    .insert({ ...parsed.data, user_id: user.id })   // ownership set on the server
+    .select('id, title, content, tags, created_at')
+    .single()
+  if (error) return fromSupabaseError(error)
 
-  if (error || !data) {
-    return NextResponse.json({ error: "Not Found" }, { status: 404 });
+  return ok(data, 201)
+}
+```
+
+The order is fixed: **parse → validate → authenticate → query → respond.**
+Validation failures return before any auth or DB work happens. The GET (list) twin —
+query-param validation + pagination — follows the same order; full listing in
+`resources/complete-example.md`.
+
+## Item handler — async params (Next.js 15)
+
+`params` is a `Promise` in Next.js 15 — always `await` it.
+
+```ts
+// app/api/notes/[id]/route.ts
+import { NextRequest } from 'next/server'
+import { z } from 'zod'
+import { createClient } from '@/lib/supabase/server'
+import { ok, fail, fromSupabaseError } from '@/lib/api/errors'
+import { updateNoteSchema } from '@/lib/validations/note'
+
+type RouteContext = { params: Promise<{ id: string }> }
+
+export async function GET(request: NextRequest, { params }: RouteContext) {
+  const { id } = await params
+  if (!z.uuid().safeParse(id).success) {
+    return fail(400, 'validation_error', 'Invalid id')
   }
 
-  return NextResponse.json(data);
-}
-
-// PUT /api/users/:id
-export async function PUT(request: NextRequest, { params }: RouteParams) {
-  const { id } = await params;
-  const supabase = await createClient();
-  const body = await request.json();
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return fail(401, 'unauthenticated', 'Sign in required')
 
   const { data, error } = await supabase
-    .from("users")
-    .update(body)
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
-  }
-
-  return NextResponse.json(data);
+    .from('notes')
+    .select('id, title, content, tags, created_at')
+    .eq('id', id)
+    .single()
+  // PGRST116 (0 rows) → 404 — also when RLS hides the row. Do not leak existence.
+  if (error) return fromSupabaseError(error)
+  return ok(data)
 }
 
-// DELETE /api/users/:id
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  const { id } = await params;
-  const supabase = await createClient();
-
-  const { error } = await supabase.from("users").delete().eq("id", id);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+export async function PATCH(request: NextRequest, { params }: RouteContext) {
+  const { id } = await params
+  const parsed = updateNoteSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) {
+    return fail(400, 'validation_error', 'Invalid input',
+      z.flattenError(parsed.error).fieldErrors)
   }
 
-  return new NextResponse(null, { status: 204 });
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return fail(401, 'unauthenticated', 'Sign in required')
+
+  const { data, error } = await supabase
+    .from('notes')
+    .update(parsed.data)
+    .eq('id', id)
+    .eq('user_id', user.id)       // explicit ownership filter — RLS is the backup, not the only guard
+    .select('id, title, content, tags')
+    .single()                     // PGRST116 (0 rows: missing or not yours) → 404
+  if (error) return fromSupabaseError(error)
+  return ok(data)
+}
+
+export async function DELETE(_request: NextRequest, { params }: RouteContext) {
+  const { id } = await params
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return fail(401, 'unauthenticated', 'Sign in required')
+
+  const { data, error } = await supabase
+    .from('notes')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id)       // explicit ownership filter — RLS is the backup
+    .select('id')                 // returns the deleted rows — [] means nothing was deleted
+  if (error) return fromSupabaseError(error)
+  // Missing and RLS-hidden look identical here — same 404, no existence leak
+  if (!data?.length) return fail(404, 'not_found', 'Resource not found')
+  return ok({ deleted: true })
 }
 ```
 
----
+Mutations scope by `id` **and** `user_id` — the explicit filter keeps intent visible and
+survives a broken RLS policy. A delete without `.select()` claims success even when it
+deleted nothing; always confirm the affected rows.
 
-## Response Helpers
+## Caching behavior
 
-일관된 응답 형식을 위한 헬퍼 함수:
+- GET Route Handlers are **dynamic by default** in Next.js 15, and anything using the
+  cookie-bound Supabase client stays dynamic — no extra config for authenticated endpoints.
+- Public, auth-free data may opt in: `export const dynamic = 'force-static'` +
+  `export const revalidate = 60`. Never on a handler that reads cookies.
 
-```typescript
-// lib/api/response.ts
-import { NextResponse } from "next/server";
+## CORS — only when external origins call the API
 
-export function successResponse<T>(data: T, status = 200) {
-  return NextResponse.json(data, { status });
+Same-origin apps need none of this. For a route consumed from another origin:
+
+```ts
+const CORS = {
+  'Access-Control-Allow-Origin': 'https://app.example.com', // never '*' on authenticated endpoints
+  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 }
 
-export function errorResponse(message: string, status = 500) {
-  return NextResponse.json({ error: message }, { status });
-}
-
-export function validationErrorResponse(errors: z.ZodError) {
-  return NextResponse.json(
-    {
-      error: "Validation Error",
-      details: errors.errors.map((e) => ({
-        field: e.path.join("."),
-        message: e.message,
-      })),
-    },
-    { status: 400 }
-  );
-}
-```
-
----
-
-## Authentication in Route Handlers
-
-```typescript
-export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // user.id를 활용한 쿼리 (RLS가 자동 적용됨)
-  const { data } = await supabase.from("profiles").select("*");
-
-  return NextResponse.json(data);
-}
-```
-
----
-
-## CORS & Headers
-
-```typescript
-// 특정 Route Handler에서 CORS 설정
-export async function GET(request: NextRequest) {
-  const data = { message: "Hello" };
-
-  return NextResponse.json(data, {
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    },
-  });
-}
-
-// OPTIONS preflight
+// Preflight — browsers send OPTIONS before non-simple requests; without this they never
+// reach your GET/POST
 export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    },
-  });
+  return new Response(null, { status: 204, headers: CORS })
 }
 ```
 
----
+Spread the same headers into every real response of that route: `NextResponse.json({ data }, { headers: CORS })`.
 
-## Webhook Handling
+## Server Actions — canonical shape
 
-```typescript
-// app/api/webhooks/payment/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { headers } from "next/headers";
+```ts
+// app/notes/actions.ts
+'use server'
 
-export async function POST(request: NextRequest) {
-  const body = await request.text();
-  const headersList = await headers();
-  const signature = headersList.get("x-webhook-signature");
+import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { createNoteSchema } from '@/lib/validations/note'
+import type { ActionResult } from '@/lib/api/types'
 
-  // 서명 검증
-  if (!verifySignature(body, signature)) {
-    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+export async function createNote(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  // 1. Validate — the client form is not a trust boundary
+  const parsed = createNoteSchema.safeParse({
+    title: formData.get('title'),
+    content: formData.get('content') ?? '',
+  })
+  if (!parsed.success) {
+    return { ok: false, fieldErrors: z.flattenError(parsed.error).fieldErrors }
   }
 
-  const payload = JSON.parse(body);
+  // 2. Authenticate — actions are publicly callable HTTP endpoints
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { ok: false, formError: 'Sign in required' }
 
-  // 웹훅 처리 로직
-  await processWebhook(payload);
+  // 3. Mutate; map DB errors to the result type — never throw
+  const { error } = await supabase
+    .from('notes')
+    .insert({ ...parsed.data, user_id: user.id })
+  if (error) {
+    if (error.code === '23505') return { ok: false, formError: 'This note already exists' }
+    console.error('[createNote]', error)
+    return { ok: false, formError: 'Something went wrong. Please try again.' }
+  }
 
-  return NextResponse.json({ received: true });
+  // 4. Revalidate affected pages, then optionally redirect (OUTSIDE try/catch)
+  revalidatePath('/notes')
+  redirect('/notes')
 }
 ```
 
----
+Rules that differ from Route Handlers:
 
-## Anti-Patterns
+- Signature `(prevState, formData)` keeps the action compatible with `useActionState`.
+- Return values must be **serializable** — plain objects only, no `Error` instances.
+- `redirect()` and `notFound()` throw internally — never call them inside `try/catch`.
+- After every successful mutation, revalidate (`revalidatePath`/`revalidateTag`) or the
+  UI will show stale cached data.
+- An action used by external clients is a smell — promote it to a Route Handler.
 
-```typescript
-// bad: Route Handler에 비즈니스 로직 직접 작성
+## File-upload Server Action
+
+`FormData` files need their own checks — existence, size, and type — before Storage:
+
+```ts
+const MAX_SIZE = 5 * 1024 * 1024 // 5MB — mirror the cap in the bucket settings
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+
+export async function uploadAvatar(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const file = formData.get('avatar')
+  if (!(file instanceof File) || file.size === 0)
+    return { ok: false, formError: 'No file provided' }
+  if (file.size > MAX_SIZE) return { ok: false, formError: 'File too large (max 5MB)' }
+  // file.type is client-supplied — a first filter, not proof; keep bucket MIME limits on
+  if (!ALLOWED_TYPES.includes(file.type))
+    return { ok: false, formError: 'Unsupported file type' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { ok: false, formError: 'Sign in required' }
+
+  const path = `${user.id}/${crypto.randomUUID()}.${file.type.split('/')[1]}`
+  const { error } = await supabase.storage
+    .from('avatars')
+    .upload(path, file, { contentType: file.type })
+  if (error) {
+    console.error('[uploadAvatar]', error)
+    return { ok: false, formError: 'Upload failed. Please try again.' }
+  }
+  revalidatePath('/settings/profile')
+  return { ok: true } // store `path` in a table row, not a signed URL (they expire)
+}
+```
+
+Bucket policies and signed URLs: `resources/database-patterns.md`.
+
+## Webhook handlers
+
+```ts
+// app/api/webhooks/<provider>/route.ts
+import { NextRequest } from 'next/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { ok, fail } from '@/lib/api/errors'
+
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  // 100줄의 비즈니스 로직, 여러 DB 쿼리, 외부 API 호출...
-}
+  // 1. Read the RAW body first — signatures are computed over exact bytes
+  const raw = await request.text()
+  const signature = request.headers.get('x-provider-signature')
+  if (!signature || !(await verifySignature(raw, signature))) {
+    return fail(401, 'invalid_signature', 'Signature verification failed')
+  }
 
-// bad: 에러 처리 누락
-export async function GET() {
-  const supabase = await createClient();
-  const { data } = await supabase.from("users").select("*");
-  return NextResponse.json(data); // error 체크 안함
-}
-
-// bad: 입력 검증 없이 사용
-export async function PUT(request: NextRequest) {
-  const body = await request.json();
-  await supabase.from("users").update(body); // 검증 없이 직접 사용
+  // 2. No user cookie exists here — service-role admin client
+  //    (rules in resources/auth-boundaries.md); still validate the payload
+  const event = JSON.parse(raw)
+  const supabase = createAdminClient()
+  // ... idempotent processing keyed by the provider's event id ...
+  return ok({ received: true })
 }
 ```
+
+Verify the signature **before** acting on anything; make processing idempotent (providers retry deliveries); return 200 quickly and queue slow work.

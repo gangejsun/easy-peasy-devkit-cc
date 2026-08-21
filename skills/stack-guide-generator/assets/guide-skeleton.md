@@ -1,8 +1,8 @@
 # 가이드 생성 규격서 (Guide Skeleton Spec)
 
 생성되는 frontend-guide / backend-guide가 반드시 따라야 하는 구조.
-nextjs-frontend-guide(290줄·리소스 10)·nextjs-backend-guide(220줄·리소스 10)의
-실증된 골격에서 도출했다.
+nextjs-frontend/backend-guide의 실증된 골격에서 도출했으며, 2026-08-21 재기반(A/B v2)
+이후에는 그 원본들 자신도 이 규격서를 따른다 — 규격서와 원본은 상호 정합 상태다.
 
 > **동기화 의무**: nextjs 가이드(실증 원본)에 스택 무관 범주(보안·반복 UI·테스트 등)를
 > 추가하면 이 규격서의 해당 슬롯에도 반영한다. 원본만 진화하면 생성 가이드는 그 범주를

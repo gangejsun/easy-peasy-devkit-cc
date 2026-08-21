@@ -1,243 +1,267 @@
 ---
 name: nextjs-backend-guide
-description: [Preset: nextjs-supabase] Next.js App Router backend development guide. Covers API Route Handlers, Server Actions, Supabase data access, Zod validation, middleware, error handling, and PostgreSQL data modeling (schema design, migrations, history tables, idempotency, SECURITY DEFINER). Use when creating or modifying Route Handlers, Server Actions, Supabase queries, input validation, middleware, backend testing, database tables, migrations, RLS policies, or any server-side logic.
+description: "[Preset: nextjs-supabase] Next.js App Router backend development guide. Covers API Route Handlers, Server Actions, Supabase data access, Zod validation, middleware, and error handling patterns. Use when creating or modifying Route Handlers, Server Actions, Supabase queries, input validation, middleware, backend testing, or any server-side logic. Use ONLY when the active preset matches."
 ---
 
-# Backend Development Guidelines
-
-Next.js App Router 기반 백엔드 개발 가이드. API Route Handler, Server Action, Supabase 데이터 접근 패턴을 다룬다.
+# Backend Development Guide
 
 ## Quick Start
 
-### New Route Handler Checklist
+**New Route Handler:**
 
-- [ ] `app/api/{resource}/route.ts` 생성
-- [ ] NextRequest/NextResponse 패턴 사용
-- [ ] Zod 스키마로 입력 검증
-- [ ] Supabase 서버 클라이언트로 데이터 접근
-- [ ] 에러 처리 (try-catch + 적절한 HTTP 상태코드)
-- [ ] RLS 정책 확인
-- [ ] 테스트 작성
+- [ ] Define/extend the Zod schema in `lib/validations/<feature>.ts`
+- [ ] Confirm the table and constraints exist (design them per the T1 data-modeling card)
+- [ ] Create `app/api/<resource>/route.ts` (collection) or `app/api/<resource>/[id]/route.ts` (item — `params` is a Promise in Next.js 15)
+- [ ] `safeParse` the body/query before any DB call — return 400 with `fieldErrors` on failure
+- [ ] Auth: `const { data: { user } } = await supabase.auth.getUser()` → 401 if `null`
+- [ ] Query through the per-request server client; check the returned `error` explicitly
+- [ ] Respond with the `{ data }` / `{ error }` envelope and the correct status code
+- [ ] Add a Vitest test: happy path + validation failure + unauthenticated
 
-### New Table / Migration Checklist
+**New Server Action:**
 
-새 테이블·스키마 변경은 데이터 모델링 카드(`.claude/rules/data-modeling.md` — 마이그레이션·
-스키마 편집 시 자동 로드) §8 체크리스트를 따른다
-(RLS 동반, FK 인덱스, 공통 컬럼, `_history` 판단, Soft Delete, 멱등성 키).
-
-### New Server Action Checklist
-
-- [ ] `"use server"` 선언
-- [ ] Zod 스키마로 입력 검증
-- [ ] Supabase 서버 클라이언트 사용
-- [ ] `revalidatePath`/`revalidateTag`로 캐시 갱신
-- [ ] 에러 시 적절한 반환값 (throw 대신 결과 객체)
-- [ ] 테스트 작성
-
----
+- [ ] Create `actions.ts` colocated with the feature, `'use server'` at the top
+- [ ] Signature compatible with `useActionState`: `(prevState, formData)`
+- [ ] Validate `formData` with the shared Zod schema — never trust the client form
+- [ ] Auth-check with `getUser()` inside the action (actions are public HTTP endpoints)
+- [ ] Mutate via the server client; map DB errors into the typed `ActionResult`
+- [ ] `revalidatePath`/`revalidateTag` after a successful mutation
+- [ ] Call `redirect()` outside `try/catch` (it works by throwing)
+- [ ] Return a serializable `{ ok, fieldErrors?, formError? }` — never throw across the boundary
 
 ## Architecture Overview
 
 ```
-HTTP Request
-    |
-Next.js Middleware (auth, redirect)
-    |
-    +-- Route Handler (app/api/)     -- REST API, 외부 연동
-    |       |
-    |   Service Logic (lib/)
-    |       |
-    |   Supabase Client
-    |
-    +-- Server Action ("use server") -- Form mutation, 데이터 변경
-            |
-        Service Logic (lib/)
-            |
-        Supabase Client
+Request
+  │
+  ├─ middleware.ts ──────────── session refresh (updateSession) + coarse route gating
+  │                             * refresh only — authorization does NOT live here
+  │
+  ├─ Route Handler ──────────── external-facing JSON API (app/api/**/route.ts)
+  │   or Server Action          form mutations from your own React tree
+  │       │
+  │       ├─ Zod v4 schema ──── validate BEFORE auth/DB work (lib/validations/)
+  │       ├─ getUser() ───────── verified identity + app-level authorization
+  │       └─ Supabase client ── per-request, cookie-bound (lib/supabase/server.ts)
+  │
+  └─ Supabase PostgreSQL ────── RLS enforces access as the FINAL defense;
+                                DB constraints duplicate every Zod rule
 ```
 
-**핵심**: Route Handler는 외부 API 제공 시, Server Action은 UI에서 직접 호출하는 데이터 변경 시 사용.
+Responsibility boundaries:
 
-See [resources/architecture-overview.md](resources/architecture-overview.md)
-
----
+- **Middleware** refreshes the auth token and redirects signed-out visitors. It never
+  decides *what* a user may touch.
+- **Handlers/Actions** own validation, authorization, business logic, and the response
+  contract. They are the only place that talks to Supabase.
+- **Postgres (RLS + constraints)** is the enforcement layer that holds even when
+  application code has a bug.
+- **Storage** (file uploads, signed URLs) and **Realtime** (change events) are accessed
+  through the same server client; their access control is also RLS.
 
 ## Directory Structure
 
 ```
-src/
-├── app/
-│   └── api/                # Route Handlers
-│       ├── users/
-│       │   └── route.ts    # GET, POST
-│       └── users/[id]/
-│           └── route.ts    # GET, PUT, DELETE
-├── lib/
-│   ├── supabase/
-│   │   ├── client.ts       # 브라우저용 클라이언트
-│   │   ├── server.ts       # 서버용 클라이언트
-│   │   └── admin.ts        # Service Role 클라이언트 (관리자)
-│   └── actions/            # Server Actions
-│       ├── user.ts
-│       └── post.ts
-├── types/                  # 공유 타입
-└── constants/              # 상수
+app/
+  api/
+    <resource>/route.ts          # collection: GET (list), POST (create)
+    <resource>/[id]/route.ts     # item: GET, PATCH, DELETE
+    webhooks/<provider>/route.ts # signature-verified, service-role client
+  <feature>/
+    actions.ts                   # Server Actions colocated with the feature
+middleware.ts                    # delegates to updateSession
+lib/
+  supabase/
+    server.ts                    # createClient — per-request, anon key, RLS on
+    admin.ts                     # createAdminClient — service role, restricted
+    middleware.ts                # updateSession (token refresh)
+  validations/
+    <feature>.ts                 # Zod schemas shared by handlers and actions
+  env.ts                         # Zod-validated env — the only process.env access point
+  api/
+    errors.ts                    # ok / fail / fromSupabaseError helpers
+    types.ts                     # ActionResult, envelope types
+types/
+  database.ts                    # generated: supabase gen types typescript
+supabase/
+  migrations/*.sql               # DDL, constraints, RLS policies, functions
+  seed.sql                       # local/dev seed data
 ```
 
----
+Table/schema design itself is owned by the T1 data-modeling card — do not restate it here.
 
-## Core Principles (8 Key Rules)
+## Core Principles (6 Key Rules)
 
-### 1. Route Handler는 라우팅만, 로직은 분리
+### 1. Validate every input with Zod before it touches the database
 
-```typescript
-// bad: Route Handler에 비즈니스 로직
-export async function POST(request: NextRequest) {
-  const body = await request.json();
-  // 200줄의 로직...
-}
-
-// good: 서비스 함수로 분리
-export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const result = await createUser(body);
-  return NextResponse.json(result, { status: 201 });
-}
+```ts
+// Bad — raw request body straight into the DB
+const body = await request.json()
+await supabase.from('notes').insert(body)
 ```
 
-### 2. Server Action 우선 (UI 데이터 변경)
+```ts
+// Good — safeParse first, 400 with field errors on failure
+const parsed = createNoteSchema.safeParse(await request.json())
+if (!parsed.success) {
+  return fail(400, 'validation_error', 'Invalid input', z.flattenError(parsed.error).fieldErrors)
+}
+await supabase.from('notes').insert({ ...parsed.data, user_id: user.id })
+```
 
-```typescript
-// good: form mutation은 Server Action
-"use server";
+### 2. Authorize with getUser(), never getSession(), on the server
 
-export async function updateProfile(formData: FormData) {
-  const name = formData.get("name") as string;
+`getSession()` reads the cookie without verifying it — it can be spoofed.
+`getUser()` revalidates the JWT against Supabase Auth on every call.
+
+```ts
+// Bad — trusts an unverified cookie
+const { data: { session } } = await supabase.auth.getSession()
+if (!session) return fail(401, 'unauthenticated', 'Sign in required')
+```
+
+```ts
+// Good — verified identity
+const { data: { user } } = await supabase.auth.getUser()
+if (!user) return fail(401, 'unauthenticated', 'Sign in required')
+```
+
+### 3. Create the Supabase client per request — never a module-level singleton
+
+```ts
+// Bad — one client at import time; cookies from one request leak into another
+export const supabase = createServerClient(url, key, { cookies: staticCookies })
+```
+
+```ts
+// Good — a fresh cookie-bound client inside every handler/action
+export async function POST(request: NextRequest) {
+  const supabase = await createClient()
   // ...
 }
 ```
 
-### 3. Supabase Client 서버/클라이언트 구분
+### 4. Enable RLS on every table — app checks are UX, RLS is enforcement
 
-```typescript
-// Server Component / Route Handler / Server Action
-import { createClient } from "@/lib/supabase/server";
-
-// Client Component
-import { createClient } from "@/lib/supabase/client";
+```sql
+-- Bad: no RLS — anyone holding the anon key can read/write every row
+create table notes ( ... );
 ```
 
-### 4. Zod로 모든 입력 검증
-
-```typescript
-import { z } from "zod";
-
-const createUserSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(1).max(100),
-});
+```sql
+-- Good: RLS on + owner policy; handlers still filter, Postgres enforces
+alter table notes enable row level security;
+create policy "notes_owner_all" on notes for all
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 ```
 
-### 5. RLS 활용 + 서버 사이드 보안
+### 5. Never ignore the error returned by a Supabase query
 
-Supabase RLS 정책으로 행 단위 접근 제어. 서버 클라이언트는 인증된 사용자 컨텍스트를 자동 전달.
+supabase-js does not throw — every call returns `{ data, error }` and `data` may be `null`.
 
-### 6. 에러 처리 일관성
+```ts
+// Bad — error silently discarded; returns null data as success
+const { data } = await supabase.from('notes').select('id, title')
+return ok(data)
+```
 
-```typescript
-// Route Handler
-try {
-  const data = schema.parse(body);
-  const result = await service(data);
-  return NextResponse.json(result);
-} catch (error) {
-  if (error instanceof z.ZodError) {
-    return NextResponse.json({ error: error.errors }, { status: 400 });
-  }
-  return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+```ts
+// Good — every query checks error and maps it to a status
+const { data, error } = await supabase.from('notes').select('id, title')
+if (error) return fromSupabaseError(error)
+return ok(data)
+```
+
+### 6. Server Actions return typed results — never throw domain errors across the boundary
+
+```ts
+// Bad — in production the client sees only an opaque error digest
+export async function createNote(formData: FormData) {
+  'use server'
+  if (!formData.get('title')) throw new Error('Title is required')
 }
 ```
 
-### 7. 테스트 필수
-
-Route Handler, Server Action, 서비스 로직 모두 테스트 작성.
-
-### 8. 세션 신뢰 구분 — 민감 동작은 `getUser()`
-
-`getSession()`은 저장소(쿠키/localStorage)의 값을 검증 없이 반환한다 — **표시용**이다.
-권한 판단·민감 동작 전에는 `getUser()`로 토큰을 Supabase 서버에서 검증한다.
-
-```typescript
-// bad: 저장소 세션을 그대로 신뢰 — 만료·위조 검증 없음
-const { data: { session } } = await supabase.auth.getSession();
-if (session) await deleteAccount(session.user.id);
-
-// good: 민감 동작 직전 서버 검증
-const { data: { user }, error } = await supabase.auth.getUser();
-if (error || !user) return unauthorized();
-await deleteAccount(user.id);
+```ts
+// Good — serializable result + revalidation on success
+export async function createNote(prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  'use server'
+  // validate → getUser → insert (see resources/api-routes.md)
+  revalidatePath('/notes')
+  return { ok: true }
+}
 ```
-
----
 
 ## Common Imports
 
-```typescript
-// Next.js
-import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath, revalidateTag } from "next/cache";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+```ts
+// Route Handlers
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { createClient } from '@/lib/supabase/server'
+import { ok, fail, fromSupabaseError } from '@/lib/api/errors'
 
-// Supabase
-import { createClient } from "@/lib/supabase/server";
+// Server Actions ('use server' at the top of the file)
+import { revalidatePath, revalidateTag } from 'next/cache'
+import { redirect } from 'next/navigation'
+import type { ActionResult } from '@/lib/api/types'
 
-// Validation
-import { z } from "zod";
+// Middleware / SSR clients
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+
+// Admin (service role — webhooks, cron, admin tasks only)
+import { createAdminClient } from '@/lib/supabase/admin'
+
+// Generated DB types
+import type { Database } from '@/types/database'
 ```
 
----
+## HTTP Status Codes + Anti-Patterns
 
-## HTTP Status Codes
+| Status | When | `error.code` |
+| --- | --- | --- |
+| 200 | successful read / update / delete | — |
+| 201 | resource created | — |
+| 400 | Zod failure, malformed JSON, FK/CHECK violation | `validation_error`, `invalid_json` |
+| 401 | no verified user (`getUser()` → null) | `unauthenticated` |
+| 403 | signed in but not allowed (RLS `42501`) | `forbidden` |
+| 404 | missing — or hidden by RLS (`PGRST116`); don't leak existence | `not_found` |
+| 409 | unique conflict (`23505`) | `conflict` |
+| 500 | unexpected — log internals, return a generic message | `internal_error` |
 
-| Code | Use Case |
-|------|----------|
-| 200 | Success |
-| 201 | Created |
-| 204 | No Content (DELETE 성공) |
-| 400 | Bad Request (검증 실패) |
-| 401 | Unauthorized (미인증) |
-| 403 | Forbidden (권한 없음) |
-| 404 | Not Found |
-| 409 | Conflict (중복) |
-| 500 | Server Error |
+**Anti-patterns (never do):**
 
----
-
-## Anti-Patterns
-
-- Route Handler에 비즈니스 로직 200줄
-- `any` 타입 사용
-- Zod 검증 없이 입력 사용
-- 클라이언트 컴포넌트에서 서버 Supabase 클라이언트 사용
-- try-catch 없는 async 코드
-- RLS 미설정 상태로 데이터 접근
-- `process.env` 직접 접근 (env 검증 없이)
-
----
+- `getSession()` as an authorization check on the server
+- Module-scope Supabase client in server code
+- Service-role key in a `NEXT_PUBLIC_*` env var or any client-reachable path
+- Reading roles from `user_metadata` (user-editable) — use `app_metadata` or a profiles row
+- Skipping Zod because "the form already validates"
+- Ignoring the `error` half of a Supabase result
+- `select('*')` in handlers — list columns explicitly
+- `redirect()` inside `try/catch`
+- Throwing domain errors across the Server Action boundary
+- A table without RLS enabled
+- Multi-statement mutations without an RPC (supabase-js has no transactions)
+- Returning raw Postgres/Supabase error messages (`error.message`) to the client
+- Direct `process.env` access in app code — import the validated `env` from `lib/env.ts`
+- Redirecting to a user-supplied URL without an internal-path check (open redirect)
 
 ## Navigation Guide
 
-| Need to... | Read this |
-|------------|-----------|
-| Understand architecture | [architecture-overview.md](resources/architecture-overview.md) |
-| Create Route Handlers | [api-routes.md](resources/api-routes.md) |
-| Create Server Actions | [server-actions.md](resources/server-actions.md) |
-| Use Supabase | [supabase-patterns.md](resources/supabase-patterns.md) |
-| Validate input | [validation-patterns.md](resources/validation-patterns.md) |
-| Create middleware | [middleware-guide.md](resources/middleware-guide.md) |
-| Handle errors | [error-handling.md](resources/error-handling.md) |
-| Database access | [database-patterns.md](resources/database-patterns.md) |
-| Design tables / migrations / history / idempotency | `.claude/rules/data-modeling.md` (T1 규칙 카드 — DB 경로 편집 시 자동 로드) |
-| Write tests | [testing-guide.md](resources/testing-guide.md) |
-| See full examples | [complete-examples.md](resources/complete-examples.md) |
+| If you need to... | Read |
+| --- | --- |
+| Create/modify a Route Handler; handler vs action; webhooks; caching; CORS | `resources/api-routes.md` |
+| Write a Server Action (form mutations, revalidation, redirect, file upload) | `resources/api-routes.md` |
+| Query/insert/update/delete via Supabase; filters; pagination; RPC transactions | `resources/database-patterns.md` |
+| Upload files or issue signed URLs (Storage); avoid N+1; index queries | `resources/database-patterns.md` |
+| Enable table change events (Realtime) | `resources/database-patterns.md` |
+| Design or alter a table schema | **T1 data-modeling card (hub rule)** — not duplicated in this skill |
+| Define validation schemas; FormData quirks; duplicate rules as DB constraints | `resources/validation-and-errors.md` |
+| Validate env vars (`lib/env.ts`); advanced Zod recipes | `resources/validation-and-errors.md` |
+| Map errors to status codes; error envelope; Supabase error code table | `resources/validation-and-errors.md` |
+| Middleware/session refresh; authorization; RLS policies; service-role client | `resources/auth-boundaries.md` |
+| Build the auth flow (sign-in/up/out actions, post-login redirect) | `resources/auth-boundaries.md` |
+| Write backend tests (schemas, handlers, actions, RLS integration) | `resources/testing.md` |
+| See one endpoint end-to-end (validate → process → respond) | `resources/complete-example.md` |

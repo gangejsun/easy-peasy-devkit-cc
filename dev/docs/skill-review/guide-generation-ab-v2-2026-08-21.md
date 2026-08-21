@@ -99,3 +99,16 @@ CSS-first · Zustand SSR(모듈 스코프 공유) · lib/queries 단일 진입�
 - 규격서 후속: "스택 함정 목록" 내용 계약(§3-4), 원본 감사 루프(참조 신선도 규칙과 연결).
 
 산출물: 세션 스크래치 `ab-v2/{frontend,backend,nextjs-frontend,nextjs-backend}-guide/` (임시 — 본 보고서가 원장)
+
+## 결정 및 실행 (2026-08-21)
+
+사용자가 **경로 B(생성본 재기반)** 채택. 실행 내역:
+
+- Next.js 생성본 2종을 플러그인 `skills/nextjs-{frontend,backend}-guide/`의 새 본체로 교체
+- 원본 유니크 자산 역이식(§2 보존 대상 — frontend 전용 리소스 3종·공유 레이아웃 시스템·
+  RHF 폼 패턴 / backend FormData 트릭·복귀 경로 보존·이중 방어·env 검증·Auth 플로우·
+  CORS·고급 Zod·필터/인덱스), 이식분은 Zod v4 정합으로 현대화, 도메인 잔재 제거
+- 프리셋 게이팅 복원(name·`[Preset: nextjs-supabase]`·게이팅 문구), 생성 스탬프 제거
+- 생성본 잔여 결함 수리(DELETE 0행 성공 보고, React 19 폼 리셋 서술, server-only 단정)
+- **보안 결함 #1(user_metadata 관리자 판정)은 취약 파일 폐기로 제거** — 금지 패턴
+  전수 grep으로 재유입 0 확인

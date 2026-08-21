@@ -1,262 +1,191 @@
 # Performance
 
-## Server Component 최적화 (가장 중요)
+이미지·코드 스플리팅·메모이제이션·리소스 정리 등 프론트엔드 성능 최적화.
 
-Server Component는 자체가 성능 최적화. 번들 크기 0, 서버에서 렌더링.
+## 1. 최우선 최적화 — Server Component 유지
 
-**원칙**: Client Component 최소화 = 최고의 성능 최적화.
+Server Component는 그 자체가 성능 최적화다: 클라이언트 번들 0, 서버 렌더링.
+**`'use client'` 경계를 최소로 유지하는 것이 가장 효과적인 최적화**이며,
+아래 기법들은 그 다음이다 — 측정 없이 선제 적용하지 않는다.
 
----
+## 2. Next.js Image
 
-## Next.js Image
+```tsx
+import Image from 'next/image'
 
-```typescript
-import Image from "next/image";
+// 고정 크기 — LCP(첫 화면 최대 요소) 이미지에는 priority
+<Image src="/hero.jpg" alt="Hero" width={800} height={400} priority />
 
-// 고정 크기
-<Image
-  src="/hero.jpg"
-  alt="Hero"
-  width={800}
-  height={400}
-  priority  // LCP 이미지에 사용
-/>
-
-// 반응형 (fill)
+// 반응형 (fill) — 부모에 relative + 비율 지정, sizes로 다운로드 크기 축소
 <div className="relative aspect-video">
   <Image
     src={post.imageUrl}
     alt={post.title}
     fill
-    className="object-cover rounded-lg"
+    className="rounded-lg object-cover"
     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
   />
 </div>
+```
 
-// 외부 이미지 (next.config.ts 설정 필요)
-// next.config.ts
+```ts
+// next.config.ts — 외부 이미지 호스트 허용 (Supabase Storage 등)
 const config = {
   images: {
-    remotePatterns: [
-      { hostname: "*.supabase.co" },
-    ],
+    remotePatterns: [{ hostname: '*.supabase.co' }],
   },
-};
-```
-
----
-
-## Dynamic Import (Code Splitting)
-
-무거운 컴포넌트를 필요할 때만 로드:
-
-```typescript
-import dynamic from "next/dynamic";
-
-// Client Component를 동적 로드
-const HeavyEditor = dynamic(() => import("@/components/editor/RichEditor"), {
-  loading: () => <div className="h-64 bg-muted animate-pulse rounded-lg" />,
-  ssr: false, // 서버에서 렌더링하지 않음
-});
-
-// 조건부 로드
-function PostPage({ post }: { post: Post }) {
-  const [editing, setEditing] = useState(false);
-
-  return (
-    <div>
-      {editing ? (
-        <HeavyEditor content={post.content} />
-      ) : (
-        <div>{post.content}</div>
-      )}
-    </div>
-  );
 }
 ```
 
----
+- `<img>` 태그 직접 사용 금지 — 항상 `next/image`
+- `fill` 이미지에는 `sizes`를 반드시 지정한다 (기본값 100vw는 과다 다운로드)
 
-## useMemo & useCallback
+## 3. Dynamic Import (Code Splitting)
 
-### useMemo - 비싼 계산에만
+무거운 클라이언트 UI(에디터·차트·지도)는 필요할 때만 로드한다.
 
-```typescript
-"use client";
+```tsx
+// 주의: `ssr: false`는 'use client' 파일 안에서만 허용된다.
+// Server Component에서 쓰면 Next.js 15는 런타임 에러를 던진다.
+'use client'
 
-import { useMemo } from "react";
+import { useState } from 'react'
+import dynamic from 'next/dynamic'
 
-function PostStats({ posts }: { posts: Post[] }) {
-  // good: 비싼 계산
-  const stats = useMemo(() => {
-    return {
-      total: posts.length,
-      published: posts.filter((p) => p.published).length,
-      avgLength: posts.reduce((sum, p) => sum + p.content.length, 0) / posts.length,
-    };
-  }, [posts]);
+const HeavyEditor = dynamic(() => import('@/components/common/rich-editor'), {
+  loading: () => <div className="h-64 animate-pulse rounded-lg bg-muted" />,
+  ssr: false,               // 브라우저 전용 라이브러리일 때만
+})
 
-  return <div>총 {stats.total}개, 공개 {stats.published}개</div>;
+export function EditToggle({ content }: { content: string }) {
+  const [editing, setEditing] = useState(false)
+  return editing
+    ? <HeavyEditor content={content} />
+    : <button onClick={() => setEditing(true)}>{content}</button>
 }
 ```
 
-### useCallback - 자식에 전달하는 함수에
+- Server Component에서 지연 로드가 필요하면 `ssr: false` **없이**
+  `dynamic(() => import(…))`만 쓴다 — SSR은 유지되고 클라이언트 청크만 분리된다
+- 첫 화면에 보이지 않는 조건부 UI(모달 내부, 탭 뒤 콘텐츠)가 분리 후보다
 
-```typescript
-"use client";
+## 4. useMemo · useCallback — 필요한 곳에만
 
-import { useCallback } from "react";
+```tsx
+'use client'
 
-function PostList({ posts }: { posts: Post[] }) {
-  // good: 자식 컴포넌트에 전달하는 핸들러
-  const handleDelete = useCallback(async (id: string) => {
-    await deletePost(id);
-  }, []);
+import { useMemo, useCallback } from 'react'
 
-  return (
-    <div>
-      {posts.map((post) => (
-        <PostCard key={post.id} post={post} onDelete={handleDelete} />
-      ))}
-    </div>
-  );
-}
+// Good: 비싼 계산에만 useMemo
+const stats = useMemo(
+  () => ({
+    total: items.length,
+    doneCount: items.filter((i) => i.done).length,
+  }),
+  [items]
+)
+
+// Good: memo된 자식에 전달하는 핸들러에만 useCallback
+const handleDelete = useCallback((id: string) => deleteItem(id), [])
 ```
 
-### 불필요한 메모이제이션 피하기
+```tsx
+// Bad: 단순한 계산에 useMemo
+const fullName = useMemo(() => `${firstName} ${lastName}`, [firstName, lastName])
+// Good: 직접 계산
+const fullName = `${firstName} ${lastName}`
 
-```typescript
-// bad: 단순한 계산에 useMemo
-const fullName = useMemo(() => `${firstName} ${lastName}`, [firstName, lastName]);
-// good: 직접 계산
-const fullName = `${firstName} ${lastName}`;
-
-// bad: 외부에 전달하지 않는 핸들러에 useCallback
-const handleClick = useCallback(() => setOpen(true), []);
-// good: 직접 정의
-const handleClick = () => setOpen(true);
+// Bad: 자식에 전달하지 않는 핸들러에 useCallback
+const handleClick = useCallback(() => setOpen(true), [])
+// Good: 직접 정의
+const handleClick = () => setOpen(true)
 ```
 
----
+## 5. React.memo — 리렌더가 실측으로 비싼 컴포넌트에만
 
-## React.memo
+```tsx
+import { memo } from 'react'
 
-리렌더링이 비싼 컴포넌트에만 사용:
-
-```typescript
-import { memo } from "react";
-
-const ExpensiveChart = memo(function ExpensiveChart({
-  data,
-}: {
-  data: ChartData[];
-}) {
+const ExpensiveChart = memo(function ExpensiveChart({ data }: { data: ChartPoint[] }) {
   // 복잡한 렌더링 로직
-  return <canvas>{/* ... */}</canvas>;
-});
+  return <canvas /* … */ />
+})
 ```
 
----
+기본값은 memo 없음 — 프로파일링으로 리렌더 비용이 확인된 경우에만 감싼다.
 
-## Debounce
+## 6. Debounce — 빈번한 입력 이벤트
 
-검색 입력 등 빈번한 이벤트에 디바운스:
-
-```typescript
-// hooks/useDebounce.ts
-import { useState, useEffect } from "react";
+```ts
+// hooks/use-debounce.ts
+import { useEffect, useState } from 'react'
 
 export function useDebounce<T>(value: T, delay = 300): T {
-  const [debouncedValue, setDebouncedValue] = useState(value);
+  const [debouncedValue, setDebouncedValue] = useState(value)
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
+    const timer = setTimeout(() => setDebouncedValue(value), delay)
+    return () => clearTimeout(timer)
+  }, [value, delay])
 
-  return debouncedValue;
-}
-
-// 사용
-"use client";
-
-function SearchBar() {
-  const [query, setQuery] = useState("");
-  const debouncedQuery = useDebounce(query, 300);
-
-  useEffect(() => {
-    if (debouncedQuery) {
-      // API 호출
-    }
-  }, [debouncedQuery]);
-
-  return <Input value={query} onChange={(e) => setQuery(e.target.value)} />;
+  return debouncedValue
 }
 ```
 
----
+```tsx
+'use client'
 
-## Memory Leak Prevention
+// 검색 입력 → 300ms 정지 후에만 URL 갱신(서버 재조회)
+const [query, setQuery] = useState('')
+const debouncedQuery = useDebounce(query, 300)
 
-```typescript
-"use client";
-
-import { useEffect } from "react";
-
-function DataPoller({ id }: { id: string }) {
-  useEffect(() => {
-    // 인터벌 정리
-    const interval = setInterval(() => {
-      fetchData(id);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [id]);
-
-  useEffect(() => {
-    // AbortController로 fetch 취소
-    const controller = new AbortController();
-
-    fetch(`/api/data/${id}`, { signal: controller.signal })
-      .then((res) => res.json())
-      .then(setData)
-      .catch(() => {});
-
-    return () => controller.abort();
-  }, [id]);
-
-  useEffect(() => {
-    // 이벤트 리스너 정리
-    const handler = () => console.log("resize");
-    window.addEventListener("resize", handler);
-    return () => window.removeEventListener("resize", handler);
-  }, []);
-}
+useEffect(() => {
+  if (debouncedQuery) setQueryParam('q', debouncedQuery)   // searchParams 갱신
+}, [debouncedQuery])
 ```
 
----
+## 7. 리소스 정리 — Memory Leak 방지
 
-## List Rendering
+`useEffect`에서 만든 구독·타이머·리스너는 반드시 cleanup으로 해제한다.
 
-```typescript
-// good: 안정적인 key 사용
-{posts.map((post) => (
-  <PostCard key={post.id} post={post} />
-))}
+```tsx
+'use client'
 
-// bad: 인덱스를 key로 사용 (리스트가 변경될 때 문제)
-{posts.map((post, index) => (
-  <PostCard key={index} post={post} />
-))}
+useEffect(() => {
+  const interval = setInterval(poll, 5000)             // 인터벌
+  return () => clearInterval(interval)
+}, [])
+
+useEffect(() => {
+  const controller = new AbortController()             // fetch 취소
+  fetch(url, { signal: controller.signal }).then(/* … */).catch(() => {})
+  return () => controller.abort()
+}, [url])
+
+useEffect(() => {
+  const handler = () => {/* … */}                      // 이벤트 리스너
+  window.addEventListener('resize', handler)
+  return () => window.removeEventListener('resize', handler)
+}, [])
 ```
 
----
+Supabase realtime 채널도 동일하다 — `removeChannel`로 해제 (resources/data-fetching.md).
 
-## 성능 체크리스트
+## 8. 리스트 key
 
-- [ ] Server Component를 기본으로 사용하고 있는가?
-- [ ] `"use client"` 경계가 최소한인가?
-- [ ] Image 컴포넌트에 적절한 `sizes`와 `priority`를 설정했는가?
-- [ ] 무거운 컴포넌트를 `dynamic()`으로 분리했는가?
-- [ ] useEffect에서 cleanup을 하고 있는가?
-- [ ] 검색/필터에 debounce를 적용했는가?
-- [ ] 불필요한 useMemo/useCallback을 제거했는가?
+```tsx
+// Good: 안정적인 고유 key
+{tasks.map((task) => <TaskItem key={task.id} task={task} />)}
+
+// Bad: 인덱스 key — 항목 추가/삭제/정렬 시 상태가 어긋난다
+{tasks.map((task, index) => <TaskItem key={index} task={task} />)}
+```
+
+## 9. 성능 체크리스트
+
+- [ ] Server Component가 기본이고 `'use client'` 경계가 최소인가?
+- [ ] 이미지는 `next/image` + 적절한 `sizes`·`priority`인가?
+- [ ] 무거운 클라이언트 UI를 `dynamic()`으로 분리했는가? (`ssr: false`는 클라이언트 파일에서만)
+- [ ] `useEffect`마다 cleanup이 있는가?
+- [ ] 검색/필터 입력에 debounce를 적용했는가?
+- [ ] 불필요한 `useMemo`/`useCallback`/`memo`를 넣지 않았는가?
