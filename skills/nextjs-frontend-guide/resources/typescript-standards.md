@@ -75,7 +75,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 ```ts
 // 쿼리 함수: 명시적 반환 타입 (lib/queries/ 규약)
-export async function getProfile(id: string): Promise<Profile | null> {
+export async function getProfileById(id: string): Promise<Profile | null> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('profiles')
