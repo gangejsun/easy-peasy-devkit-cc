@@ -47,7 +47,9 @@ description: 프로젝트의 기술 스택 조합(프론트엔드·백엔드 유
      막히면 플러그인의 `nextjs-frontend-guide`·`nextjs-backend-guide`를 **형식
      참조로만** 열어본다. 내용·라이브러리·패턴 복사는 금지 — Step 4의 교차 누출
      검사가 이를 잡는다. 규격서(skeleton)와 충돌하면 항상 규격서를 따른다
-3. resources/를 4~10개로 분할하고 Navigation Guide에 전부 매핑한다
+3. resources/를 규격서의 **리소스 슬롯 표**에 따라 구성한다 — 필수 슬롯 7개를
+   전용 파일 또는 병합으로 커버하고(확신 부족 슬롯은 비우되 보고에 명시),
+   4~10개 파일로 분할해 Navigation Guide에 전부 매핑한다
 4. 산출 위치: 프로젝트의 `.claude/skills/frontend-guide/` · `.claude/skills/backend-guide/`
 5. **관계형 DB면 데이터 모델링 카드와 연결한다 — 복사하지 않는다.** 정본은
    T1 규칙 카드(`.claude/rules/` 아래 `data-modeling.md`)로 epcc-init이 모든 프리셋에
@@ -64,7 +66,7 @@ description: 프로젝트의 기술 스택 조합(프론트엔드·백엔드 유
 
 ## Step 4: 자기 검증 — 실패 시 설치하지 않는다
 
-skeleton의 체크리스트 6항을 기계적으로 확인한다:
+skeleton의 체크리스트 7항을 기계적으로 확인한다:
 
 ```bash
 # 섹션 존재·순서
@@ -82,6 +84,7 @@ wc -l .claude/skills/backend-guide/SKILL.md .claude/skills/backend-guide/resourc
 ## Step 5: 스탬프와 보고
 
 - 각 SKILL.md에 생성 스탬프 기록 (skeleton의 형식)
-- 사용자 보고: 생성된 스킬 2개(또는 1개)·리소스 수·검증 결과·"다음 세션부터 자동 트리거됨"
+- 사용자 보고: 생성된 스킬 2개(또는 1개)·리소스 수·검증 결과·**공백 슬롯 목록**(있으면)·
+  "다음 세션부터 자동 트리거됨"
 - 재생성 요청 시: 스탬프의 stack= 값과 새 조합을 비교해 변경 차원을 보고하고,
   수동 편집이 감지되면 편집 부분 diff를 보여준 뒤 사용자 확인을 받는다
