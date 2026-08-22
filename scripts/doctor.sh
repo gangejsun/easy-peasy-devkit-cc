@@ -6,7 +6,8 @@
 #
 #   doctor.sh --fast       구조 검사 (훅 규격, 룰 예산, dangling, 매니페스트)
 #   doctor.sh --self-test  훅에 이벤트별 실제 stdin 픽스처 주입 → 효과 대조
-#   doctor.sh --graph      workflow.graph.json 검증 (도달 불가 노드/엣지)
+#   doctor.sh --graph      workflow.graph.json 검증 (도달 불가 노드/엣지 · 동반 플러그인 설치 여부)
+#   doctor.sh --mermaid    workflow.graph.json → Mermaid flowchart를 stdout으로 (diagram-design 리드로우 입력)
 #   doctor.sh --usage      훅 하트비트 · 스킬 호출 · 엣지 traversal
 #   doctor.sh --lessons    lessons.md 카테고리 집계 + 승격 후보
 #   doctor.sh              = --fast --graph
@@ -413,6 +414,20 @@ run_graph() {
   done < <(jq -r '.nodes[]? | "\(.id)\t\(.kind)\t\(.path // "")"' "$g" 2>/dev/null)
   [ "$missing" -eq 0 ] && ok "노드 ${ntot}개 모두 실재"
 
+  # 외부 동반 플러그인 (external: "<marketplace>/<plugin>") — 선택 의존성이라 미설치는 경고다.
+  # 부재 판정은 3-위치 검색 (harness-change 카드): 플러그인 캐시 · 프로젝트 로컬 스킬 · 마켓플레이스
+  while IFS=$'\t' read -r id ext; do
+    [ -z "$id" ] || [ -z "$ext" ] || [ "$ext" = "null" ] && continue
+    local mk="${ext%%/*}" pn="${ext##*/}"
+    if ls -d "$HOME/.claude/plugins/cache/$mk/$pn"/*/ >/dev/null 2>&1 || [ -d "$PROJ/.claude/skills/$pn" ]; then
+      ok "동반 플러그인 '$id' 설치됨 ($ext)"
+    elif [ -d "$HOME/.claude/plugins/marketplaces/$mk" ]; then
+      warn "동반 플러그인 '$id' 마켓플레이스만 등록, 미설치" "claude plugin install $pn@$mk"
+    else
+      warn "동반 플러그인 '$id' 미설치 ($ext)" "선택 의존성 — 없으면 Mermaid 펜스를 그대로 전달. 설치는 README '동반 플러그인' 참조"
+    fi
+  done < <(jq -r '.nodes[]? | select(.external != null) | "\(.id)\t\(.external)"' "$g" 2>/dev/null)
+
   # 엣지 타깃 실재
   local ids dang=0 etot=0
   ids=$(jq -r '.nodes[]?.id' "$g" 2>/dev/null)
@@ -595,11 +610,42 @@ run_lessons() {
 }
 
 # ════════════════════════════════════════════════════════════════════
+# --mermaid : 그래프 → Mermaid (diagram-design 리드로우 입력)
+# ════════════════════════════════════════════════════════════════════
+# 순수 방출기다 — ok/bad 출력과 요약 꼬리를 섞지 않는다. stdout이 곧 .mmd 파일이다.
+# 노드는 kind별 subgraph, 엣지 라벨은 cond 그대로, 계측 엣지는 "계측:" 접두.
+# 좌표·색·폰트는 넣지 않는다 — 레이아웃은 리드로우하는 쪽(diagram-design)의 몫이다.
+run_mermaid() {
+  local g="workflow.graph.json"
+  [ -f "$g" ] || { printf '%s 없음\n' "$g" >&2; exit 2; }
+  command -v jq >/dev/null 2>&1 || { printf 'jq 없음 — Mermaid 방출 불가\n' >&2; exit 2; }
+  # Mermaid는 `-o`/`-x`를 링크 마커로 읽는다 — harness-evaluation·ai-review-loop 같은 id가 엣지로 오인되므로
+  # id의 하이픈은 `_`로 바꾸고, 사람이 읽는 라벨에는 원래 id를 남긴다.
+  jq -r '
+    def lbl: gsub("\""; "”") | gsub("\\|"; "·");
+    def nid: gsub("-"; "_");
+    . as $r
+    | "%% workflow.graph.json v\($r.version) — doctor --mermaid 산출. 정본은 JSON, 이 파일은 파생물",
+      "flowchart LR",
+      ( [$r.nodes[].kind] | unique[] as $k
+        | "  subgraph \($k)",
+          ( $r.nodes[] | select(.kind == $k)
+            | "    \(.id | nid)[\"\((.id + (if .event then " (" + .event + ")" else "" end)) | lbl)\"]" ),
+          "  end" ),
+      ( $r.edges[]
+        | ((if .instrumented == true then "계측: " else "" end) + (.cond // "")) as $c
+        | if $c == "" then "  \(.from | nid) --> \(.to | nid)"
+          else "  \(.from | nid) -->|\"\($c | lbl)\"| \(.to | nid)" end )
+  ' "$g"
+}
+
+# ════════════════════════════════════════════════════════════════════
 MODE="${1:---default}"
 case "$MODE" in
   --fast)      run_fast ;;
   --self-test) run_self_test ;;
   --graph)     run_graph ;;
+  --mermaid)   run_mermaid; exit 0 ;;
   --usage)     run_usage ;;
   --lessons)   run_lessons ;;
   --all)       run_fast; run_self_test; run_graph; run_usage; run_lessons ;;

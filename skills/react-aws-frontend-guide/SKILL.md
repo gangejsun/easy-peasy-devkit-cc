@@ -2,7 +2,7 @@
 name: react-aws-frontend-guide
 description: "[Preset: react-vite × aws-container] React 18 + Vite 5 SPA frontend guide covering common-layout extraction, TanStack Query v5 server state, Zustand client state, React Router v7 protected routes, Tailwind styling, and OIDC/Cognito tokens and 401 handling. Use when creating or modifying components, pages, layouts, styling, routing, REST API clients, data fetching, caching, state, or auth/session code. Use ONLY when the active preset matches."
 ---
-<!-- epcc-guide-baseline: verified 2026-08-22 react@18 vite@5 typescript@5 react-router@7 @tanstack/react-query@5 zustand@5 tailwindcss@3.4 react-oidc-context@3 oidc-client-ts@3 react-error-boundary@6 sonner@2 msw@2 vitest@3 -->
+<!-- epcc-guide-baseline: verified 2026-08-22 react@18 vite@5 typescript@5 react-router@7 @tanstack/react-query@5 zustand@5 tailwindcss@3.4 react-oidc-context@3 oidc-client-ts@3 react-error-boundary@6 sonner@2 msw@2 vitest@3 clsx@2 tailwind-merge@2 eslint-plugin-import@2 -->
 
 # React + Vite SPA Frontend Guide
 

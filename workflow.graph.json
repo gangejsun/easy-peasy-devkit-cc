@@ -1,6 +1,6 @@
 {
   "$comment": "하네스를 기계 판독 가능한 그래프로 선언한다. v2에서 이 그래프는 마크다운 표와 산문에 흩어져 있어 검증도 계측도 불가능했고, 그 결과 '선언됐지만 도달 불가능한 자산'(rules/ 697줄)이 4개월간 아무에게도 발견되지 않았다. doctor --graph가 이 파일로 dangling 엣지·도달 불가 노드·에러 엣지 누락을 검사한다. edges의 instrumented:true 는 훅이 실제로 방출하는 엣지다. stage 간 엣지는 모델 행동이라 코드가 방출할 수 없으므로 '죽은 엣지' 판정에서 제외한다.",
-  "version": "3.3.2",
+  "version": "3.4.0",
   "nodes": [
     {
       "id": "session-start",
@@ -229,6 +229,15 @@
       "on_error": [
         "user-report"
       ]
+    },
+    {
+      "id": "diagram-design",
+      "kind": "plugin",
+      "external": "diagram-design/diagram-design",
+      "note": "외부 동반 플러그인 cathrynlavery/diagram-design (MIT) — 39종 에디토리얼 다이어그램, Mermaid/draw.io 리드로우, PNG·SVG 내보내기. 선택 의존성: doctor --graph가 설치 여부를 보고하고 미설치면 Mermaid 펜스를 그대로 전달한다. 입력은 doctor --mermaid 산출(하네스 그래프)과 service-planner §4.3·§4.4의 Mermaid 절. 하네스는 텍스트(Mermaid)까지만 책임지고 그림은 위임한다",
+      "on_error": [
+        "user-report"
+      ]
     }
   ],
   "edges": [
@@ -447,6 +456,16 @@
       "from": "skill-enhancer",
       "to": "user-report",
       "cond": "패턴별 진단·적용 결과 보고"
+    },
+    {
+      "from": "doctor",
+      "to": "diagram-design",
+      "cond": "--mermaid 산출을 /diagram-design:import-mermaid로 리드로우 (설치 시)"
+    },
+    {
+      "from": "diagram-design",
+      "to": "user-report",
+      "cond": "산출 HTML 경로 + fidelity ledger 보고"
     }
   ]
 }

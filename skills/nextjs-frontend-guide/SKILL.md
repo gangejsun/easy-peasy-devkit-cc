@@ -2,7 +2,7 @@
 name: nextjs-frontend-guide
 description: "[Preset: nextjs-supabase] Next.js App Router frontend development guide. Covers Server/Client Component patterns, Tailwind CSS v4 + shadcn/ui styling, App Router routing, Zustand state management, performance optimization, and TypeScript standards. Use when creating or modifying components, pages, layouts, styling, data fetching, routing, state management, or any frontend code. Use ONLY when the active preset matches."
 ---
-<!-- epcc-guide-baseline: verified 2026-08-21 next@15 react@19 typescript@5 tailwindcss@4 zod@4 @supabase/ssr@0 @supabase/supabase-js@2 zustand@5 -->
+<!-- epcc-guide-baseline: verified 2026-08-21 next@15 react@19 typescript@5 tailwindcss@4 zod@4 @supabase/ssr@0 @supabase/supabase-js@2 zustand@5 react-hook-form@7 @hookform/resolvers@5 class-variance-authority@0 clsx@2 tailwind-merge@3 lucide-react@1 -->
 
 Next.js 15(App Router) + React 19 + TypeScript strict + Tailwind CSS v4 + shadcn/ui
 + Zustand + Supabase(@supabase/ssr) 프론트엔드 표준 가이드.

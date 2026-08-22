@@ -2,7 +2,7 @@
 name: nextjs-backend-guide
 description: "[Preset: nextjs-supabase] Next.js App Router backend guide. Covers Route Handlers, Server Actions, Supabase data access, RLS policies, SQL migrations, RPC functions, Zod validation, middleware, and error handling. Use when creating or modifying Route Handlers, Server Actions, Supabase queries, RLS policies, migrations, input validation, middleware, webhooks, backend testing, or any server-side logic. Use ONLY when the active preset matches."
 ---
-<!-- epcc-guide-baseline: verified 2026-08-21 next@15 react@19 typescript@5 zod@4 @supabase/ssr@0 @supabase/supabase-js@2 -->
+<!-- epcc-guide-baseline: verified 2026-08-21 next@15 react@19 typescript@5 zod@4 @supabase/ssr@0 @supabase/supabase-js@2 vitest@4 -->
 
 # Backend Development Guide
 
