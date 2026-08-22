@@ -16,7 +16,6 @@
     "code-review",
     "planning"
   ],
-  "hooks": "./hooks/hooks.json",
   "skills": "./skills/",
   "agents": [
     "./agents/epcc-planner.md",

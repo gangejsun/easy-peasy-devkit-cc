@@ -74,7 +74,6 @@ bash "<플러그인-루트>/scripts/doctor.sh"
 | **에이전트** | 2 | `epcc-planner`(쓰기 없음) · `epcc-reviewer`(읽기 전용) |
 | **스킬** | 35 | 기획·구현·검증·보안·마케팅 워크플로우 + 스택 가이드 생성기 + 스킬 강화기 |
 | **프리셋** | 2축 4+8 | 프론트엔드: nextjs·react-vite·vanilla·none / 백엔드: supabase·firebase·aws-serverless·aws-container·gcp-serverless·fastapi·node-api·none |
-| **동반 플러그인** | 1 (선택) | `diagram-design` — 하네스 그래프·기획 산출물의 Mermaid를 에디토리얼 다이어그램으로 리드로우. 미설치여도 동작 |
 
 ### 훅
 
@@ -124,8 +123,7 @@ CI가 없는 프로젝트를 전제로 설계했습니다. 사용자가 직접 �
 ```bash
 bash scripts/doctor.sh              # 구조 검사 + 그래프 검증 (devkit 저장소 개발 시)
 bash scripts/doctor.sh --self-test  # 훅에 이벤트별 픽스처 주입 → 효과 대조
-bash scripts/doctor.sh --graph      # 도달 불가 노드 · dangling 엣지 · 에러 엣지 누락 · 동반 플러그인 설치 여부
-bash scripts/doctor.sh --mermaid    # 그래프 → Mermaid flowchart (stdout) — diagram-design 리드로우 입력
+bash scripts/doctor.sh --graph      # 도달 불가 노드 · dangling 엣지 · 에러 엣지 누락
 bash scripts/doctor.sh --usage      # 훅 생존 · 스킬 호출 · 엣지 traversal
 bash scripts/doctor.sh --lessons    # 교훈 집계 + 승격 후보
 bash scripts/doctor.sh --all        # 전체
@@ -142,35 +140,14 @@ bash scripts/doctor.sh --all        # 전체
 ## 그래프 선언
 
 `workflow.graph.json`이 노드(에이전트·스킬·훅)와 엣지(전이 조건), **에러 엣지**를
-기계 판독 가능한 형태로 선언합니다. 현재 노드 25 · 엣지 44.
+기계 판독 가능한 형태로 선언합니다. 현재 노드 24 · 엣지 41.
 
 `doctor --graph`가 검증합니다:
 - 모든 엣지의 타깃이 실재하는가
 - 인바운드 엣지가 없는 노드가 있는가 (= 도달 불가 자산)
 - 모든 실행 노드가 에러 엣지를 선언했는가 (실패 경로가 그래프에 없으면 실패는 조용히 사라진다)
-- `external` 노드(동반 플러그인)가 실제 설치되어 있는가 — 선택 의존성이라 미설치는 경고
 
 `doctor --usage`는 실제 실행된 엣지를 집계합니다. "이 스킬은 안 쓰인다"가 **주장이 아니라 측정**이 됩니다.
-
-### 동반 플러그인 — `diagram-design` (선택)
-
-하네스는 그림을 직접 그리지 않습니다. 텍스트(Mermaid)까지가 하네스의 몫이고, 에디토리얼 품질의
-다이어그램은 [cathrynlavery/diagram-design](https://github.com/cathrynlavery/diagram-design)에
-위임합니다 — 39종 타입, Mermaid/draw.io 리드로우, 브랜드 토큰 온보딩, PNG/SVG 내보내기.
-
-```bash
-claude plugin marketplace add cathrynlavery/diagram-design
-claude plugin install diagram-design@diagram-design
-```
-
-| 입력 | 만드는 법 | 리드로우 |
-|------|-----------|----------|
-| 하네스 그래프 | `bash scripts/doctor.sh --mermaid > workflow.mmd` | `/diagram-design:import-mermaid workflow.mmd --detail=faithful --size=doc-wide` |
-| 서비스 기획서 §4.3 플로우 · §4.4 ER | `/service-planner` 산출 문서 | `/diagram-design:import-mermaid <문서.md> --diagram=all` |
-
-`--mermaid`는 좌표·색을 넣지 않습니다 — 레이아웃은 리드로우하는 쪽의 몫이고, 정본은 언제나 JSON입니다.
-`faithful`의 상한(24 노드)을 넘으면 diagram-design이 overview + detail 분할을 제안하고, 무엇을 접었는지
-fidelity ledger로 보고합니다. 미설치면 `doctor --graph`가 경고 한 줄로 알리고 Mermaid 펜스는 그대로 쓰입니다.
 
 ## Zero-Config Mode
 

@@ -46,8 +46,11 @@ trap 'rm -rf "$TMP"' EXIT
 # 출력: <파일>\t<줄번호>\t<본문>
 codelines() {
   awk '
-    function isbad(s)  { return (index(s,"❌")>0 || s ~ /(^|[^A-Za-z])(Bad|BAD)([^A-Za-z]|$)/) }
-    function isgood(s) { return (index(s,"✅")>0 || s ~ /(^|[^A-Za-z])(Good|GOOD)([^A-Za-z]|$)/) }
+    # 표식은 ❌/✅ 가 영어 단어보다 우선한다. 단어 판정의 경계에서 _ 와 숫자를 빼야
+    # 계약 식별자(BAD_SHAPE·BAD_REQUEST)가 안티패턴 표식으로 오인되지 않는다 —
+    # 오인되면 그 지점부터 코드 추출이 꺼져 이후 검사가 조용히 건너뛴다(미탐).
+    function isbad(s)  { return (index(s,"❌")>0 || (index(s,"✅")==0 && s ~ /(^|[^A-Za-z0-9_])(Bad|BAD)([^A-Za-z0-9_]|$)/)) }
+    function isgood(s) { return (index(s,"✅")>0 || (index(s,"❌")==0 && s ~ /(^|[^A-Za-z0-9_])(Good|GOOD)([^A-Za-z0-9_]|$)/)) }
     function iscomment(s) { return (s ~ /^[[:space:]]*(\/\/|#|\*|\/\*|--)/) }
     FNR==1 { inf=0; pol=1; lastprose="" }
     /^[[:space:]]*```/ { if (!inf) { inf=1; pol = isbad(lastprose) ? 0 : 1 } else { inf=0 }; next }
@@ -363,10 +366,14 @@ check_leak() {
   local G="$1"
   [ -n "$FORBID" ] || return 0
   sec "교차 누출"
+  # 단어 경계(-w)로 본다. 부분 문자열로 보면 계약이 지정한 필드명이 금지어에 걸린다
+  # (`--forbid next` ↔ `nextCursor`) — 같은 게이트의 --pair 는 그 필드를 요구하므로
+  # 두 검사가 서로 반대를 요구하게 된다. 라이브러리 누출은 import 경로나 점 호출로
+  # 나타나고 그 둘은 -w 로도 잡힌다(`@prisma/client`·`prisma.user`).
   local kw hits n=0
   for kw in $(printf '%s' "$FORBID" | tr ',' ' '); do
     [ -z "$kw" ] && continue
-    hits=$(grep -rniF "$kw" $(guide_files "$G") 2>/dev/null | head -3 | cut -c1-110 | tr '\n' ';')
+    hits=$(grep -rniwF "$kw" $(guide_files "$G") 2>/dev/null | head -3 | cut -c1-110 | tr '\n' ';')
     if [ -n "$hits" ]; then bad "확정 조합에 없는 스택 키워드 '$kw' 등장" "$hits"; n=$((n+1)); fi
   done
   [ "$n" -eq 0 ] && ok "금지 키워드 누출 없음"
@@ -556,6 +563,9 @@ run_self_test() {
   sec "무해 픽스처 (통과해야 한다)"
   _fx_assert "$fx/clean/sample-backend-guide" 0 "결함 없는 가이드" --generated
   _fx_assert "$fx/clean/sample-backend-guide" 0 "올바른 원장" --generated --ledger "$fx/clean/ledger-ok.md"
+  # 두 음성 검사 — 미탐은 오탐보다 위험하다. 각각 실제로 게이트를 통과처럼 보이게 했던 결함이다
+  _fx_assert "$fx/clean/sample-backend-guide" 0 "계약 식별자(BAD_SHAPE)가 표식으로 오인되지 않음" --generated --ledger "$fx/clean/ledger-ok.md"
+  _fx_assert "$fx/clean/sample-backend-guide" 0 "계약 필드명(nextCursor)이 금지어 부분 문자열에 안 걸림" --generated --forbid next
 
   sec "양성 픽스처 (차단해야 한다)"
   _fx_assert "$fx/dangling/sample-backend-guide"  1 "dangling 리소스 참조"  --generated
@@ -676,6 +686,13 @@ export function connect(url) {
 }
 ```
 
+```ts
+// ✅ 계약 밖 응답은 BAD_SHAPE로 만든다 — 표식은 ✅이고 BAD_SHAPE는 계약 식별자다
+export function parseShape(v) {
+  return v
+}
+```
+
 `connect`는 b.md의 부팅 경로가 쓴다.
 FXA
 
@@ -693,7 +710,7 @@ export function boot(env) {
 `EnvSchema`로 검증한 뒤 `env.PORT`로 listen한다. `boot`는 c.md가 호출한다.
 FXB
 
-  printf '# 핸들러\n\n`boot`가 만든 배선을 그대로 쓴다.\n' > "$b/resources/c.md"
+  printf '# 핸들러\n\n`boot`가 만든 배선을 그대로 쓴다. 응답은 `parseShape`로 검증하고 목록은 `nextCursor`를 담는다.\n' > "$b/resources/c.md"
   printf '# 에러 처리\n\n코드표는 허브에 있다.\n'          > "$b/resources/d.md"
   printf '# 테스트\n\n행복 경로와 검증 실패를 함께 쓴다. 실행은 `npm run test`.\n' > "$b/resources/e.md"
   printf '# 운영\n\n헬스체크는 의존성 확인 뒤에 준비 완료를 알린다.\n' > "$b/resources/f.md"
@@ -704,6 +721,7 @@ FXB
 | `EnvSchema` | a.md | b.md |
 | `connect` | a.md | b.md |
 | `boot` | b.md | c.md |
+| `parseShape` | a.md | c.md |
 FXL1
   cat > "$fx/clean/ledger-bad.md" <<'FXL2'
 | 심볼 | 정의 파일 | 소비처 |
@@ -711,6 +729,7 @@ FXL1
 | `EnvSchema` | a.md | b.md |
 | `connect` | a.md | b.md |
 | `boot` | b.md | d.md |
+| `parseShape` | a.md | c.md |
 FXL2
   cat > "$fx/clean/ledger-short.md" <<'FXL3'
 | 심볼 | 정의 파일 | 소비처 |

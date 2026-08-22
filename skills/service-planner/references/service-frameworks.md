@@ -257,9 +257,6 @@ Then: "올바른 이메일 형식을 입력해주세요" 인라인 에러가 표
 ### 4.4 데이터 모델 초안
 [Mermaid ER diagram + Entity 테이블]
 
-> Mermaid까지가 이 스킬의 산출물이다. 에디토리얼 품질의 그림이 필요하면 `diagram-design` 플러그인(설치 시)으로
-> 리드로우한다: `/diagram-design:import-mermaid <이 문서> --diagram=all`. 미설치면 Mermaid 펜스를 그대로 둔다.
-
 ---
 
 ## 5. 기능 요구사항 (FR)
