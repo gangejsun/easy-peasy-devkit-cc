@@ -190,6 +190,7 @@
                 "supabase",
                 "firebase",
                 "aws-serverless",
+                "aws-container",
                 "gcp-serverless",
                 "fastapi",
                 "node-api",

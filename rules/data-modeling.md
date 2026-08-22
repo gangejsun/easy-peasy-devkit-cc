@@ -146,7 +146,7 @@ PostgreSQL/Supabase 기준:
 새 테이블 생성 시 필수 점검:
 
 - [ ] `CREATE TABLE` + 인라인 제약조건 (PK, FK, CHECK, NOT NULL, DEFAULT)
-- [ ] `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` + 최소 1개 정책 (Supabase — RLS 상세는 backend-guide 스킬의 supabase-patterns 리소스)
+- [ ] `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` + 최소 1개 정책 (행 수준 보안을 쓰는 스택에 한함 — 정책 상세는 해당 스택 backend-guide의 인증/권한 경계 리소스. RLS가 없는 스택은 애플리케이션 층 소유권 검사가 유일한 경계다)
 - [ ] FK 컬럼에 인덱스 생성 (`idx_{테이블}_{FK컬럼}`)
 - [ ] 빈번한 WHERE/ORDER BY 컬럼에 인덱스 추가
 - [ ] JSONB 컬럼에 GIN 인덱스 (내부 검색 필요 시)
@@ -305,8 +305,8 @@ PostgreSQL/Supabase 기준:
 
 - 부분 인덱스: `CREATE INDEX idx_{테이블}_active ON {테이블}(...) WHERE deleted_at IS NULL`
 - UNIQUE 제약: `CREATE UNIQUE INDEX uq_{테이블}_{컬럼} ON {테이블}({컬럼}) WHERE deleted_at IS NULL` (활성 행에만 유니크)
-- RLS 정책: 모든 SELECT/UPDATE 정책의 `USING` 절에 `AND deleted_at IS NULL` 추가 (Supabase — 상세는 backend-guide 스킬의 supabase-patterns 리소스)
-- Supabase 클라이언트: `.is("deleted_at", null)` 필터 또는 DB View로 자동 필터링
+- RLS 정책: 모든 SELECT/UPDATE 정책의 `USING` 절에 `AND deleted_at IS NULL` 추가 (행 수준 보안을 쓰는 스택에 한함 — 상세는 해당 스택 backend-guide의 인증/권한 경계 리소스)
+- 조회 계층: soft delete 필터(`deleted_at IS NULL`)를 쿼리마다 반복하지 말고 DB View 또는 공용 쿼리 헬퍼로 강제한다
 
 **이력 테이블과의 관계** (→ §11): Soft Delete와 `_history` 테이블은 **대체재가 아니라 보완재**. FK 참조 있는 핵심 테이블 → Soft Delete + `_history` 병행 (참조 무결성 유지 + 변경 이력 보존). FK 참조 없는 테이블 → Hard Delete + `_history`로 충분 (메인 테이블 경량화).
 

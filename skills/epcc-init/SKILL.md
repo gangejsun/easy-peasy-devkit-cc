@@ -25,7 +25,7 @@ trigger: manual
 ```
 ① 프론트엔드를 고르세요:
   1. nextjs      — Next.js 15 App Router + React 19 + Tailwind v4 + shadcn/ui + Zustand
-  2. react-vite  — React + Vite SPA (SSR 없음) + Tailwind + React Router + Zustand
+  2. react-vite  — React + Vite SPA (SSR 없음) + Tailwind + React Router + TanStack Query + Zustand
   3. vanilla     — 프레임워크 없음, 표준 DOM + ES 모듈 (랜딩·위젯·경량 사이트)
   4. none        — 프론트엔드 없음 (API 전용 프로젝트)
 
@@ -35,10 +35,12 @@ trigger: manual
   1. supabase        — BaaS: PostgreSQL + RLS + Auth + Storage + Realtime
   2. firebase        — BaaS: Firestore + Auth + Storage + Cloud Functions
   3. aws-serverless  — AWS 조립: Lambda + API Gateway + DynamoDB + Cognito
-  4. gcp-serverless  — GCP 조립: Cloud Run/Functions + Firestore + Identity Platform
-  5. fastapi         — 자체 서버: FastAPI + SQLAlchemy 2.0 + Pydantic v2 + Alembic
-  6. node-api        — 자체 서버: Express/NestJS + PostgreSQL + Prisma/Drizzle
-  7. none            — 백엔드 없음 / 외부 REST API 소비
+  4. aws-container   — AWS 컨테이너: ECS/Fargate + RDS PostgreSQL + Drizzle + Cognito
+                       (온프레미스 이식을 전제로 AWS 종속을 인프라 층에만 둔다)
+  5. gcp-serverless  — GCP 조립: Cloud Run/Functions + Firestore + Identity Platform
+  6. fastapi         — 자체 서버: FastAPI + SQLAlchemy 2.0 + Pydantic v2 + Alembic
+  7. node-api        — 자체 서버: Express/NestJS + PostgreSQL + Prisma/Drizzle
+  8. none            — 백엔드 없음 / 외부 REST API 소비
 ```
 
 백엔드 축은 **형태가 세 가지**다. 이름만 다른 동급 항목이 아니므로 선택 시 구분해 안내한다:
@@ -47,7 +49,7 @@ trigger: manual
 | --- | --- | --- |
 | BaaS | supabase · firebase | 벤더가 DB·인증·스토리지를 함께 제공. 데이터 계층에 정책 엔진이 있다 |
 | 서버리스 조립 | aws-serverless · gcp-serverless | 관리형 서비스를 직접 조합. **행 수준 정책 엔진이 없을 수 있어** 애플리케이션 층 검사 비중이 커진다 |
-| 자체 서버 | fastapi · node-api | 상주 서버를 운영. 애플리케이션 층이 유일한 경계 |
+| 자체 서버 | aws-container · fastapi · node-api | 상주 서버를 운영. 애플리케이션 층이 유일한 경계 |
 
 **언어(TypeScript/JavaScript)는 프리셋이 아니라 차원이다.** 프리셋 기본값을 표시하고
 Step 4에서 확인받는다 — 이 값에 따라 가이드의 타입 표준 슬롯이 살아나거나 JSDoc 규약으로
@@ -104,6 +106,7 @@ Step 4에서 확인받는다 — 이 값에 따라 가이드의 타입 표준 �
 | `supabase` | backendType·database·dataAccess·auth 전부 | 없음 — 표시하고 확인만 |
 | `fastapi` | backendType·database·dataAccess | **인증 방식**(JWT 자체 발급·OAuth 제공자·세션) · 호스팅(선택) |
 | `node-api` | backendType·database | **프레임워크**(Express/NestJS) · **ORM**(Prisma/Drizzle) · **인증 방식** |
+| `aws-container` | 전 차원 기본값 | 없음 — 표시하고 확인만. 기본값(RDS PostgreSQL·Drizzle·Cognito)을 바꾸면 사전 제작본 대상에서 이탈해 생성 경로를 탄다 |
 | `aws-serverless` · `gcp-serverless` | 전 차원 기본값 | 기본값과 다른 서비스를 쓰면 그 차원(예: DynamoDB→RDS) |
 | `firebase` | 전 차원 | 없음 — 표시하고 확인만 |
 | `none` | — | 외부 API를 쓴다면 그 인증 방식(토큰 보관 위치가 보안 지점) |
@@ -160,7 +163,7 @@ Step 4에서 확인받는다 — 이 값에 따라 가이드의 타입 표준 �
       "additionalStack": []
     },
     "backend": {                                 // 백엔드 축
-      "backendType": "<baas | cloud-server | 빈 값>",
+      "backendType": "<baas | serverless | cloud-server | framework-builtin | 빈 값>",
       "cloudProvider": "<입력값 또는 null>",
       "database": "<프리셋 기본값 또는 입력값>",
       "dataAccess": "<프리셋 기본값 또는 입력값>",
@@ -324,6 +327,7 @@ dev/
 | 조합 | 동작 |
 | --- | --- |
 | `nextjs` × `supabase` (백엔드 차원이 프리셋 기본값 그대로) | **사전 제작본 사용** — 플러그인의 `nextjs-frontend-guide`·`nextjs-backend-guide`가 곧 이 조합의 가이드다. 아래 기준선 점검만 하고 끝낸다 |
+| `react-vite` × `aws-container` (백엔드 차원이 프리셋 기본값 그대로) | **사전 제작본 사용** — 플러그인의 `react-aws-frontend-guide`·`react-aws-backend-guide`. 동일하게 기준선 점검만 한다 |
 | `none` × `none` | 가이드 없음 (구 blank) |
 | 그 외 모든 조합 | **즉시 생성** — `stack-guide-generator` 호출 |
 

@@ -1,0 +1,42 @@
+{
+  "axis": "backend",
+  "name": "aws-container",
+  "displayName": "AWS 컨테이너 API + PostgreSQL (이식 가능)",
+  "description": "표준 HTTP 서버를 컨테이너로 운영하는 API 백엔드 — ECS/Fargate + ALB + RDS PostgreSQL + Drizzle + Cognito(OIDC). AWS 종속을 인프라 층에만 두어 온프레미스로 옮길 수 있게 설계한다.",
+  "techStack": {
+    "backend": {
+      "backendType": "cloud-server",
+      "cloudProvider": "AWS",
+      "database": "PostgreSQL (RDS)",
+      "dataAccess": "Drizzle",
+      "auth": "Amazon Cognito (OIDC/JWKS)",
+      "framework": "Hono",
+      "language": "TypeScript",
+      "packageManager": "npm",
+      "commands": {
+        "build": "npm run build",
+        "test": "npm test",
+        "lint": "npm run lint"
+      },
+      "sourceDir": "src"
+    },
+    "additionalStack": [
+      "Docker (ECS/Fargate)",
+      "ALB",
+      "RDS PostgreSQL",
+      "Drizzle ORM + drizzle-kit",
+      "Amazon Cognito (OIDC)",
+      "Zod",
+      "Vitest",
+      "AWS CDK"
+    ]
+  },
+  "notes": {
+    "securityBoundary": "**행 수준 정책 엔진이 없다.** 신뢰된 연결로 DB에 접근하므로 RLS 같은 데이터 계층 강제가 없고, 애플리케이션 층 소유권 검사가 유일한 경계다. BaaS 조합의 '데이터 계층이 백업해 준다' 서술을 그대로 옮기면 **정확히 반대 지침**이 된다 — 모든 조회·변이 쿼리에 소유권 필터가 있어야 하고, 0행 변이를 성공으로 응답하면 안 된다",
+    "serverCodeLocation": "이 저장소의 컨테이너 API 서버. 프론트엔드가 SPA라 서버 런타임이 없으므로 서버 로직 전부를 이 백엔드가 소유한다",
+    "portability": "**온프레미스 전환을 전제로 설계한다.** AWS 종속은 인프라 층에만 두고 애플리케이션 코드는 벤더 중립으로 유지한다: 표준 HTTP 서버(동일 이미지가 K8s·온프레미스 Docker에서 구동) · RDS PostgreSQL(Aurora 전용 기능 회피) · 인증은 OIDC/JWKS 표준 검증(Cognito SDK 직접 의존 금지 — issuer·JWKS URL 교체로 Keycloak 전환) · 파일 저장은 S3 API에 엔드포인트 설정 가능(MinIO 호환) · 로그는 stdout 구조화 JSON(CloudWatch SDK 미사용) · 설정은 env 단일 진입점(Secrets Manager는 주입 수단일 뿐). **어떤 AWS 서비스가 앱 코드에 닿고 어떤 것이 인프라 층에 머무는지를 가이드가 명시적으로 가른다**",
+    "dataModeling": "관계형 PostgreSQL이므로 T1 데이터 모델링 카드가 **활성**이다 (`paths:`에 `drizzle/**`·`db/**`·`**/migrations/**` 포함). 카드를 복사하지 말고 실제 경로를 명시해 참조한다",
+    "localParity": "`docker compose`로 PostgreSQL까지 로컬에서 동일하게 구동된다 — 마이그레이션·통합 테스트를 실제로 실행해 검증할 수 있다는 점이 이 조합의 핵심 이점이므로 테스트 슬롯이 이를 전제로 작성된다",
+    "variants": "서버리스(Lambda + API Gateway + DynamoDB)로 갈 경우 `aws-serverless` 프리셋이 별도로 있다 — 그쪽은 행 수준 정책 엔진 부재에 더해 커넥션 풀링·콜드 스타트가 핵심 주제가 된다"
+  }
+}

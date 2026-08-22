@@ -17,7 +17,7 @@ Start Claude Code in your project directory, then run:
 ```
 
 This will interactively:
-- Ask you to choose a frontend preset (nextjs / react-vite / none) and a backend preset (supabase / fastapi / none)
+- Ask you to choose a frontend preset (nextjs / react-vite / vanilla / none) and a backend preset (supabase / firebase / aws-serverless / aws-container / gcp-serverless / fastapi / node-api / none)
 - Collect project information
 - Generate `epcc.config.json` and `CLAUDE.md`
 - Install rule cards into `.claude/rules/`
@@ -48,17 +48,24 @@ Presets are chosen on two axes — pick one from each.
 | Frontend | Stack |
 |----------|-------|
 | `nextjs` | Next.js 15 App Router + React 19 + Tailwind v4 + shadcn/ui + Zustand |
-| `react-vite` | React + Vite SPA + Tailwind + React Router + Zustand |
+| `react-vite` | React + Vite SPA + Tailwind + React Router + TanStack Query + Zustand |
+| `vanilla` | No framework — standard DOM + ES modules (Vite bundle) |
 | `none` | API-only project |
 
 | Backend | Stack |
 |---------|-------|
 | `supabase` | PostgreSQL + RLS + Auth + Storage + Realtime (BaaS) |
+| `firebase` | Firestore + Auth + Storage + Cloud Functions (BaaS) |
+| `aws-serverless` | Lambda + API Gateway + DynamoDB + Cognito |
+| `aws-container` | ECS/Fargate + ALB + RDS PostgreSQL + Drizzle + Cognito (portable to on-prem) |
+| `gcp-serverless` | Cloud Run/Functions + Firestore + Identity Platform |
 | `fastapi` | FastAPI + SQLAlchemy 2.0 + Pydantic v2 + Alembic (self-hosted) |
+| `node-api` | Express/NestJS + PostgreSQL + Prisma/Drizzle (self-hosted) |
 | `none` | No backend / external REST API |
 
-The **combination** decides the guides: `nextjs` × `supabase` uses the plugin's pre-built
-guides; every other combination generates project-owned guides. See `docs/presets.md`.
+The **combination** decides the guides. Two combinations ship pre-built guides —
+`nextjs` × `supabase` and `react-vite` × `aws-container` — and every other combination
+generates project-owned guides. The system picks without asking. See `docs/presets.md`.
 
 ## Project Override
 

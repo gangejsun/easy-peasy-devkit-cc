@@ -30,6 +30,7 @@
 | `supabase` | BaaS | PostgreSQL + RLS + Auth + Storage + Realtime | RLS가 최종 방어선. 정책이 없으면 **전면 차단** |
 | `firebase` | BaaS | Firestore + Auth + Storage + Cloud Functions | Security Rules가 최종 방어선. 규칙이 없으면 **전면 개방**(RLS와 정반대) |
 | `aws-serverless` | 서버리스 조립 | Lambda + API Gateway + DynamoDB + Cognito | **행 수준 정책 엔진 없음** — 애플리케이션 층 검사가 실질적 유일 경계 |
+| `aws-container` | 자체 서버 | ECS/Fargate + ALB + RDS PostgreSQL + Drizzle + Cognito(OIDC) | **행 수준 정책 엔진 없음** — 소유권 검사 누락이 곧 데이터 유출. AWS 종속을 인프라 층에만 두어 온프레미스 이식이 가능하다 |
 | `gcp-serverless` | 서버리스 조립 | Cloud Run/Functions + Firestore + Identity Platform | IAM/토큰 검증 + (직접 접근 경로가 있으면) Security Rules |
 | `fastapi` | 자체 서버 | FastAPI + SQLAlchemy 2.0 + Pydantic v2 + Alembic + pytest | 애플리케이션 층이 유일한 경계 |
 | `node-api` | 자체 서버 | Express/NestJS + PostgreSQL + Prisma/Drizzle + Zod | 애플리케이션 층이 유일한 경계 |
@@ -46,6 +47,7 @@
 | 조합 | 가이드 |
 | --- | --- |
 | `nextjs` × `supabase` | **사전 제작본 사용** — 플러그인의 `/nextjs-frontend-guide`·`/nextjs-backend-guide` |
+| `react-vite` × `aws-container` | **사전 제작본 사용** — 플러그인의 `/react-aws-frontend-guide`·`/react-aws-backend-guide` |
 | `none` × `none` | 없음 (Core 스킬만) |
 | 그 외 모든 조합 | 프로젝트의 `.claude/skills/frontend-guide`·`backend-guide`로 **생성** |
 
@@ -57,7 +59,7 @@
 **사전 제작본을 쓸지 생성할지는 시스템이 정한다 — 묻지 않는다.** 구현 세부가 사용자에게
 새어 나가면 답할 수 없는 질문이 되기 때문이다. 생성 경로도 승인을 묻지 않고 바로 실행한다.
 
-### 사전 제작본을 늘리지 않는 이유
+### 사전 제작본 추가 기준
 
 조합은 27개이고 전부 사전 제작하면 가이드 **45개(약 9만 줄)** 가 된다. 실측 근거가 있다:
 가이드 2개에 권한 상승 취약점·폐기 API·이전 메이저 버전 잔재가 쌓여 **몇 달간 발견되지
@@ -66,6 +68,9 @@
 
 그래서 추가 기준은 개수가 아니라 조건이다: **정기 감사 대상으로 등록할 수 있을 때만
 사전 제작한다.** 그렇지 않은 조합은 신선 생성이 엄격히 우월하다.
+
+현재 사전 제작본은 2쌍이다. `react-vite` × `aws-container`가 두 번째로 추가된 이유는
+조직의 표준 스택이어서 **실제로 쓰이고 유지되기 때문**이다 — 위 조건을 충족한 사례다.
 
 ### 구식화 점검 — 묻지 않고 대조한다
 

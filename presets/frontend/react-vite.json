@@ -15,6 +15,7 @@
     "additionalStack": [
       "Tailwind CSS",
       "React Router",
+      "TanStack Query v5",
       "Zustand"
     ]
   },

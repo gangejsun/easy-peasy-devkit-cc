@@ -2,7 +2,7 @@
 
 AI Native Dev Harness for Claude Code — 되돌림 가능성 축 워크플로우, 자기검증 훅, 그래프 계측.
 
-![version](https://img.shields.io/badge/version-3.9.0-blue)
+![version](https://img.shields.io/badge/version-3.10.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 ## 무엇인가
@@ -31,7 +31,7 @@ claude plugin install epcc-devkit
 ```
 
 대화형으로 진행됩니다:
-- 프리셋 선택 — 프론트엔드 축(nextjs·react-vite·vanilla·none) + 백엔드 축(supabase·firebase·aws-serverless·gcp-serverless·fastapi·node-api·none)
+- 프리셋 선택 — 프론트엔드 축(nextjs·react-vite·vanilla·none) + 백엔드 축(supabase·firebase·aws-serverless·aws-container·gcp-serverless·fastapi·node-api·none)
 - 프로젝트 정보 수집
 - `epcc.config.json` + `CLAUDE.md` 생성
 - **`.claude/rules/`에 규칙 카드 설치** ← v3 신규
@@ -72,8 +72,8 @@ bash "<플러그인-루트>/scripts/doctor.sh"
 | **훅** | 5 스크립트 / 6 등록 | SessionStart · PreToolUse · Stop · PreCompact · SessionEnd · PostToolUse |
 | **규칙** | T0 26줄 + T1 6개 830줄 | T0는 훅이 상시 주입(플러그인 소유), T1은 경로 매칭 시 조건부 로드 |
 | **에이전트** | 2 | `epcc-planner`(쓰기 없음) · `epcc-reviewer`(읽기 전용) |
-| **스킬** | 33 | 기획·구현·검증·보안·마케팅 워크플로우 + 스택 가이드 생성기 + 스킬 강화기 |
-| **프리셋** | 2축 4+7 | 프론트엔드: nextjs·react-vite·vanilla·none / 백엔드: supabase·firebase·aws-serverless·gcp-serverless·fastapi·node-api·none |
+| **스킬** | 35 | 기획·구현·검증·보안·마케팅 워크플로우 + 스택 가이드 생성기 + 스킬 강화기 |
+| **프리셋** | 2축 4+8 | 프론트엔드: nextjs·react-vite·vanilla·none / 백엔드: supabase·firebase·aws-serverless·aws-container·gcp-serverless·fastapi·node-api·none |
 
 ### 훅
 
@@ -161,14 +161,17 @@ bash scripts/doctor.sh --all        # 전체
 프리셋은 백엔드를 고정하지 않습니다. `/epcc-init`이 백엔드 유형(BaaS·클라우드 자체
 구축·프레임워크 내장)·클라우드·DB(PostgreSQL·MongoDB 등)·데이터 액세스·인증을 확인하고,
 확정된 조합에 맞는 `frontend-guide`·`backend-guide` 스킬을 프로젝트 `.claude/skills/`에
-생성합니다 (`stack-guide-generator`). 정확히 Next.js+Supabase 조합만 플러그인 원본을
-그대로 사용합니다. 스택이 바뀌면 `/stack-guide-generator`로 재생성합니다.
+생성합니다 (`stack-guide-generator`). 사전 제작본이 있는 두 조합(`nextjs`×`supabase`,
+`react-vite`×`aws-container`)만 플러그인 원본을 그대로 씁니다. 사전 제작본을 쓸지
+생성할지는 **시스템이 조합을 보고 정하며 묻지 않습니다.** 스택이 바뀌면
+`/stack-guide-generator`로 재생성합니다.
 
 ## Available Presets
 
 | Preset | Stack | Skills |
 |--------|-------|--------|
 | `nextjs` × `supabase` | Next.js 15 + Supabase + Tailwind + shadcn/ui | 사전 제작본 사용 |
+| `react-vite` × `aws-container` | React+Vite SPA + ECS/Fargate + RDS PostgreSQL + Drizzle | 사전 제작본 사용 |
 | `none` × `none` | Custom | 가이드 없음 (Core만) |
 | 그 외 모든 조합 | 두 축의 조합 | 가이드 **생성** (검증 루프 포함) |
 
