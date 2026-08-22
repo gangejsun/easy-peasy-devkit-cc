@@ -290,11 +290,35 @@ run_fast() {
   [ "$drift" -eq 0 ] && ok "공유 사본 드리프트 없음"
 
   # ── 7. 매니페스트 정합 ──
+  #
+  # 버전은 4곳에 흩어져 있다. 앞의 둘만 보던 검사를 README 배지와 marketplace.json까지
+  # 넓힌다 — 뒤의 둘은 아무도 잡지 않아 어긋난 채 배포될 수 있었다.
   sec "매니페스트"
-  local pv cv
-  pv=$(grep -m1 '"version"' package.json 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "?")
-  cv=$(grep -m1 '"version"' .claude-plugin/plugin.json 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "?")
-  [ "$pv" = "$cv" ] && ok "버전 일치 ($pv)" || bad "버전 불일치: package.json=$pv, plugin.json=$cv"
+  local pv cv rv mism=""
+  pv=$(grep -m1 '"version"' package.json 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+  cv=$(grep -m1 '"version"' .claude-plugin/plugin.json 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+  rv=$(grep -m1 -oE 'version-[0-9]+\.[0-9]+\.[0-9]+' README.md 2>/dev/null | sed 's/version-//')
+  if [ -z "$pv" ]; then
+    bad "package.json에서 버전을 읽지 못함"
+  else
+    [ "$cv" = "$pv" ] || mism="$mism plugin.json=${cv:-없음}"
+    [ "$rv" = "$pv" ] || mism="$mism README배지=${rv:-없음}"
+    # marketplace.json은 버전이 2곳이다(마켓플레이스 자체 + 플러그인 항목) — 전부 대조한다
+    local mtot=0 mbad=0 mv
+    while IFS= read -r mv; do
+      [ -z "$mv" ] && continue
+      mtot=$((mtot+1))
+      [ "$mv" = "$pv" ] || mbad=$((mbad+1))
+    done < <(grep -oE '"version"[[:space:]]*:[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+"' .claude-plugin/marketplace.json 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+    [ "$mtot" -eq 0 ] && mism="$mism marketplace.json=읽지못함"
+    [ "$mbad" -gt 0 ] && mism="$mism marketplace.json(${mbad}/${mtot}곳 불일치)"
+    if [ -n "$mism" ]; then
+      bad "버전 불일치 (기준 package.json=$pv):$mism" \
+          "4곳을 동시에 올린다 — plugin.json · package.json · README 배지 · marketplace.json"
+    else
+      ok "버전 4곳 일치 ($pv · marketplace ${mtot}곳 포함)"
+    fi
+  fi
   [ -f plugin.json ] && bad "루트 plugin.json 중복 존재" "Claude Code는 .claude-plugin/plugin.json만 읽음" \
                      || ok "매니페스트 단일"
   # hooks/hooks.json은 Claude Code가 자동 발견한다. 매니페스트가 같은 파일을 또 가리키면
@@ -303,6 +327,34 @@ run_fast() {
     bad "매니페스트 hooks가 기본 경로 hooks/hooks.json을 중복 참조" "자동 발견되는 파일이라 플러그인 로드 거부됨 — 해당 줄 삭제"
   else
     ok "매니페스트 hooks 기본 경로 중복 없음"
+  fi
+
+  # ── 8. 저장소 작업 규범 (§도달 경로 검증을 이 저장소 자신에게) ──
+  #
+  # 이 저장소는 자기 rules/를 로드하지 않는다 — 플러그인 컴포넌트 타입에 rules가 없고,
+  # 여기엔 .claude/rules/도 없다. 하네스를 고칠 때의 규범이 도달하는 유일한 경로가
+  # 루트 CLAUDE.md다. 그 도달을 기계가 지킨다 (v2에서 규칙 697줄이 4개월간 아무 데도
+  # 도달하지 못한 사건의 재발 방지).
+  sec "저장소 작업 규범"
+
+  if [ ! -f CLAUDE.md ]; then
+    bad "CLAUDE.md 없음" "하네스 변경 규범이 세션에 도달할 경로가 없다 (rules/는 소비자 배포용이라 여기서 로드되지 않음)"
+  else
+    local cn; cn=$(num "$(wc -l < CLAUDE.md 2>/dev/null | tr -d ' ')")
+    if [ "$cn" -le 60 ]; then
+      ok "CLAUDE.md ${cn}/60줄"
+    else
+      bad "CLAUDE.md ${cn}줄 — 예산 60줄 초과" "매 세션 상시 주입 비용. 상세는 docs/로 내리고 포인터만 남기세요"
+    fi
+
+    # 참조 경로 dangling. 슬래시가 있는 것만 본다 — 규범이 "만들지 마라"고 언급하는
+    # 파일명(epcc.config.json 등)을 실재 요구로 오인하지 않기 위함이다.
+    local cdang=0 cchk=0 p
+    for p in $(grep -ohE '(\.?[A-Za-z0-9_-]+/)+[A-Za-z0-9_.-]+\.(md|sh|json)' CLAUDE.md 2>/dev/null | sort -u); do
+      cchk=$((cchk+1))
+      [ -e "$p" ] || { bad "CLAUDE.md → $p 없음" "규범이 가리키는 정본이 사라졌다 — 참조가 끊기면 규범도 끊긴다"; cdang=$((cdang+1)); }
+    done
+    [ "$cdang" -eq 0 ] && ok "CLAUDE.md 참조 ${cchk}건 모두 실재"
   fi
 
   # 스키마의 미구현 필드
