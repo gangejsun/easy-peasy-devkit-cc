@@ -92,6 +92,8 @@ run_guide() {
   check_pm "$G"
   check_stamp "$G"
   check_ledger "$G"
+  check_pack_iface "$G"
+  check_policies "$G"
 }
 
 # ── 1. 구조: frontmatter + 필수 섹션 8개 순서 ──
@@ -165,7 +167,9 @@ check_budget() {
   local G="$1" over=0 near=0 f n
   sec "예산 (파일당 300줄)"
   for f in $(guide_files "$G"); do
-    n=$(num "$(wc -l < "$f" | tr -d ' ')")
+    # 배송 스탬프(epcc-pack/epcc-seam)는 내용이 아니라 기계 메타데이터다 — 예산에서 뺀다.
+    # 세지 않으면 정확히 300줄인 원본이 팩으로 옮겨지는 것만으로 초과가 된다.
+    n=$(num "$(grep -vcE '^<!-- epcc-(pack|seam):' "$f" | tr -d ' ')")
     if   [ "$n" -gt 300 ]; then bad "$(basename "$f") ${n}줄 — 300줄 초과"; over=$((over+1))
     elif [ "$n" -gt 290 ]; then warn "$(basename "$f") ${n}줄 — 290줄 초과(보고 의무)" "상한에 붙은 파일은 다음 변경 때 저자가 아니라 예산이 삭제 대상을 고른다"; near=$((near+1)); fi
   done
@@ -473,6 +477,121 @@ check_ledger() {
   [ "$n_def" -eq 0 ] && [ "$n_con" -eq 0 ] && ok "원장 ${rows}행 정의·소비 대조 통과"
 }
 
+
+# ── 12. 팩 인터페이스: 팩의 requires를 조립본이 충족하는가 ──
+# 축 팩과 이음매를 갈라 배송하면 "팩이 쓰는데 이음매가 안 주는 심볼"이 새 결함
+# 부류가 된다. 원장의 requires 표가 그 계약이고 이 검사가 그 강제다.
+# 종류를 구분한다: 프로젝트=export 필요 · 라이브러리=import에 이름 등장 · 교차축=상대 가이드 소유(건너뜀)
+check_pack_iface() {
+  local G="$1"
+  [ -n "$ASSEMBLY" ] || return 0
+  sec "팩 인터페이스 (requires 충족)"
+  [ -f "$ASSEMBLY" ] || { bad "assembly.json 없음: $ASSEMBLY"; return; }
+
+  local pack; pack=$(grep -oE '"pack"[[:space:]]*:[[:space:]]*"[^"]+"' "$ASSEMBLY" | sed -E 's/.*"([^"]+)"$/\1/')
+  [ -n "$pack" ] || { warn "assembly.json에 pack 항목 없음"; return; }
+  local pdir="$PLUGIN_GUIDES/$pack"
+  [ -d "$pdir" ] || { bad "팩 디렉토리 없음: $pdir" "--plugin-guides로 경로를 주거나 CLAUDE_PLUGIN_ROOT를 설정한다"; return; }
+  local led="$pdir/$PACK_LEDGER_NAME"
+  [ -f "$led" ] || { warn "팩 원장 없음: $led"; return; }
+
+  # requires 절의 표만 읽는다 (provides 절과 섞이면 반대로 판정한다)
+  awk '/^## requires/{f=1;next} /^## /{f=0} f' "$led" \
+    | grep -E '^\|[[:space:]]*`' \
+    | awk -F'|' 'NF>=4 { gsub(/`|[[:space:]]/,"",$2); gsub(/[[:space:]]/,"",$3); if ($2!="") print $2"\t"$3 }' \
+    > "$TMP/req.tsv"
+
+  local n; n=$(num "$(grep -c . "$TMP/req.tsv" | tr -d ' ')")
+  [ "$n" -eq 0 ] && { warn "팩 원장에서 requires 항목을 읽지 못함" "형식: | \`심볼\` | 종류 | 형태 | 이유 |"; return; }
+
+  local sym kind miss=0 skipped=0
+  while IFS=$'\t' read -r sym kind; do
+    [ -z "$sym" ] && continue
+    case "$kind" in
+      교차축|cross-axis|생성물|generated)
+        skipped=$((skipped+1)); continue ;;
+      라이브러리|library)
+        if grep -qhE "import[^\n]*\b$sym\b|from '[^']+'" $(guide_files "$G") 2>/dev/null \
+           && grep -qhw "$sym" $(guide_files "$G") 2>/dev/null; then :; else
+          bad "팩 requires '$sym'(라이브러리) 바인딩이 조립본에 없음"; miss=$((miss+1)); fi ;;
+      *)
+        if ! grep -hqE "^export[[:space:]]+(async[[:space:]]+)?(function|const|let|class|type|interface|enum)[[:space:]]+$sym\b" $(guide_files "$G") 2>/dev/null; then
+          bad "팩 requires '$sym'을 이음매가 정의하지 않음" "팩 예제가 실행 불가가 된다 — 이음매가 export하거나 원장에서 종류를 고친다"
+          miss=$((miss+1)); fi ;;
+    esac
+  done < "$TMP/req.tsv"
+
+  [ "$miss" -eq 0 ] && ok "팩 requires ${n}건 충족 (교차축 ${skipped}건 제외)"
+}
+
+# ── 13. 정책 원장: 팩이 선언한 파일 간 불변식을 조립본이 지키는가 ──
+# 실측(2026-08-22) 감사 57건 중 26건이 "정책을 선언한 곳과 강제하는 곳이 다르고
+# 둘을 맞춰볼 의무가 없다"였다. 심볼에는 원장이 있었으나 정책에는 없었다.
+# 검사는 codelines() 출력에만 건다 — 산문·주석·안티패턴 예시를 세면 전부 위양성이다.
+check_policies() {
+  local G="$1"
+  [ -n "$ASSEMBLY" ] || return 0
+  sec "정책 원장 (팩 불변식)"
+
+  local pack; pack=$(grep -oE '"pack"[[:space:]]*:[[:space:]]*"[^"]+"' "$ASSEMBLY" | sed -E 's/.*"([^"]+)"$/\1/')
+  local pol="$PLUGIN_GUIDES/$pack/$PACK_POLICIES_NAME"
+  [ -f "$pol" ] || { warn "팩 정책 파일 없음: $pol"; return; }
+
+  # | id | 판정 | 대상 | `정규식` | 예외 파일 | 설명 |
+  # 정규식 안의 \| 는 마크다운 표의 이스케이프다. 열 구분보다 먼저 보호하지 않으면
+  # 'await (params\' 처럼 절단된 정규식이 쓰인다 (게이트 최초 실행에서 확인).
+  awk '/^## 기계 검사/{f=1;next} /^## /{f=0} f' "$pol" \
+    | grep -E '^\|[[:space:]]*`' \
+    | sed 's/\\|/\x01/g' \
+    | awk -F'|' 'NF>=7 {
+        for(i=2;i<=6;i++){ gsub(/^[[:space:]]+|[[:space:]]+$/,"",$i); gsub(/`/,"",$i); gsub(/\x01/,"|",$i) }
+        if ($2!="") print $2"\t"$3"\t"$4"\t"$5"\t"$6 }' > "$TMP/pol.tsv"
+
+  local n; n=$(num "$(grep -c . "$TMP/pol.tsv" | tr -d ' ')")
+  [ "$n" -eq 0 ] && { warn "팩 정책에서 항목을 읽지 못함: $pol"; return; }
+
+  # 팩 소유 파일 목록 (대상=seam 판정에 쓴다)
+  local packfiles; packfiles=$(grep -oE '"packFiles"[^]]*\]' "$ASSEMBLY" | grep -oE '"[a-z0-9.-]+\.md"' | tr -d '"' | tr '\n' ' ')
+
+  local id verdict scope rx except viol=0 pass=0 targets f base hits
+  while IFS=$'\t' read -r id verdict scope rx except; do
+    [ -z "$id" ] && continue
+    # 대상 범위를 파일 목록으로 환원한다
+    targets=""
+    for f in $(guide_files "$G"); do
+      base=$(basename "$f")
+      case "$scope" in
+        seam)  case " $packfiles " in *" $base "*) continue;; esac ;;
+        pack)  case " $packfiles " in *" $base "*) ;; *) continue;; esac ;;
+        file:*) [ "$base" = "${scope#file:}" ] || continue ;;
+      esac
+      case "$except" in ""|"—"|"-") ;; *)
+        case ",$(printf '%s' "$except" | tr -d ' '),"  in *",$base,"*) continue;; esac ;;
+      esac
+      targets="$targets $f"
+    done
+    [ -z "$targets" ] && { rev "정책 '$id' 대상 파일 0개" "scope=$scope 예외=$except — 범위를 확인한다"; continue; }
+
+    # shellcheck disable=SC2086
+    hits=$(codelines $targets | cut -f3 | grep -cE "$rx" 2>/dev/null || true)
+    hits=$(num "$hits")
+    if [ "$verdict" = "forbid" ]; then
+      if [ "$hits" -gt 0 ]; then
+        # shellcheck disable=SC2086
+        bad "정책 위반 '$id' — 금지 패턴 ${hits}건" "$(codelines $targets | grep -E "$rx" | head -2 | awk -F'\t' '{printf "%s:%s ", substr($1,match($1,/[^\/]*$/)), $2}')"
+        viol=$((viol+1))
+      else pass=$((pass+1)); fi
+    else
+      if [ "$hits" -eq 0 ]; then
+        bad "정책 위반 '$id' — 필수 패턴이 조립본에 없음" "정규식: $rx"
+        viol=$((viol+1))
+      else pass=$((pass+1)); fi
+    fi
+  done < "$TMP/pol.tsv"
+
+  [ "$viol" -eq 0 ] && ok "팩 정책 ${pass}건 통과"
+}
+
 _resolve() {
   local G="$1" name; name=$(printf '%s' "$2" | tr -d ' `')
   [ -z "$name" ] && return 0
@@ -484,19 +603,69 @@ _resolve() {
 # ════════════════════════════════════════════════════════════════════
 # --pair : 와이어 계약 ↔ 두 가이드 차집합
 # ════════════════════════════════════════════════════════════════════
+# 계약에서 대조 대상 행만 남긴다: 목록 항목과 표 행. 산문·인용문(>)의 백틱은
+# 설명이지 계약 값이 아니다 — 세면 "실측에서 백엔드가 `/notes`를 썼다" 같은 문장이
+# 계약 요구사항으로 둔갑한다 (개발 중 14건 오인 확인).
+# 절 머리의 '> surface: frontend|backend' 선언을 읽어 해당 절 행에 태그를 붙인다.
+# 선언이 없으면 both — 기존 계약은 그대로 동작한다.
+contract_rows_tagged() {
+  awk '
+    /^## /            { sfc="both" }
+    /^>[[:space:]]*surface:[[:space:]]*(frontend|backend|both)[[:space:]]*$/ {
+                        sub(/^>[[:space:]]*surface:[[:space:]]*/,""); gsub(/[[:space:]]/,"");
+                        sfc=$0; next }
+    /^[[:space:]]*([-*]|\|)/ {
+                        if ($0 ~ /^[[:space:]]*\|[[:space:]]*-+[[:space:]]*\|/) next
+                        print sfc "\t" $0 }
+  ' "$1"
+}
+
+contract_rows() { grep -E '^[[:space:]]*([-*]|\|)' "$1" | grep -vE '^[[:space:]]*\|[[:space:]]*-+[[:space:]]*\|'; }
+
 run_pair() {
   printf "\n${C_D}guide-gate --pair${C_0}  계약: %s\n" "$CONTRACT"
   [ -f "$CONTRACT" ] || { printf "계약 파일 없음: %s\n" "$CONTRACT" >&2; exit 2; }
   [ -d "$FE" ] && [ -d "$BE" ] || { printf "가이드 디렉토리 없음 (--frontend/--backend)\n" >&2; exit 2; }
 
+  # 도메인 어휘: 계약 §0이 비어 있으면 두 가이드가 서로 다른 리소스를 설명하게 된다.
+  # 실측에서 사전 제작 두 쌍 모두 프론트 /tasks ↔ 백엔드 /notes 였다.
+  sec "도메인 어휘"
+  if grep -q '^## 0\. 도메인 어휘' "$CONTRACT"; then
+    local vocab; vocab=$(awk '/^## 0\. 도메인 어휘/{f=1;next} /^## /{f=0} f' "$CONTRACT" \
+      | grep -E '^[[:space:]]*[-*]' \
+      | grep -oE '`[A-Za-z_/][A-Za-z0-9_/-]*`' | tr -d '`' | sort -u)
+    if [ -z "$vocab" ]; then
+      bad "계약 §0 도메인 어휘가 비어 있음" "엔티티·컬렉션·경로를 각각 백틱으로 채운다"
+    else
+      local vmiss=""
+      for v in $vocab; do
+        grep -rqw -- "$v" "$FE" 2>/dev/null || vmiss="$vmiss FE:$v"
+        grep -rqw -- "$v" "$BE" 2>/dev/null || vmiss="$vmiss BE:$v"
+      done
+      if [ -n "$vmiss" ]; then bad "도메인 어휘 불일치:$vmiss" "한쪽만 아는 리소스 이름 — 완전 예제가 서로 실행 불가가 된다"
+      else ok "도메인 어휘 $(printf '%s' "$vocab" | wc -w | tr -d ' ')개 양쪽 일치"; fi
+    fi
+  else
+    warn "계약에 §0 도메인 어휘 절이 없음" "구 양식이다 — wire-contract.template.md의 §0를 채운다"
+  fi
+
   sec "계약 토큰 차집합"
   # 백틱 안의 식별자 + 3자리 상태 코드가 대조 토큰이다. 백틱 스팬 '전체'가 아니라
   # 스팬 '안'에서 뽑는다 — 봉투를 통째로 감싼 계약(`{ data, nextCursor }`)에서
   # 토큰이 0개가 되면 이 검사는 조용히 통과한다.
-  { grep -oE '`[^`]+`' "$CONTRACT" | tr -d '`' | grep -oE '[A-Za-z_][A-Za-z0-9_]*'
-    grep -oE '(^|[^0-9])[1-5][0-9][0-9]([^0-9]|$)' "$CONTRACT" | grep -oE '[0-9]{3}'
-  } | grep -vE '^([A-Z]|string|number|boolean|object|null|true|false|undefined|unknown|never|any|void|json|JSON|Date|Promise|Record|Array|GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$' \
-    | sort -u > "$TMP/tokens.txt"
+  local NOISE='^([A-Z]|string|number|boolean|object|null|true|false|undefined|unknown|never|any|void|json|JSON|Date|Promise|Record|Array|GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$'
+  # 표면(surface)별로 나눠 뽑는다. 절에 '> surface: backend' 선언이 있으면 그 절의
+  # 토큰은 백엔드에만 요구한다 — 액션 경계로 이야기하는 조합에서 HTTP 절이 그렇다.
+  _tok() { # $1 = both|frontend|backend 중 포함할 표면들(정규식)
+    { contract_rows_tagged "$CONTRACT" | awk -F'\t' -v re="$1" '$1 ~ re {print $2}' \
+        | grep -oE '`[^`]+`' | tr -d '`' | grep -oE '[A-Za-z_][A-Za-z0-9_]*'
+      contract_rows_tagged "$CONTRACT" | awk -F'\t' -v re="$1" '$1 ~ re {print $2}' \
+        | grep -oE '(^|[^0-9A-Za-z_])[1-5][0-9][0-9]([^0-9A-Za-z_]|$)' | grep -oE '[0-9]{3}'
+    } | grep -vE "$NOISE" | sort -u
+  }
+  _tok '^(both|frontend|backend)$' > "$TMP/tokens.txt"
+  _tok '^(both|frontend)$' > "$TMP/tok_fe.txt"
+  _tok '^(both|backend)$'  > "$TMP/tok_be.txt"
 
   local ntok; ntok=$(num "$(wc -l < "$TMP/tokens.txt")")
   if [ "$ntok" -lt 5 ]; then
@@ -509,8 +678,11 @@ run_pair() {
   while read -r t; do
     [ -z "$t" ] && continue
     grep -rqw "$t" $(guide_files "$FE") 2>/dev/null || { mf="$mf $t"; nf=$((nf+1)); }
+  done < "$TMP/tok_fe.txt"
+  while read -r t; do
+    [ -z "$t" ] && continue
     grep -rqw "$t" $(guide_files "$BE") 2>/dev/null || { mb="$mb $t"; nb=$((nb+1)); }
-  done < "$TMP/tokens.txt"
+  done < "$TMP/tok_be.txt"
 
   [ "$nf" -gt 0 ] && bad "계약 토큰 ${nf}건이 frontend에 없음:$mf" "프론트가 계약의 이 부분을 다루지 않는다" || ok "frontend 계약 토큰 전량 등장"
   [ "$nb" -gt 0 ] && bad "계약 토큰 ${nb}건이 backend에 없음:$mb"  "백엔드가 계약의 이 부분을 내보내지 않는다" || ok "backend 계약 토큰 전량 등장"
@@ -579,7 +751,17 @@ run_self_test() {
   _fx_assert "$fx/clean/sample-backend-guide"     1 "패키지 매니저 불일치"  --generated --pm pnpm
   _fx_assert "$fx/clean/sample-backend-guide"     1 "원장 불일치(소비처 부재)" --generated --ledger "$fx/clean/ledger-bad.md"
   _fx_assert "$fx/clean/sample-backend-guide"     1 "원장 미등재 심볼"      --generated --ledger "$fx/clean/ledger-short.md"
+
+  # 팩/이음매 경계 (v3.12.0) — 팩 자산은 --plugin-guides로 주입한다
+  local PG="$fx/pg" A="$fx/clean/asm.json"
+  cp "$fx/pg/backend/fxpack/policies.md" "$fx/pg/backend/fxpack/.keep-policies" 2>/dev/null || true
+  _fx_assert "$fx/clean/sample-backend-guide" 0 "팩 requires 충족 + 생성물 제외" --generated --assembly "$A" --plugin-guides "$PG" --pack-ledger-name ledger-ok.md
+  _fx_assert "$fx/clean/sample-backend-guide" 1 "팩 requires 미충족"        --generated --assembly "$A" --plugin-guides "$PG" --pack-ledger-name ledger.md
+  _fx_assert "$fx/clean/sample-backend-guide" 1 "팩 정책 위반 (forbid)"     --generated --assembly "$A" --plugin-guides "$PG" --pack-ledger-name ledger-ok.md --pack-policies-name policies-forbid.md
+  _fx_assert "$fx/clean/sample-backend-guide" 1 "팩 정책 위반 (require 부재)" --generated --assembly "$A" --plugin-guides "$PG" --pack-ledger-name ledger-ok.md --pack-policies-name policies-require-missing.md
+  _fx_assert "$fx/clean/sample-backend-guide" 0 "정책 예외 열이 실제로 먹음"  --generated --assembly "$A" --plugin-guides "$PG" --pack-ledger-name ledger-ok.md --pack-policies-name policies-excepted.md
 }
+
 
 _fx_assert() {
   local dir="$1" want="$2" label="$3"; shift 3
@@ -750,12 +932,68 @@ FXL3
   sed -i.bak 's/^## Common Imports$/기본 import 묶음:/' "$fx/section/sample-backend-guide/SKILL.md" && rm -f "$fx/section/sample-backend-guide/SKILL.md.bak"
   sed -i.bak '/epcc-guide: generated/d' "$fx/nostamp/sample-backend-guide/SKILL.md" && rm -f "$fx/nostamp/sample-backend-guide/SKILL.md.bak"
   printf '\n마이그레이션은 prisma migrate로 돌린다.\n' >> "$fx/leak/sample-backend-guide/resources/f.md"
+
+  # ── 팩/이음매 픽스처 (v3.12.0에서 생긴 새 표면) ──
+  # 축 팩과 이음매를 갈라 배송하면 두 결함 부류가 새로 생긴다:
+  #   ① 팩이 소비하는데 이음매가 정의하지 않는 심볼 (팩 예제가 실행 불가가 된다)
+  #   ② 팩이 선언한 파일 간 불변식을 이음매가 어김 (실측 감사 57건 중 26건이 이 부류)
+  # 둘 다 차단을 증명한다. 예외 열이 실제로 먹는지도 함께 증명한다 —
+  # 예외가 무시되면 정당한 코드가 영구 위반으로 찍혀 게이트를 못 쓰게 된다.
+  local pk="$fx/pg/backend/fxpack"
+  mkdir -p "$pk" || return 1
+
+  cat > "$pk/ledger.md" <<'FXLED'
+## requires
+| 심볼 | 종류 | 형태 | 이유 |
+| --- | --- | --- | --- |
+| `connect` | 프로젝트 | 부팅 경로 | 이음매 소유 |
+| `neverProvided` | 프로젝트 | 이음매가 주지 않는 심볼 | 차단 증명용 |
+FXLED
+
+  cat > "$pk/ledger-ok.md" <<'FXLEDOK'
+## requires
+| 심볼 | 종류 | 형태 | 이유 |
+| --- | --- | --- | --- |
+| `connect` | 프로젝트 | 부팅 경로 | 이음매 소유 |
+| `SomeGeneratedType` | 생성물 | 도구 산출물 | 검사 제외 증명용 |
+FXLEDOK
+
+  cat > "$pk/policies.md" <<'FXPOL'
+## 기계 검사
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 설명 |
+| --- | --- | --- | --- | --- | --- |
+| `zod-present` | require | guide | `from 'zod'` | — | 스키마 라이브러리 고정 |
+FXPOL
+
+  cat > "$pk/policies-forbid.md" <<'FXPOLV'
+## 기계 검사
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 설명 |
+| --- | --- | --- | --- | --- | --- |
+| `no-zod` | forbid | guide | `from 'zod'` | — | 차단 증명용 |
+FXPOLV
+
+  cat > "$pk/policies-require-missing.md" <<'FXPOLR'
+## 기계 검사
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 설명 |
+| --- | --- | --- | --- | --- | --- |
+| `must-have-graphql` | require | guide | `from 'graphql'` | — | 차단 증명용 |
+FXPOLR
+
+  cat > "$pk/policies-excepted.md" <<'FXPOLE'
+## 기계 검사
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 설명 |
+| --- | --- | --- | --- | --- | --- |
+| `no-zod` | forbid | guide | `from 'zod'` | `a.md` | 유일 등장 파일을 예외로 두면 통과해야 한다 |
+FXPOLE
+
+  printf '{ "axis": "backend", "pack": "backend/fxpack", "packFiles": ["a.md"], "seamFiles": ["b.md","c.md","d.md","e.md","f.md"] }\n' > "$fx/clean/asm.json"
   return 0
 }
 
 # ════════════════════════════════════════════════════════════════════
 MODE=""; GUIDE=""; LEDGER=""; FORBID=""; PM=""; GENERATED=0
-CONTRACT=""; FE=""; BE=""
+CONTRACT=""; FE=""; BE=""; ASSEMBLY=""; PACK_LEDGER_NAME="ledger.md"; PACK_POLICIES_NAME="policies.md"
+PLUGIN_GUIDES="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}/guides"
 
 [ $# -eq 0 ] && { printf "인자 없음 (--help 참조)\n" >&2; exit 2; }
 while [ $# -gt 0 ]; do
@@ -769,6 +1007,10 @@ while [ $# -gt 0 ]; do
     --ledger)    LEDGER="${2:-}"; shift 2 || exit 2 ;;
     --forbid)    FORBID="${2:-}"; shift 2 || exit 2 ;;
     --pm)        PM="${2:-}"; shift 2 || exit 2 ;;
+    --assembly)  ASSEMBLY="${2:-}"; shift 2 || exit 2 ;;
+    --plugin-guides) PLUGIN_GUIDES="${2:-}"; shift 2 || exit 2 ;;
+    --pack-ledger-name)   PACK_LEDGER_NAME="${2:-}"; shift 2 || exit 2 ;;   # --self-test 전용
+    --pack-policies-name) PACK_POLICIES_NAME="${2:-}"; shift 2 || exit 2 ;; # --self-test 전용
     --generated) GENERATED=1; shift ;;
     -h|--help)   sed -n '2,20p' "$0" | sed -E 's/^#[[:space:]]?//'; exit 0 ;;
     *)           printf "알 수 없는 옵션: %s (--help 참조)\n" "$1" >&2; exit 2 ;;

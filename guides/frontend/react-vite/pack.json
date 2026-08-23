@@ -1,0 +1,46 @@
+{
+  "axis": "frontend",
+  "name": "react-vite",
+  "displayName": "React 18 + Vite 5 SPA",
+  "packVersion": "3.12.0",
+  "verified": "2026-08-22",
+  "extractedFrom": "skills/react-aws-frontend-guide (v3.11.0)",
+
+  "exampleDomain": {
+    "entity": "Task",
+    "collection": "tasks",
+    "route": "/tasks",
+    "note": "모든 팩과 이음매가 같은 예제 도메인을 쓴다. L0 계약이 이 값을 이음매에 전달하고 게이트 --pair가 대조한다 — 프론트가 /tasks를 부르는데 백엔드가 /notes를 서빙하던 실측 결함의 수리다"
+  },
+
+  "pkgs": [
+    "react@18", "vite@5", "typescript@5", "react-router@7",
+    "@tanstack/react-query@5", "zustand@5", "tailwindcss@3.4",
+    "react-error-boundary@6", "sonner@2", "msw@2", "vitest@3",
+    "clsx@2", "tailwind-merge@2", "eslint-plugin-import@2"
+  ],
+
+  "hubFragments": "PACK.md",
+  "ledger": "ledger.md",
+  "policies": "policies.md",
+
+  "resources": [
+    { "file": "component-patterns.md",   "nav": "컴포넌트 만들기 · 반복 UI를 공통으로 추출 · 디자인 토큰 소유 규칙" },
+    { "file": "styling.md",              "nav": "Tailwind 클래스 작성 · 변형(variant) 정의 · 금지 패턴" },
+    { "file": "state-management.md",     "nav": "전역 상태 도입 여부 판단 · Zustand 스토어 작성 · 구독 최적화" },
+    { "file": "routing.md",              "nav": "라우트 추가 · 중첩 레이아웃 · 보호 라우트 · 라우트 에러 · URL을 상태로 · 딥링크(history fallback)" },
+    { "file": "loading-error-states.md", "nav": "로딩 스켈레톤 · 빈 상태 · 에러 바운더리 · 에러 분류" },
+    { "file": "types-and-testing.md",    "nav": "TypeScript 설정 · API 타입 좁히기 · 환경변수 타입 · 컴포넌트/훅 테스트 · HTTP 모킹" }
+  ],
+
+  "seamSlots": ["data-fetching", "auth-and-session", "complete-example"],
+
+  "knownGaps": [
+    {
+      "symbol": "FullPageSpinner",
+      "where": "resources/routing.md",
+      "detail": "3회 소비되나 정의가 없다. 원본 react-aws-frontend-guide에도 없던 기존 결함이며 이번 재배치가 드러냈을 뿐이다. 게이트가 REVIEW로 보고한다",
+      "carriedFrom": "v3.11.0"
+    }
+  ]
+}

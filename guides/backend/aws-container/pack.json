@@ -1,0 +1,55 @@
+{
+  "axis": "backend",
+  "name": "aws-container",
+  "displayName": "AWS 컨테이너 (ECS/Fargate + RDS PostgreSQL)",
+  "packVersion": "3.12.0",
+  "verified": "2026-08-22",
+  "extractedFrom": "skills/react-aws-backend-guide (v3.11.0)",
+
+  "backendType": "cloud-server",
+  "dataLayerPolicyEngine": false,
+  "policyEngineNote": "행 수준 정책 엔진이 없다. 애플리케이션 층이 유일한 경계이므로 소유권 필터 누락이 곧 데이터 유출이다. BaaS 축 팩의 '데이터 계층이 백업한다' 서술을 옮기면 정확히 반대 지침이 된다 — 이음매 생성 시 반드시 전달할 값",
+
+  "exampleDomain": {
+    "entity": "Task",
+    "collection": "tasks",
+    "route": "/api/tasks",
+    "korean": "작업"
+  },
+
+  "pkgs": [
+    "hono@4", "@hono/node-server@1", "typescript@5",
+    "drizzle-orm@0", "drizzle-kit@0", "pg@8", "jose@5", "zod@4",
+    "vitest@2", "postgres@16",
+    "aws-cdk-lib@2", "@aws-sdk/client-s3@3", "@aws-sdk/s3-request-presigner@3"
+  ],
+
+  "hubFragments": "PACK.md",
+  "ledger": "ledger.md",
+  "policies": "policies.md",
+
+  "resources": [
+    { "file": "data-access.md",              "nav": "Drizzle 쿼리·트랜잭션 · 소유권 필터 · 영향 행 확인 · 마이그레이션 실행" },
+    { "file": "input-validation.md",         "nav": "Zod 스키마 작성 · 요청 파싱 헬퍼 · DB 제약 이중화 · 환경변수 스키마 · 부팅 시 실패" },
+    { "file": "testing.md",                  "nav": "Vitest 설정 · 실 DB 통합 테스트 · docker compose 로컬 패리티 · 테스트 DB 격리" },
+    { "file": "portability-boundaries.md",   "nav": "AWS 종속을 인프라 층에 가두기 · 온프레미스 이관 체크리스트 · 로깅·저장소·비밀" },
+    { "file": "deployment-and-operations.md","nav": "Dockerfile · 배포 순서(마이그레이션 별도 태스크) · 헬스체크·셧다운 · 풀 사이징 · 느린 쿼리 관측" }
+  ],
+
+  "seamSlots": ["api-endpoints", "auth-boundaries", "complete-example"],
+
+  "seamSlotNotes": {
+    "api-endpoints": "핸들러 형태 + 요청/응답 봉투 + **에러 봉투 방출** + **핸들러 계층 테스트**. 뒤의 둘은 축 파일에서 떼어낸 것이다 — 방출 수단(NextResponse.json · res.json · Response)과 핸들러 호출 테스트는 서버 코드가 어디 사는가의 함수라 프론트엔드 축에 의존한다",
+    "auth-boundaries": "토큰 검증 · requireAuth 배선 · 역할/스코프 · 로그인·로그아웃 흐름 · 복귀 경로 검증",
+    "complete-example": "마이그레이션 → 스키마 → 쿼리 → 서비스 → 핸들러 → 테스트 관통"
+  },
+
+  "knownGaps": [
+    {
+      "symbol": "insertTask",
+      "where": "resources/data-access.md",
+      "detail": "CRUD 중 생성 쿼리만 팩에 없고 이음매의 complete-example.md에 있다. 원본 react-aws-backend-guide에서 승계한 비대칭이며 ledger의 requires로 선언해 조립 후 미정의를 막았다",
+      "carriedFrom": "v3.11.0"
+    }
+  ]
+}

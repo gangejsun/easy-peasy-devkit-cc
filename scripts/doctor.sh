@@ -257,7 +257,7 @@ run_fast() {
       if [ ! -f "$sd$ref" ] && [ ! -f "$ref" ]; then
         bad "$(basename "$sd") → $ref 없음"; sdang=$((sdang+1))
       fi
-    done < <(grep -ohE '(references|assets|resources|scripts)/[A-Za-z0-9._/-]+\.(md|json|csv|txt|py|sh|html|hbs)' "$sd/SKILL.md" 2>/dev/null | sort -u)
+    done < <(grep -ohE '(skills/[A-Za-z0-9._-]+/)?(references|assets|resources|scripts)/[A-Za-z0-9._/-]+\.(md|json|csv|txt|py|sh|html|hbs)' "$sd/SKILL.md" 2>/dev/null | sort -u)
   done
   [ "$sdang" -eq 0 ] && ok "스킬 내부 참조 ${schecked}건 모두 실재"
 
@@ -293,6 +293,47 @@ run_fast() {
   #
   # 버전은 4곳에 흩어져 있다. 앞의 둘만 보던 검사를 README 배지와 marketplace.json까지
   # 넓힌다 — 뒤의 둘은 아무도 잡지 않아 어긋난 채 배포될 수 있었다.
+  # ── 6.8 축 가이드 팩 (v3.12.0) ──
+  # 사전 제작 단위가 조합에서 축으로 내려갔다. 팩은 스킬이 아니라 자산이므로
+  # 스킬 검사가 닿지 않는다 — 여기서 계약 완비와 기준선 나이를 본다.
+  if [ -d guides ]; then
+    sec "축 가이드 팩"
+    local pk pn pmiss=0 pold=0 pcount=0 pstale=""
+    for pk in guides/frontend/*/ guides/backend/*/; do
+      [ -d "$pk" ] || continue
+      pcount=$((pcount+1)); pn=${pk%/}; pn=${pn#guides/}
+      for req in PACK.md ledger.md policies.md pack.json; do
+        [ -f "$pk$req" ] || { bad "팩 $pn: $req 없음" "팩 계약 4종이 다 있어야 게이트가 경계를 검사한다"; pmiss=$((pmiss+1)); }
+      done
+      # 리소스 전량에 배송 스탬프가 있어야 install-guide.sh가 멱등 갱신을 판정한다
+      local nost; nost=$({ grep -L '^<!-- epcc-pack:' "$pk"resources/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')
+      [ "$(num "$nost")" -gt 0 ] && { bad "팩 $pn: 스탬프 없는 리소스 ${nost}개" "스탬프가 없으면 사용자 수정본과 구버전을 구별할 수 없다"; pmiss=$((pmiss+1)); }
+      # 기준선 나이 — 감사받지 않는 사전 제작본은 없는 가이드보다 나쁘다
+      local vd; vd=$({ grep -m1 -oE 'verified [0-9]{4}-[0-9]{2}-[0-9]{2}' "$pk"PACK.md 2>/dev/null || true; } | awk '{print $2}')
+      if [ -z "$vd" ]; then warn "팩 $pn: PACK.md에 verified 날짜 없음"; else
+        local vts nts age
+        vts=$(num "$(date -j -f %Y-%m-%d "$vd" +%s 2>/dev/null || date -d "$vd" +%s 2>/dev/null || true)")
+        nts=$(num "$(date +%s)")
+        if [ "$vts" -gt 0 ] && [ "$nts" -gt "$vts" ]; then
+          age=$(( (nts - vts) / 86400 ))
+          [ "$age" -ge 180 ] && { pstale="$pstale $pn(${age}일)"; pold=$((pold+1)); }
+        fi
+      fi
+    done
+    [ -n "$pstale" ] && warn "팩 기준선 6개월 초과:$pstale" "메이저 버전이 올랐는지 확인하고 감사 후 verified를 갱신한다"
+    [ "$pmiss" -eq 0 ] && ok "축 팩 ${pcount}개 계약·스탬프 완비"
+    # 이음매가 가리키는 팩이 실재하는가
+    local sm smiss=0
+    for sm in guides/seams/*/seam.json; do
+      [ -f "$sm" ] || continue
+      while IFS= read -r ref; do
+        [ -z "$ref" ] && continue
+        [ -d "guides/$ref" ] || { bad "이음매 $(basename "$(dirname "$sm")"): 팩 $ref 없음"; smiss=$((smiss+1)); }
+      done < <({ grep -oE '"(frontend|backend)Pack"[[:space:]]*:[[:space:]]*"[^"]+"' "$sm" 2>/dev/null || true; } | sed -E 's/.*"([^"]+)"$/\1/')
+    done
+    [ "$smiss" -eq 0 ] && ok "이음매의 팩 참조 실재"
+  fi
+
   sec "매니페스트"
   local pv cv rv mism=""
   pv=$(grep -m1 '"version"' package.json 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')

@@ -1,0 +1,39 @@
+{
+  "axis": "backend",
+  "name": "supabase",
+  "displayName": "Supabase (BaaS · PostgreSQL + RLS)",
+  "packVersion": "3.12.0",
+  "verified": "2026-08-21",
+  "extractedFrom": "skills/nextjs-backend-guide (v3.11.0) + nextjs-frontend-guide §생성 타입",
+
+  "backendType": "baas",
+  "dataLayerPolicyEngine": true,
+  "policyEngineNote": "RLS가 최종 방어선이다. 애플리케이션 층 검사와 함께 이중 방어를 전제로 쓴다. 정책 엔진이 없는 축(aws-container 등)에 이 서술을 옮기면 정확히 반대 지침이 된다 — 이음매 생성 시 반드시 전달할 값",
+
+  "symbolSurface": false,
+  "symbolSurfaceNote": "패턴 지식형 팩이다 — 최상위 export가 0개다. 게이트는 원장 역방향 검사(원장에 없는 export 찾기)를 이 팩에 적용하지 않는다. 자세한 근거는 ledger.md",
+
+  "exampleDomain": {
+    "entity": "Task",
+    "collection": "tasks",
+    "route": "/api/tasks",
+    "korean": "작업"
+  },
+
+  "pkgs": ["@supabase/ssr@0", "@supabase/supabase-js@2", "zod@4", "vitest@4"],
+
+  "hubFragments": "PACK.md",
+  "ledger": "ledger.md",
+  "policies": "policies.md",
+
+  "resources": [
+    { "file": "database-patterns.md", "nav": "클라이언트 매트릭스 · 타입드 쿼리 · 읽기/쓰기 패턴 · 필터 오용 · 임베디드 조회 · N+1과 인덱스 · RPC · 스토리지 · 리얼타임 · 생성 타입" },
+    { "file": "testing.md",           "nav": "Vitest 설정 · Zod 스키마 테스트 · 로컬 Supabase RLS 통합 테스트 · 테스트하지 않을 것" }
+  ],
+
+  "seamSlots": ["api-endpoints", "auth-boundaries", "complete-example", "server-client", "handler-testing", "validation-and-errors", "edge-and-operations"],
+
+  "thinPackNote": "이 팩은 2개 리소스 380줄로 얇다. BaaS 축의 백엔드 가이드는 대부분 호스트 런타임(핸들러·미들웨어·에러 봉투·검증 배선)에 관한 것이고 그것은 프론트엔드 축이 정하기 때문이다. 그래서 seamSlots가 7개로 많다 — 자체 서버 축(aws-container: 팩 5리소스 1,191줄 · 이음매 3슬롯)과 정확히 반대 비율이다.",
+
+  "knownGaps": []
+}

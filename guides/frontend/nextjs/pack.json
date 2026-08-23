@@ -1,0 +1,55 @@
+{
+  "axis": "frontend",
+  "name": "nextjs",
+  "displayName": "Next.js 15 App Router + React 19",
+  "packVersion": "3.12.0",
+  "verified": "2026-08-21",
+  "extractedFrom": "skills/nextjs-frontend-guide (v3.11.0)",
+
+  "serverRuntime": true,
+  "serverRuntimeNote": "Next.js는 서버 런타임을 내장한다. 백엔드 축이 BaaS여도 서버 코드는 Route Handlers·Server Actions에 산다 — 이음매 생성 시 백엔드 쪽에 반드시 전달할 값이다. 핸들러가 어디 사는지가 백엔드 가이드 전체의 전제이기 때문이다.",
+
+  "exampleDomain": {
+    "entity": "Task",
+    "collection": "tasks",
+    "route": "/tasks",
+    "korean": "작업"
+  },
+
+  "pkgs": [
+    "next@15", "react@19", "typescript@5", "tailwindcss@4", "zod@4",
+    "zustand@5", "react-hook-form@7", "@hookform/resolvers@5",
+    "class-variance-authority@0", "clsx@2", "tailwind-merge@3", "lucide-react@1"
+  ],
+
+  "hubFragments": "PACK.md",
+  "ledger": "ledger.md",
+  "policies": "policies.md",
+
+  "resources": [
+    { "file": "component-patterns.md",   "nav": "컴포넌트 만들기 · 반복 UI를 공통으로 추출 · 서버/클라이언트 경계" },
+    { "file": "styling.md",              "nav": "Tailwind v4 클래스 작성 · 변형 정의 · `cn()` 병합 · 금지 패턴" },
+    { "file": "state-management.md",     "nav": "상태 계층 판단 · Zustand 스토어 · URL 상태 · 폼" },
+    { "file": "routing.md",              "nav": "라우트 정의 · 동적 세그먼트 · 라우트 그룹 · 중첩 레이아웃 · 내비게이션 · metadata" },
+    { "file": "performance.md",          "nav": "이미지·번들 최적화 · 디바운스 · 리렌더 억제 · 구독 정리" },
+    { "file": "file-organization.md",    "nav": "디렉토리 배치 규약 · 컴포넌트가 사는 곳 · 공유 타입" },
+    { "file": "typescript-standards.md", "nav": "strict 타입 작성 · any 금지 · 타입 가드 · 유틸리티 타입 · null 처리 · 네이밍" }
+  ],
+
+  "seamSlots": ["data-fetching", "auth-and-session", "complete-example"],
+
+  "extractionNotes": [
+    "routing.md에서 §6 보호 라우트(L133-213)를 떼어 이음매 auth-and-session.md로 옮기고 §7 Metadata를 §6으로 재번호했다",
+    "typescript-standards.md에서 §7 생성 타입(L115-134)을 떼어 **백엔드 축 팩**(backend/supabase)으로 옮기고 §8·§9를 §7·§8로 재번호했다 — 스키마에서 타입을 생성하는 것은 프론트엔드 지식이 아니다",
+    "백엔드 클라이언트 직접 호출 4곳을 getCurrentUser·getTasks 위임으로 치환하고 ledger의 requires에 선언했다"
+  ],
+
+  "knownGaps": [
+    {
+      "symbol": "Task",
+      "where": "resources/file-organization.md",
+      "detail": "이음매의 data-fetching.md·complete-example.md에도 같은 정의가 있다(3중). 필드가 완전히 동일하고 형식만 달라 시그니처 충돌은 아니다",
+      "carriedFrom": "v3.11.0"
+    }
+  ]
+}
