@@ -164,7 +164,11 @@ export function safeInternalPath(to: string | undefined, fallback = '/') {
     return fallback
   }
   if (url.origin !== base) return fallback          // '//evil.com', 'https://evil.com', …
-  return `${url.pathname}${url.search}${url.hash}`  // rebuilt from parsed parts, not raw input
+  // origin check alone is not enough: '/..//evil.com' normalises back to a
+  // protocol-relative path. Validate the OUTPUT, not just the input.
+  const p = url.pathname
+  if (!p.startsWith('/') || p.startsWith('//') || p.startsWith('/\\')) return fallback
+  return `${p}${url.search}${url.hash}`             // rebuilt from parsed parts, not raw input
 }
 ```
 

@@ -1,0 +1,38 @@
+{
+  "axis": "frontend",
+  "name": "vue",
+  "displayName": "Vue 3 + Vite 5 SPA",
+  "packVersion": "3.12.0",
+  "verified": "2026-08-23",
+  "extractedFrom": "신규 생성 — 실증 원본 없음 (react-vite 팩은 형식 참조 전용, 내용 방화벽)",
+
+  "exampleDomain": {
+    "entity": "Task",
+    "collection": "tasks",
+    "route": "/tasks",
+    "note": "모든 팩과 이음매가 같은 예제 도메인을 쓴다. L0 계약이 이 값을 이음매에 전달하고 게이트 --pair가 대조한다 — 프론트가 /tasks를 부르는데 백엔드가 /notes를 서빙하던 실측 결함의 수리다"
+  },
+
+  "pkgs": [
+    "vue@3", "vite@5", "typescript@5", "vue-router@4", "pinia@2",
+    "tailwindcss@3.4", "@tanstack/vue-query@5", "vitest@2",
+    "@vue/test-utils@2", "msw@2", "clsx@2", "tailwind-merge@2"
+  ],
+
+  "hubFragments": "PACK.md",
+  "ledger": "ledger.md",
+  "policies": "policies.md",
+
+  "resources": [
+    { "file": "component-patterns.md",   "nav": "SFC 만들기 · props/emits/슬롯 타입 선언 · 반복 UI를 공통으로 추출 · 제네릭 컴포넌트 · 디자인 토큰 소유 규칙" },
+    { "file": "styling.md",              "nav": "Tailwind 클래스 작성 · :class와 cn() 구분 · 변형(variant) 정의 · scoped CSS·인라인 style 금지" },
+    { "file": "state-management.md",     "nav": "전역 상태 도입 여부 판단 · Pinia 스토어 작성 · storeToRefs 구독 · 컴포넌트 밖에서 스토어 쓰기 · URL을 상태로" },
+    { "file": "routing.md",              "nav": "라우트 추가 · 중첩 레이아웃 · 네비게이션 가드 · 복귀 경로 검증 · 라우트/청크 에러 · 지연 로딩 · 딥링크(history fallback)" },
+    { "file": "loading-error-states.md", "nav": "로딩 스켈레톤 · 빈 상태 · 에러 상태 · onErrorCaptured 경계 · Suspense를 쓰지 않는 이유 · 폼 검증 에러 표시" },
+    { "file": "types-and-testing.md",    "nav": "vue-tsc 설정 · 컴포넌트 props 타입 · 환경변수 타입 · API 응답 좁히기 · Vitest + @vue/test-utils 컴포넌트/스토어 테스트 · msw HTTP 모킹" }
+  ],
+
+  "seamSlots": ["data-fetching", "auth-and-session", "complete-example"],
+
+  "knownGaps": []
+}

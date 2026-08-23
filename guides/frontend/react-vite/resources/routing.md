@@ -112,7 +112,12 @@ export function safeReturnTo(raw: string | null, fallback = '/'): string {
   try {
     const url = new URL(raw, window.location.origin);
     if (url.origin !== window.location.origin) return fallback;  // //host, https://host 차단
-    return url.pathname + url.search + url.hash;
+    // origin 검사만으로는 부족하다: `/..//evil.example` 처럼 점 세그먼트가 선행 `/`를
+    // 삼키면 정규화 결과가 다시 프로토콜-상대 경로(`//host`)가 된다. 입력이 아니라
+    // **출력**을 검증한다.
+    const p = url.pathname;
+    if (!p.startsWith('/') || p.startsWith('//') || p.startsWith('/\\')) return fallback;
+    return p + url.search + url.hash;
   } catch {
     return fallback;
   }

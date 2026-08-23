@@ -260,7 +260,11 @@ export function safeReturnPath(raw: string | undefined, fallback = '/'): string 
   try {
     const u = new URL(raw, 'https://internal.invalid')
     if (u.origin !== 'https://internal.invalid') return fallback   // //host, /\host 를 잡는다
-    return u.pathname + u.search + u.hash
+    // origin 검사만으로는 부족하다: `/..//evil.example` 은 정규화 후 다시
+    // 프로토콜-상대 경로가 된다. 입력이 아니라 **출력**을 검증한다.
+    const p = u.pathname
+    if (!p.startsWith('/') || p.startsWith('//') || p.startsWith('/\\')) return fallback
+    return p + u.search + u.hash
   } catch {
     return fallback
   }
