@@ -15,7 +15,9 @@
 #       축 팩을 조립 전에 검사한다. 축 안에서 닫히는 검사만 돌리고, 조합의 함수인
 #       것(requires 충족·--pair)은 건너뛴 것을 명시 보고한다.
 #   guide-gate.sh --pair --contract <계약파일> --frontend <디렉토리> --backend <디렉토리>
-#   guide-gate.sh --self-test
+#   guide-gate.sh --self-test   합성 픽스처만 (빠르다 — 하네스를 고칠 때마다 돌린다)
+#   guide-gate.sh --regress     + 출하 팩 6개와 사전 제작 이음매 전부를 실제로 검사한다.
+#       합성 픽스처는 **미탐**을 잡고 실물은 **오탐**을 잡는다. 느리므로 출하 전에 돌린다.
 #   guide-gate.sh --help
 #
 # 코드 판정은 코드펜스 안만 본다. 주석 행과 ❌/Bad 표식 이후 구간은 제외한다 —
@@ -1272,13 +1274,18 @@ contract_rows_tagged() {
     /^>[[:space:]]*surface:[[:space:]]*(frontend|backend|both)[[:space:]]*$/ {
                         sub(/^>[[:space:]]*surface:[[:space:]]*/,""); gsub(/[[:space:]]/,"");
                         sfc=$0; next }
-    /^[[:space:]]*([-*]|\|)/ {
+    # 불릿은 **뒤에 공백**이 있어야 한다 — `**굵은 글씨**` 산문이 목록으로 읽히면
+    # 한쪽 전용 값이 양쪽 요구로 둔갑한다. contract_rows()와 같은 규칙을 쓴다.
+    /^[[:space:]]*([-*][[:space:]]|\|)/ {
                         if ($0 ~ /^[[:space:]]*\|[[:space:]]*-+[[:space:]]*\|/) next
                         print sfc "\t" $0 }
   ' "$1"
 }
 
-contract_rows() { grep -E '^[[:space:]]*([-*]|\|)' "$1" | grep -vE '^[[:space:]]*\|[[:space:]]*-+[[:space:]]*\|'; }
+# 목록 항목은 불릿 **뒤에 공백**이 있어야 한다. `**굵은 글씨**`로 시작하는 산문이
+# `*` 불릿으로 읽히면 한쪽 전용 값이 양쪽 요구로 둔갑한다 (개발 중 실측: 계약 §6의
+# "**서버 전용**: … 이름은 `rt`" 산문이 프론트 미충족 FAIL을 냈다).
+contract_rows() { grep -E '^[[:space:]]*([-*][[:space:]]|\|)' "$1" | grep -vE '^[[:space:]]*\|[[:space:]]*-+[[:space:]]*\|'; }
 
 run_pair() {
   printf "\n${C_D}guide-gate --pair${C_0}  계약: %s\n" "$CONTRACT"
@@ -1445,11 +1452,14 @@ run_self_test() {
   _fx_assert_pack "$fx/pk/noimport/fxpack2"  1 "완전 파일이 원장 심볼을 조달 없이 사용"
   _fx_assert_pack "$fx/pk/reqnosig/fxpack2"  1 "requires 심볼을 호출하나 시그니처 미선언"
 
+  [ "$REGRESS" -eq 0 ] && { sec "회귀 코퍼스"; skip_note; }
+
   sec "REVIEW 픽스처 (판정이 사람에게 넘어가야 한다)"
   _fx_review_assert "$fx/pk/noproof/fxpack2" "차단 증명 없는 테스트" "실패 단언"
   _fx_review_assert "$fx/pk/clean/fxpack2"   "" "실패 단언"
 
-  run_shipped_corpus
+  [ "$REGRESS" -eq 1 ] && run_shipped_corpus
+  return 0
 }
 
 # ── 출하 팩 회귀 코퍼스 ─────────────────────────────────────────────
@@ -1477,12 +1487,65 @@ run_shipped_corpus() {
     fi
   done
   [ "$n" -eq 0 ] && warn "출하 팩 0개 — 회귀 코퍼스가 비었다"
+
+  run_shipped_seams
+  return 0
+}
+
+# ── 사전 제작 이음매 회귀 ───────────────────────────────────────────
+# 사전 제작 이음매는 조합 단위 출하 자산이라 **팩을 고칠 때마다 함께 검사해야 한다** —
+# 팩의 requires가 늘거나 정책이 바뀌면 이음매가 조용히 어긋난다. 그 검사가 사람의
+# 성실함에 달려 있으면 놓친다. 조립해서 조립본 게이트와 --pair를 돌린다.
+# (조합당 3검사 × 이음매 수. --pack만으로는 requires 충족·대상=seam 정책이 켜지지 않는다)
+run_shipped_seams() {
+  local root; root=$(cd "$PLUGIN_GUIDES/.." 2>/dev/null && pwd) || return 0
+  local inst="$root/scripts/install-guide.sh"
+  [ -f "$inst" ] || { warn "install-guide.sh 없음 — 이음매 회귀 생략" "$inst"; return 0; }
+  sec "사전 제작 이음매 회귀 (조합 단위)"
+
+  local sj combo fe be proj n=0 code
+  for sj in "$PLUGIN_GUIDES"/seams/*/seam.json; do
+    [ -f "$sj" ] || continue
+    combo=$(basename "$(dirname "$sj")")
+    fe=$(grep -oE '"frontendPack"[^"]*"[^"]+"' "$sj" | sed -E 's|.*/||; s|"$||')
+    be=$(grep -oE '"backendPack"[^"]*"[^"]+"'  "$sj" | sed -E 's|.*/||; s|"$||')
+    [ -n "$fe" ] && [ -n "$be" ] || { warn "이음매 $combo — 팩 참조를 읽지 못함"; continue; }
+    n=$((n+1))
+    proj="$TMP/seam-$combo"; mkdir -p "$proj"
+    if ! CLAUDE_PLUGIN_ROOT="$root" CLAUDE_PROJECT_DIR="$proj" \
+         bash "$inst" --frontend "$fe" --backend "$be" --seam "$combo" --no-cache >/dev/null 2>&1; then
+      bad "이음매 $combo — 조립 실패"; continue
+    fi
+    local g ok_all=1
+    for g in frontend backend; do
+      code=0
+      bash "$0" --guide "$proj/.claude/skills/$g-guide" \
+                --assembly "$proj/.claude/skills/$g-guide/assembly.json" \
+                --plugin-guides "$PLUGIN_GUIDES" >/dev/null 2>&1 || code=$?
+      [ "$code" -eq 0 ] || { bad "이음매 $combo/$g → exit $code" \
+        "$(bash "$0" --guide "$proj/.claude/skills/$g-guide" --assembly "$proj/.claude/skills/$g-guide/assembly.json" --plugin-guides "$PLUGIN_GUIDES" 2>&1 | grep '✗' | head -2 | sed 's/^  *//' | tr '\n' ';')"; ok_all=0; }
+    done
+    code=0
+    bash "$0" --pair --contract "$PLUGIN_GUIDES/seams/$combo/contract.md" \
+              --frontend "$proj/.claude/skills/frontend-guide" \
+              --backend "$proj/.claude/skills/backend-guide" >/dev/null 2>&1 || code=$?
+    [ "$code" -eq 0 ] || { bad "이음매 $combo --pair → exit $code" "와이어 계약이 양쪽에서 갈렸다"; ok_all=0; }
+    [ "$ok_all" -eq 1 ] && ok "이음매 $combo → 조립본 2개 + --pair FAIL 0"
+  done
+  [ "$n" -eq 0 ] && warn "사전 제작 이음매 0개"
   return 0
 }
 
 
 # REVIEW는 exit 코드를 바꾸지 않으므로 출력으로 판정한다.
 # want가 비면 "그 REVIEW가 **없어야** 한다"는 뜻이다 (오탐 차단).
+# 코퍼스를 건너뛰었으면 그렇게 말한다 — "픽스처 통과"와 "실물 검사함"은 다르다.
+skip_note() {
+  printf "  ${C_C}–${C_0} 출하 팩·이음매 회귀 생략 (--regress로 켠다)\n"
+  printf "      ${C_D}합성 픽스처는 미탐을 잡고 실물은 오탐을 잡는다 — 출하 전에 --regress를 돌린다${C_0}\n"
+  return 0
+}
+
 _fx_review_assert() {
   local dir="$1" label="$2" needle="$3"
   local out; out=$(bash "$0" --pack "$dir" 2>&1)
@@ -2005,6 +2068,7 @@ FXPOLE
 # ════════════════════════════════════════════════════════════════════
 MODE=""; GUIDE=""; LEDGER=""; FORBID=""; PM=""; GENERATED=0
 CONTRACT=""; FE=""; BE=""; ASSEMBLY=""; PACK_LEDGER_NAME="ledger.md"; PACK_POLICIES_NAME="policies.md"
+REGRESS=0
 PLUGIN_GUIDES="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}/guides"
 
 [ $# -eq 0 ] && { printf "인자 없음 (--help 참조)\n" >&2; exit 2; }
@@ -2014,6 +2078,7 @@ while [ $# -gt 0 ]; do
     --pack)      MODE="pack";  GUIDE="${2:-}"; shift 2 || exit 2 ;;
     --pair)      MODE="pair"; shift ;;
     --self-test) MODE="selftest"; shift ;;
+    --regress)   MODE="selftest"; REGRESS=1; shift ;;
     --contract)  CONTRACT="${2:-}"; shift 2 || exit 2 ;;
     --frontend)  FE="${2:-}"; shift 2 || exit 2 ;;
     --backend)   BE="${2:-}"; shift 2 || exit 2 ;;
@@ -2025,7 +2090,7 @@ while [ $# -gt 0 ]; do
     --pack-ledger-name)   PACK_LEDGER_NAME="${2:-}"; shift 2 || exit 2 ;;   # --self-test 전용
     --pack-policies-name) PACK_POLICIES_NAME="${2:-}"; shift 2 || exit 2 ;; # --self-test 전용
     --generated) GENERATED=1; shift ;;
-    -h|--help)   sed -n '2,25p' "$0" | sed -E 's/^#[[:space:]]?//'; exit 0 ;;
+    -h|--help)   sed -n '2,28p' "$0" | sed -E 's/^#[[:space:]]?//'; exit 0 ;;
     *)           printf "알 수 없는 옵션: %s (--help 참조)\n" "$1" >&2; exit 2 ;;
   esac
 done

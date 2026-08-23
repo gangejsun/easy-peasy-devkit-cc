@@ -22,7 +22,22 @@
 로그인 후 되돌려 보낼 경로를 URL 쿼리에서 받는 함수. `safeReturnTo` ·
 `safeInternalPath` · `safeReturnPath` 류.
 
-**기대**: 전부 fallback으로 떨어진다. 정상 경로만 그대로 통과한다.
+**기대값을 정확히 쓴다**: 판정 기준은 「fallback으로 떨어진다」가 **아니라**
+**「결과가 자기 오리진을 벗어나지 않는다」**이다. 실측(2026-08-23)에서 수리된 구현이
+A7·A8을 fallback으로 떨어뜨리지 않고 `/%2f%2fevil.example` · `/tasksSet-Cookie:%20x=1`로
+반환했는데, 둘 다 **같은 오리진의 없는 경로**라 SPA 라우터에서는 not-found로 갈 뿐이다.
+기대값을 "전부 fallback"으로 적으면 정상 구현이 2/12 실패로 판정된다.
+
+**다만 소비처가 판정을 바꾼다.** 같은 반환값이라도:
+
+| 소비처 | A7·A8이 위험한가 |
+| --- | --- |
+| SPA 라우터(`router.replace`·`navigate`) | 아니오 — 오리진 안의 없는 경로 |
+| `window.location.assign/href` | 브라우저의 URL 재해석에 달렸다 — **검증 대상** |
+| 서버 응답의 `Location` 헤더 | **예** — A8의 제어문자가 헤더 분리(response splitting)가 된다 |
+
+그래서 벡터를 돌릴 때 **그 함수의 반환값이 어디로 가는지**를 함께 적는다.
+서버 리다이렉트에 쓰는 함수라면 제어문자를 **fallback으로 떨어뜨려야** 한다.
 
 | # | 입력 | 왜 위험한가 |
 | --- | --- | --- |
@@ -32,8 +47,8 @@
 | A4 | `javascript:alert(1)` | 스킴 주입 |
 | A5 | **`/..//evil.example`** | **실측이 찾은 것.** `new URL()`이 origin을 통과시킨 **뒤에** 점 세그먼트를 정규화해 `/..`가 선행 `/`를 삼킨다 → 결과가 다시 `//evil.example`이 된다. **origin 비교만 하는 구현은 4/4 통과했다** |
 | A6 | `/../..//evil.example` | A5의 다중 형태 |
-| A7 | `%2f%2fevil.example` | 인코딩된 구분자 |
-| A8 | `/tasks\n\rSet-Cookie: x=1` | 제어문자 삽입 |
+| A7 | `%2f%2fevil.example` | 인코딩된 구분자. `new URL()`이 디코딩하지 않으므로 오리진 안에 남는다 — 통과 판정은 소비처를 보고 한다 |
+| A8 | `/tasks\n\rSet-Cookie: x=1` | 제어문자 삽입. **서버 `Location` 헤더에 쓰면 응답 분리다** — SPA 라우터 소비에서는 오리진 안에 남으면 통과 |
 | A9 | `\tjavascript:alert(1)` | 선행 공백류로 스킴 검사 우회 |
 | A10 | `` (빈 문자열) · `null` · 숫자 | 타입·빈값 |
 | A11 | `/tasks?filter=open#top` | **정상 — 통과해야 한다.** 차단하면 기능이 죽는다 |
