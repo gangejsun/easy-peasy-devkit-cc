@@ -1,0 +1,32 @@
+{
+  "axis": "frontend",
+  "name": "vue",
+  "displayName": "Vue 3 + Vite (SPA)",
+  "description": "Vue 3 Composition API + Vite SPA (SSR 없음) + TypeScript + Tailwind CSS + Vue Router + Pinia",
+  "techStack": {
+    "framework": "Vue 3 + Vite",
+    "language": "TypeScript",
+    "packageManager": "npm",
+    "commands": {
+      "build": "npm run build",
+      "test": "npm test",
+      "lint": "npm run lint"
+    },
+    "additionalStack": [
+      "Tailwind CSS",
+      "Vue Router",
+      "Pinia",
+      "TanStack Query (Vue)"
+    ]
+  },
+  "domains": {
+    "sourceDir": "src",
+    "importAlias": "@/"
+  },
+  "notes": {
+    "serverCode": "SPA에는 서버 런타임이 없다 — 서버 로직은 백엔드 축이 전적으로 소유한다. 백엔드가 BaaS면 브라우저에서 SDK를 직접 호출하므로 데이터 계층 보안(행 수준 정책)이 유일한 경계다",
+    "language": "기본은 TypeScript다. JavaScript를 고르면 타입 표준 슬롯이 JSDoc 규약으로 대체되고, `<script setup lang=\"ts\">`는 `<script setup>`이 된다",
+    "reactivity": "반응성이 React와 다르다 — ref/reactive의 프록시 기반이라 구조 분해가 반응성을 끊고, `.value` 누락이 조용한 실패가 된다. 이 축 고유의 오용 목록이 필요한 지점이다",
+    "guideShape": "서버 런타임이 없다는 점에서 react-vite와 같은 모양이다 — 이음매 슬롯 집합(데이터 페칭·인증/세션·완전 예제)과 '데이터 계층이 유일한 경계' 서술을 공유한다. Nuxt는 별개 축이다(서버 런타임 내장)"
+  }
+}

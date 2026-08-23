@@ -179,6 +179,7 @@
               "enum": [
                 "nextjs",
                 "react-vite",
+                "vue",
                 "vanilla",
                 "none"
               ],

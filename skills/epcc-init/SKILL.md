@@ -59,8 +59,9 @@ Step 2·4·4.5·4.7은 원래 필수 대기 3곳 + 조건부 5곳이었다. Step
 ① 프론트엔드를 고르세요:
   1. nextjs      — Next.js 15 App Router + React 19 + Tailwind v4 + shadcn/ui + Zustand
   2. react-vite  — React + Vite SPA (SSR 없음) + Tailwind + React Router + TanStack Query + Zustand
-  3. vanilla     — 프레임워크 없음, 표준 DOM + ES 모듈 (랜딩·위젯·경량 사이트)
-  4. none        — 프론트엔드 없음 (API 전용 프로젝트)
+  3. vue         — Vue 3 Composition API + Vite SPA (SSR 없음) + Tailwind + Vue Router + Pinia
+  4. vanilla     — 프레임워크 없음, 표준 DOM + ES 모듈 (랜딩·위젯·경량 사이트)
+  5. none        — 프론트엔드 없음 (API 전용 프로젝트)
 
    └ 언어: TypeScript(기본) / JavaScript — 프리셋 선택 후 확인합니다
 
@@ -452,7 +453,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/skills/stack-guide-generator/scripts/guide-gate.sh" 
 
 #### 사전 제작본을 늘리는 기준
 
-조합은 32가지지만 **축은 12가지**(프론트 4 · 백엔드 8)다. 조합 단위로 사전 제작하면
+조합은 40가지지만 **축은 13가지**(프론트 5 · 백엔드 8)다. 조합 단위로 사전 제작하면
 가이드 45개(약 9만 줄)가 되어 유지 불가능하고, 감사받지 않는 사전 제작본은 부패해서
 **없는 가이드보다 나쁘다**(틀린 지침을 신뢰하게 만든다). 축 단위는 12개라 감사 가능하다.
 
