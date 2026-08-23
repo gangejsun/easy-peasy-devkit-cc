@@ -105,6 +105,7 @@ export function RequireAuth() {
   섞인 값은 브라우저에서 외부 URL로 파싱된다. 문자열 prefix 검사(`startsWith('/')`)만으로는
   막히지 않는다
 
+<!-- file: src/lib/safeReturnTo.ts -->
 ```ts
 // src/lib/safeReturnTo.ts
 export function safeReturnTo(raw: string | null, fallback = '/'): string {

@@ -59,10 +59,12 @@ const tasks = useTaskStore((s) => s.tasks);
 컴포넌트가 직접 `fetch`하면 인증 헤더·에러 정규화·베이스 URL이 화면마다 갈라진다.
 이 경계는 규율이 아니라 **lint 규칙으로 강제**한다 (`resources/data-fetching.md` 참고).
 
+훅 자체는 **이음매가 정의한다**(`ledger.md`의 `requires`) — 이 축이 소유하는 것은 화면이
+그것을 어떻게 소비하는가다. 정의를 여기 두면 이음매의 정의와 둘이 된다.
+
 ```tsx
-// ✅ 요청 함수 → 쿼리 훅 → 컴포넌트
-export const useTasksQuery = (f: TaskFilter) =>
-  useQuery({ queryKey: taskKeys.list(f), queryFn: () => listTasks(f) });
+// ✅ 요청 함수 → 쿼리 훅 → 컴포넌트. 화면은 훅만 부른다
+const { data: tasks, isPending, isError } = useTasksQuery(filter);
 
 // ❌ 컴포넌트 안의 원시 fetch — 토큰도 에러 형식도 여기서 다시 발명된다
 const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks`);

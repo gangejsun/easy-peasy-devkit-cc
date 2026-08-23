@@ -171,7 +171,7 @@ function collapseSidebar() { ui.isSidebarOpen = false; }
 
 ```ts
 // src/stores/clearClientState.ts — 스토어를 추가하면 이 목록에도 추가한다
-import { useUiStore } from './ui';
+import { useUiStore, STORAGE_KEY } from './ui';
 
 export function clearClientState() {
   useUiStore().reset();     // 모든 스토어에 reset()이 있어야 하는 이유

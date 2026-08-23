@@ -17,12 +17,21 @@
     "korean": "작업"
   },
 
+  "fixesVariants": {
+    "framework": "hono",
+    "orm": "drizzle-orm"
+  },
+  "fixesVariantsNote": "핸들러 형태와 쿼리 형태가 팩 본문 전체의 전제다. ECS에 Express+Prisma를 쓰는 프로젝트에 이 팩을 조립하면 틀린 지침을 받는다 — 그 조합은 backend/node-api 팩이 소유한다",
+
   "pkgs": [
     "hono@4", "@hono/node-server@1", "typescript@5",
     "drizzle-orm@0", "drizzle-kit@0", "pg@8", "jose@5", "zod@4",
-    "vitest@2", "postgres@16",
+    "vitest@2",
     "aws-cdk-lib@2", "@aws-sdk/client-s3@3", "@aws-sdk/s3-request-presigner@3"
   ],
+
+  "runtime": { "postgresql": "16" },
+  "runtimeNote": "서버 런타임 버전이지 npm 의존성이 아니다. pkgs에 두면 `npm i`가 엉뚱한 패키지를 받는다 — `postgres`는 Porsager의 드라이버이고 16 버전이 없다",
 
   "hubFragments": "PACK.md",
   "ledger": "ledger.md",

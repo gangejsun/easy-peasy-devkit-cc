@@ -13,6 +13,13 @@
     "note": "모든 팩과 이음매가 같은 예제 도메인을 쓴다. L0 계약이 이 값을 이음매에 전달하고 게이트 --pair가 대조한다 — 프론트가 /tasks를 부르는데 백엔드가 /notes를 서빙하던 실측 결함의 수리다"
   },
 
+  "fixesVariants": {
+    "router": "react-router",
+    "store": "zustand",
+    "query": "@tanstack/react-query"
+  },
+  "fixesVariantsNote": "SPA 축은 라우터·전역 상태·서버 캐시를 전부 직접 고른다 — 셋 다 팩 본문의 전제다. TanStack Router·Redux·SWR을 고른 프로젝트에는 조립하지 않는다",
+
   "pkgs": [
     "react@18", "vite@5", "typescript@5", "react-router@7",
     "@tanstack/react-query@5", "zustand@5", "tailwindcss@3.4",

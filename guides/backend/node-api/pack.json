@@ -1,0 +1,77 @@
+{
+  "axis": "backend",
+  "name": "node-api",
+  "displayName": "Node API 서버 (Express 5 + Prisma + PostgreSQL)",
+  "packVersion": "3.13.0",
+  "verified": "2026-08-23",
+  "extractedFrom": "신규 생성 — 실증 원본 없음. 다른 팩을 형식 참조로도 열지 않았다 (assets/pack-resource-template.md만 사용)",
+
+  "backendType": "cloud-server",
+  "dataLayerPolicyEngine": false,
+  "policyEngineNote": "행 수준 정책 엔진이 없다. 애플리케이션이 신뢰된 연결로 DB에 붙으므로 **소유권 필터 누락이 곧 데이터 유출**이다. BaaS 축(supabase)의 'RLS가 백업이니 애플리케이션 검사는 이중 방어' 서술을 이 축에 옮기면 정확히 반대 지침이 된다 — 이음매 생성 시 반드시 전달할 값",
+
+  "symbolSurface": true,
+
+  "exampleDomain": {
+    "entity": "Task",
+    "collection": "tasks",
+    "route": "/api/tasks",
+    "korean": "작업",
+    "note": "모든 팩과 이음매가 같은 예제 도메인을 쓴다. L0가 이 값에서 어휘 정책(`vocab-task`)을 발행해 게이트가 분기를 차단한다 — 실측에서 프론트가 /tasks를, 백엔드가 /notes를 써서 완전 예제가 서로 실행 불가였다"
+  },
+
+  "fixesVariants": { "framework": "express", "orm": "prisma" },
+  "fixesVariantsNote": "핸들러 형태(Express 5의 라우터·에러 미들웨어)와 쿼리 형태(Prisma Client + migrate)가 팩 본문 전체의 전제다. NestJS를 고른 프로젝트는 DI·데코레이터·모듈이 Express의 변형이 아니라 다른 시스템이므로 별도 축 팩(node-nest)이 필요하다. Drizzle을 고른 프로젝트는 backend/aws-container가 그 형태를 소유한다",
+
+  "pkgs": [
+    "express@5", "@prisma/client@6", "prisma@6", "zod@4", "typescript@5",
+    "pino@9", "pino-http@10", "vitest@2", "supertest@7", "tsx@4",
+    "@types/express@5", "@types/node@22"
+  ],
+
+  "runtime": { "postgresql": "16" },
+  "runtimeNote": "서버 런타임 버전이지 npm 의존성이 아니다. pkgs에 넣으면 `npm i`가 엉뚱한 패키지를 받는다 — `postgres`는 Porsager의 드라이버이고 16 버전이 없다 (C2 실측)",
+
+  "hubFragments": "PACK.md",
+  "ledger": "ledger.md",
+  "policies": "policies.md",
+
+  "resources": [
+    { "file": "project-structure.md", "nav": "계층 경계(routes → services → db) · Express 5 앱 조립 · 라우터 마운트 · 404/에러 미들웨어 순서 · 비동기 핸들러" },
+    { "file": "data-access.md",       "nav": "Prisma Client 싱글턴 · 소유권 필터 · 영향 행 수 확인 · 트랜잭션 · 페이지네이션 · N+1과 select · 마이그레이션 실행" },
+    { "file": "input-validation.md",  "nav": "Zod 스키마 작성 · 요청 파싱 헬퍼 · DB 제약 이중화 · 환경변수 스키마 · 부팅 시점 실패" },
+    { "file": "error-handling.md",    "nav": "도메인 에러 → 상태 코드 매핑 · Prisma 에러 코드 판별(P2002·P2025) · ZodError 정규화 · 존재 누설 금지" },
+    { "file": "testing.md",           "nav": "Vitest 설정 · supertest 라우터 테스트 · 실 DB 통합 테스트 · 테스트 DB 격리 · 시드와 정리" },
+    { "file": "operations.md",        "nav": "graceful shutdown · 헬스체크(live/ready) · 커넥션 풀 사이징 · 구조적 로깅 · 마이그레이션 배포 순서 · 느린 쿼리 관측" }
+  ],
+
+  "seamSlots": ["api-endpoints", "auth-boundaries", "complete-example"],
+
+  "seamSlotNotes": {
+    "api-endpoints": "라우터 형태 + 요청/응답 봉투 + 에러 봉투 방출. 봉투는 와이어 계약의 함수이므로 축이 아니라 조합이 정한다",
+    "auth-boundaries": "토큰 검증 방식(JWT 자체 발급 · 세션 · 외부 IdP) · requireAuth 배선 · 역할/스코프 · 로그인·로그아웃 흐름. **인증 방식은 축의 함수가 아니다** — 프론트 축에 서버 런타임이 있는지에 따라 세션 쿠키냐 베어러 토큰이냐가 갈린다",
+    "complete-example": "마이그레이션 → 스키마 → 쿼리 → 서비스 → 라우터 → 테스트 관통"
+  },
+
+  "clusters": [
+    { "id": "C1", "pilot": true, "files": ["input-validation.md", "error-handling.md"],
+      "why": "EnvSchema·요청 스키마와 에러 코드표가 서로의 함수다. ZodError → 필드 오류 봉투, Prisma P2002 → 409가 한 표에서 나온다. requires의 AppError 형태가 가장 많이 얽히는 자리이므로 파일럿이다" },
+    { "id": "C2", "files": ["data-access.md", "project-structure.md"],
+      "why": "prisma 싱글턴의 소유와 makeApp의 배선이 같은 결정이다. '데이터 계층은 HTTP를 모른다'는 계층 규율도 두 파일에 걸친다" },
+    { "id": "C3", "files": ["testing.md", "operations.md"],
+      "why": "프로세스 수명(부팅·종료·풀·헬스체크)을 공유한다. 테스트 DB 격리와 커넥션 풀 사이징이 같은 자원을 다룬다" }
+  ],
+
+  "knownGaps": [
+    {
+      "what": "느린 쿼리 관측",
+      "where": "resources/operations.md (pack.json의 nav가 약속한다)",
+      "detail": "Prisma 실물 없이 `$on('query')`·`log` 옵션의 형태를 단정할 수 없어 비웠다. '빈 슬롯이 틀린 내용보다 낫다'를 따랐다 (C3 보고). nav 문구는 후속으로 채울 대상으로 남긴다"
+    },
+    {
+      "what": "예제 도메인에 관계가 없다",
+      "where": "resources/data-access.md §5 (N+1과 select)",
+      "detail": "`Task` 단일 모델로는 N+1을 보일 수 없어 `Comment` 관계를 예로 도입했다(실측도 그 스키마). **이음매의 complete-example이 관계 없는 Task만 쓰면 §5 코드가 조립본에서 뜬다** — 이음매 생성 시 전달할 값 (C2 보고)"
+    }
+  ]
+}

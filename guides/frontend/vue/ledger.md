@@ -12,27 +12,34 @@
 export**라 `export const` 선언이 없으므로 아래 별도 절에 둔다 — 같은 표에 섞으면
 기계 대조가 정의문을 찾지 못한다.
 
-| 심볼 | 정의 파일 | 성격 |
-| --- | --- | --- |
-| `cn` | styling.md | 클래스 병합 유틸 |
-| `ButtonVariant` | styling.md | 변형(variant) 타입 |
-| `ButtonSize` | styling.md | 크기 타입 |
-| `buttonClass` | styling.md | 변형 표 → 클래스 문자열 |
-| `Column` | component-patterns.md | 제네릭 표 컬럼 정의 타입 |
-| `toUserMessage` | loading-error-states.md | 에러 → 사용자 문구 (전송 계층 코드 + 폴백) |
-| `routes` | routing.md | 라우트 레코드 트리 |
-| `router` | routing.md | 라우터 인스턴스 (전역 가드·onError 포함) |
-| `safeReturnTo` | routing.md | 복귀 경로 검증 (외부 URL 차단) |
-| `STORAGE_KEY` | state-management.md | 로컬 스토리지 키 — `clearClientState`가 같은 상수를 쓴다 |
-| `useUiStore` | state-management.md | 클라이언트 전역 상태 스토어 |
-| `clearClientState` | state-management.md | 로그아웃 시 클라이언트 상태 초기화 |
-| `config` | types-and-testing.md | 환경 값을 읽는 유일한 모듈 |
-| `assertTask` | types-and-testing.md | 응답 좁히기 — 도메인 타입은 `requires`의 `Task` |
-| `parseTask` | types-and-testing.md | 응답 좁히기 (단건) |
-| `parseTaskList` | types-and-testing.md | 응답 좁히기 (목록) |
-| `handlers` | types-and-testing.md | msw 기본 핸들러 |
-| `server` | types-and-testing.md | msw 테스트 서버 |
-| `mountWithProviders` | types-and-testing.md | 테스트 마운트 하네스 |
+「형태」 열은 소유 파일만으로는 알 수 없는 것을 적는다: **인자 이름과 순서** · 타입 ·
+반환 · 실패 시 던지는 것 · 호출자가 배선할 의무. 병렬 저작 실측(2026-08-23)에서 형제
+클러스터가 형제 파일을 읽지 못한 채 원장의 소유자 정보만 보고 시그니처를 **추측**했고,
+같은 타입 인자 둘의 순서가 뒤집힌 호출과 "배선하는 함수 / 수행하는 함수"의 오해가
+타입 검사와 게이트를 모두 통과해 치명 결함 2건이 됐다. 그래서 형태를 여기 못 박는다 —
+게이트가 빈 칸을 FAIL로 막고, 형태가 선언한 인자 개수를 실제 정의와 대조한다.
+
+| 심볼 | 정의 파일 | 형태 | 성격 |
+| --- | --- | --- | --- |
+| `cn` | styling.md | `cn(...inputs: ClassValue[]): string` — 가변인자. `clsx`로 조립한 뒤 `twMerge`가 충돌하는 유틸리티 중 **뒤에 온 것**만 남긴다 (`px-4 px-6` → `px-6`) | 클래스 병합 유틸 |
+| `ButtonVariant` | styling.md | `type ButtonVariant = 'primary' \| 'secondary' \| 'danger' \| 'ghost'` — `variants` 표의 키와 1:1(`Record<ButtonVariant, string>`)이라 값을 늘리면 표도 함께 늘려야 컴파일된다 | 변형(variant) 타입 |
+| `ButtonSize` | styling.md | `type ButtonSize = 'sm' \| 'md' \| 'lg'` — `sizes` 표(`h-*`·`px-*`·`text-*`)의 키. 높이·여백·타이포를 이 세 값이 통째로 정한다 | 크기 타입 |
+| `buttonClass` | styling.md | `buttonClass(variant: ButtonVariant, size: ButtonSize): string` — **순서는 variant 먼저, size 나중.** 두 유니온이 서로 겹치지 않아 뒤바꾸면 컴파일이 막는다. 반환은 base + variant + size를 `cn`으로 병합한 완전한 클래스 문자열 | 변형 표 → 클래스 문자열 |
+| `Column` | component-patterns.md | `type Column<T> = { key: string; header: string; value: (row: T) => string; class?: string }` — `class`만 선택이다. `value`는 **문자열 셀 전용**(리치 셀은 `cell-<key>` 슬롯이 덮는다)이고 `key`가 슬롯 이름과 `<th>`/`<td>`의 `:key`를 동시에 정한다. 소비처 `DataTable`은 `generic="T extends { id: string }"`로 제약한다 | 제네릭 표 컬럼 정의 타입 |
+| `toUserMessage` | loading-error-states.md | `toUserMessage(error: unknown): string` — **던지지 않는다.** `ApiError`의 `NETWORK_ERROR`·`TIMEOUT`만 이 팩이 문구를 갖고, 그 밖의 코드도 `ApiError`가 아닌 값도 모두 일반 폴백 문구로 떨어진다. 서버 원문 메시지를 그대로 반환하지 않는다 | 에러 → 사용자 문구 (전송 계층 코드 + 폴백) |
+| `routes` | routing.md | `const routes: RouteRecordRaw[]` — 루트 레코드 **1개**(`path: '/'` + `component: DefaultLayout`)에 자식이 달린 단일 트리. 같은 파일이 `declare module 'vue-router'`로 `RouteMeta { requiresAuth?: boolean; title?: string }`를 확장한다. 캐치올은 v4 문법 `:pathMatch(.*)*` | 라우트 레코드 트리 |
+| `router` | routing.md | `const router: Router` — `createWebHistory(config.basePath)`로 만든 **앱 유일 인스턴스**. 이 모듈이 `beforeEach`(인증 가드)와 `onError`(청크 유실 → 전체 리로드)를 함께 배선하므로, 소비처는 `useRouter()`로 얻어 쓰기만 하고 전역 가드를 더 달지 않는다 | 라우터 인스턴스 (전역 가드·onError 포함) |
+| `safeReturnTo` | routing.md | `safeReturnTo(raw: unknown, fallback = '/tasks'): string` — **차단(→ `fallback` 반환)**: 문자열이 아니거나 빈 문자열 · 타 오리진(`https://evil`·`//evil`) · 정규화된 `pathname`이 `//` 또는 `/\`로 시작하는 값(`/..//evil.example`) · `new URL` 파싱 실패. **통과**: 같은 오리진의 `pathname + search + hash`를 **경로 문자열로만** 반환한다(절대 URL을 돌려주지 않는다). 호출자 의무: 결과는 `router.replace`/`push`에만 넘긴다 — `window.location`에 넘기면 검증이 무의미해진다. `fallback` 인자는 **검증하지 않으므로** 리터럴만 준다 | 복귀 경로 검증 (외부 URL 차단) |
+| `STORAGE_KEY` | state-management.md | `const STORAGE_KEY = 'ui-preferences'` (string 리터럴) — 이 키를 읽고 쓰는 곳은 셋뿐이다: `useUiStore`의 `restore()`와 저장 `watch`, 그리고 `clearClientState`. 리터럴을 다시 적지 않는다 | 로컬 스토리지 키 — `clearClientState`가 같은 상수를 쓴다 |
+| `useUiStore` | state-management.md | `useUiStore(): { isSidebarOpen: Ref<boolean>; density: Ref<Density>; toggleSidebar(): void; setDensity(next: Density): void; reset(): void }` — 무인자. `Density`는 `'comfortable' \| 'compact'`(스토어 파일 로컬 타입, export하지 않는다). **setup 스토어라 `$reset()`이 없다** — 초기화는 `reset()`. 호출자 의무: `app.use(createPinia())` **이후 함수 본문 안에서** 부르고, 상태·getter는 `storeToRefs()`로 꺼낸다(직접 구조 분해하면 반응성이 끊긴다) | 클라이언트 전역 상태 스토어 |
+| `clearClientState` | state-management.md | `clearClientState(): void` — 무인자. `useUiStore().reset()`과 `localStorage.removeItem(STORAGE_KEY)`만 한다. **서버 캐시(`queryClient.clear()`)는 건드리지 않는다** — 폐기 순서는 이음매의 세션 리소스가 소유한다. 스토어를 추가하면 이 함수에 그 스토어의 `reset()` 호출을 함께 추가한다 | 로그아웃 시 클라이언트 상태 초기화 |
+| `config` | types-and-testing.md | `const config: { readonly apiBaseUrl: string; readonly basePath: string }` (`as const`) — `apiBaseUrl`은 `VITE_API_BASE_URL`이 비면 **모듈 평가 시점(부팅)에 throw**한다(첫 사용까지 미루지 않는다). `basePath`는 `import.meta.env.BASE_URL`. `import.meta.env`가 등장하는 유일한 파일이고 비밀은 넣지 않는다 | 환경 값을 읽는 유일한 모듈 |
+| `assertTask` | types-and-testing.md | `assertTask(v: unknown): asserts v is Task` — **반환값이 없는 단언 함수**다(`if (assertTask(x))`처럼 쓸 수 없다). `id`·`title`이 `string`인지만 보고 어긋나면 `ApiError('BAD_SHAPE', '응답 형식이 계약과 다릅니다.')`를 던진다. `status`·`createdAt`은 검사하지 않는다 | 응답 좁히기 — 도메인 타입은 `requires`의 `Task` |
+| `parseTask` | types-and-testing.md | `parseTask(v: unknown): Task` — `assertTask`를 통과시킨 **같은 객체를 그대로** 반환한다(복사·정규화 없음). 실패 시 `assertTask`가 던진 `ApiError('BAD_SHAPE')`가 그대로 올라온다 | 응답 좁히기 (단건) |
+| `parseTaskList` | types-and-testing.md | `parseTaskList(v: unknown): Task[]` — 배열이 아니면 `ApiError('BAD_SHAPE', '목록 응답이 배열이 아닙니다.')`, 원소가 어긋나면 `parseTask`가 던진다. **봉투를 벗기지 않는다** — 페이지 봉투를 그대로 넘기면 여기서 실패하므로 벗기는 일은 호출부(이음매의 쿼리 컴포저블)가 한다 | 응답 좁히기 (목록) |
+| `handlers` | types-and-testing.md | `const handlers: RequestHandler[]` (msw v2) — `http.get('*/tasks')` → `HttpResponse.json([])`, `http.post('*/tasks')` → 201 + `{ id: 't1', status: 'open', ...body }`. 경로가 `*` 접두 와일드카드라 baseUrl과 무관하게 매치된다. **응답 봉투는 이음매의 계약**이므로 조립 시 본문을 그 계약으로 교체한다 | msw 기본 핸들러 |
+| `server` | types-and-testing.md | `const server: SetupServerApi` — `setupServer(...handlers)`의 **테스트 전역 단일 인스턴스**. 같은 파일이 `listen({ onUnhandledRequest: 'error' })`·`resetHandlers()`·`close()`를 `beforeAll`/`afterEach`/`afterAll`에 건다. 개별 테스트는 `server.use(...)`로 그 테스트에서만 덮고 직접 `listen`/`close`를 부르지 않는다 | msw 테스트 서버 |
+| `mountWithProviders` | types-and-testing.md | `mountWithProviders(component: Component, options: Options = {}): { wrapper: VueWrapper; router: Router; queryClient: QueryClient }` — `Options`는 `MountingOptions<Record<string, unknown>>`. pinia · `createMemoryHistory` 라우터 · `VueQueryPlugin`(테스트마다 **새** `QueryClient`, `retry: false`·`gcTime: 0`)을 심고, 호출자의 `options.global.plugins`를 **뒤에 이어 붙여** 병합한다. 호출자 의무: 라우터를 쓰는 화면은 마운트 후 `await router.isReady()` | 테스트 마운트 하네스 |
 
 `useUiStore`는 state-management.md에 **두 번** 나타난다 — setup 표기(§3 본문)와 옵션
 표기(§3 말미)다. 같은 스토어의 다른 조립 방식이므로 프로젝트에는 하나만 둔다.
@@ -69,8 +76,8 @@ export**라 `export const` 선언이 없으므로 아래 별도 절에 둔다 �
 | `http` | 프로젝트 | `http.get/post/patch/delete(path, init?)` — 봉투를 벗겨 `unknown`을 반환. 네트워크 실패·타임아웃을 `ApiError('NETWORK_ERROR')`·`ApiError('TIMEOUT')`으로 정규화할 의무가 있다 (`loading-error-states.md` §5가 이를 전제한다) | 응답 봉투 형태가 와이어 계약의 함수 |
 | `ApiError` | 프로젝트 | `new ApiError(code, message)` · 필드 `code: string` · `details?: Record<string, string[]>`. **코드표에 반드시 포함할 것**: `NETWORK_ERROR`·`TIMEOUT`(HTTP 클라이언트가 만든다) · `BAD_SHAPE`(팩의 `parseTask`가 던진다) — 빠지면 `toUserMessage`가 조용히 일반 폴백으로 떨어진다 | 에러 코드표와 필드 오류 형태가 와이어 계약의 함수 |
 | `useTasksQuery` | 프로젝트 | `useTasksQuery(filter?: MaybeRefOrGetter<Filter>)` — **인자는 선택이다** (팩이 무인자로도 호출한다). 반환의 `data`는 `Ref<Task[] \| undefined>`여야 한다 — 페이지 봉투(`Ref<Page<Task>>`)를 주면 3상태 예시가 통째로 깨진다 | 페칭 계층이 이음매 소유 |
-| `useCreateTaskMutation` | 프로젝트 | 생성 뮤테이션 컴포저블. `{ mutate, isPending }`을 반환하고 `mutate(input, { onError })`를 받는다 | 요청 본문과 무효화 대상이 와이어 계약의 함수 |
-| `useAuth` | 프로젝트 | `{ isAuthenticated: Ref<boolean>; ensureReady: () => Promise<void> }` | 인증 방식이 백엔드 축의 함수다. **형태를 팩이 못 박는 이유**: 가드는 렌더가 아니라 비동기 함수이므로 "로딩 플래그"가 아니라 **await할 수 있는 것**이 필요하고, 가드가 await할 수 있어야 하고 이후 이음매의 화면이 반응형으로 읽으므로 상태는 `Ref`여야 한다 |
+| `useCreateTaskMutation` | 프로젝트 | `useCreateTaskMutation(): { mutate: (input: { title: string }, opts?: { onError?: (e: unknown) => void }) => void; isPending: Ref<boolean> }` — 컴포저블 자체는 **인자 없음** · **`mutate`의 순서는 (본문, 옵션)이고 둘 다 평범한 객체라 뒤바꿔도 타입이 통과한다** · `mutate`는 값을 반환하지 않고(팩이 `await`하지 않는다) 실패를 `onError` 콜백으로만 알린다 — `loading-error-states.md` §6이 「`onErrorCaptured`가 잡지 못하는 것」에 `mutate()` 실패를 명시하므로, **거부한 Promise를 흘리면 아무도 잡지 않는다** · `onError`의 인자는 `unknown`이고 팩이 `e instanceof ApiError && e.details`로 좁히므로 검증 실패는 `ApiError`여야 한다 · `isPending`은 값이 아니라 `Ref<boolean>`(템플릿 `:disabled`에서 자동 언랩) · 생성 뮤테이션 컴포저블. `{ mutate, isPending }`을 반환하고 `mutate(input, { onError })`를 받는다 | 요청 본문과 무효화 대상이 와이어 계약의 함수 |
+| `useAuth` | 프로젝트 | `useAuth(): { isAuthenticated: Ref<boolean>; ensureReady: () => Promise<void> }` — **인자 없음** · `ensureReady()`도 인자 없고 가드 진입마다 `await`되므로 **중복 호출이 안전**해야 한다(이미 복구됐으면 즉시 resolve) · `isAuthenticated`는 값이 아니라 `Ref`라 스크립트에서 `.value`로 읽는다(빼면 Ref 객체가 항상 truthy) · 호출자 의무: **가드 함수 본문 안에서만** 부른다 — 모듈 최상위에서 부르면 pinia·앱이 아직 없다 | 인증 방식이 백엔드 축의 함수다. **형태를 팩이 못 박는 이유**: 가드는 렌더가 아니라 비동기 함수이므로 "로딩 플래그"가 아니라 **await할 수 있는 것**이 필요하고, 가드가 await할 수 있어야 하고 이후 이음매의 화면이 반응형으로 읽으므로 상태는 `Ref`여야 한다 |
 
 ## 알려진 공백
 

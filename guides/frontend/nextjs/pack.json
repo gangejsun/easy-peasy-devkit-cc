@@ -16,6 +16,12 @@
     "korean": "작업"
   },
 
+  "fixesVariants": {
+    "store": "zustand",
+    "forms": "react-hook-form"
+  },
+  "fixesVariantsNote": "Next.js가 페칭·라우팅·서버 런타임을 스스로 정하므로 이 축이 따로 못박는 것은 클라이언트 상태와 폼뿐이다. Redux·Jotai를 확정한 프로젝트에는 이 팩의 상태 관리 절이 틀린 지침이 된다",
+
   "pkgs": [
     "next@15", "react@19", "typescript@5", "tailwindcss@4", "zod@4",
     "zustand@5", "react-hook-form@7", "@hookform/resolvers@5",

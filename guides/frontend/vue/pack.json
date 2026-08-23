@@ -13,6 +13,12 @@
     "note": "모든 팩과 이음매가 같은 예제 도메인을 쓴다. L0 계약이 이 값을 이음매에 전달하고 게이트 --pair가 대조한다 — 프론트가 /tasks를 부르는데 백엔드가 /notes를 서빙하던 실측 결함의 수리다"
   },
 
+  "fixesVariants": {
+    "store": "pinia",
+    "query": "@tanstack/vue-query"
+  },
+  "fixesVariantsNote": "라우터는 vue-router가 사실상 유일하므로 변형이 아니다. 갈리는 것은 상태 관리(Vuex 잔존)와 서버 캐시다",
+
   "pkgs": [
     "vue@3", "vite@5", "typescript@5", "vue-router@4", "pinia@2",
     "tailwindcss@3.4", "@tanstack/vue-query@5", "vitest@2",

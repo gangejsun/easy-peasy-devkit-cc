@@ -11,7 +11,11 @@
 #       --forbid <kw,kw>   교차 누출 금지 키워드 (확정 조합에 없는 스택 이름)
 #       --pm <이름>        프리셋의 packageManager — 다른 매니저 명령을 잡는다
 #       --generated        생성물로 취급 (생성 스탬프 필수)
+#   guide-gate.sh --pack <팩디렉토리>
+#       축 팩을 조립 전에 검사한다. 축 안에서 닫히는 검사만 돌리고, 조합의 함수인
+#       것(requires 충족·--pair)은 건너뛴 것을 명시 보고한다.
 #   guide-gate.sh --pair --contract <계약파일> --frontend <디렉토리> --backend <디렉토리>
+#   guide-gate.sh --self-test
 #   guide-gate.sh --help
 #
 # 코드 판정은 코드펜스 안만 본다. 주석 행과 ❌/Bad 표식 이후 구간은 제외한다 —
@@ -43,7 +47,9 @@ trap 'rm -rf "$TMP"' EXIT
 # 코드펜스 안 + 주석이 아닌 + 안티패턴(❌/Bad) 구간이 아닌 행만 남긴다.
 # 표식은 두 관용구를 모두 인정한다: `// ❌` / `// ✅`, `// Bad` / `// Good`.
 # 펜스 직전 산문 행이 ❌/Bad면 펜스 전체가 안티패턴으로 시작한다.
-# 출력: <파일>\t<줄번호>\t<본문>
+# 출력: <파일>\t<줄번호>\t<본문>\t<펜스ID>
+# 4번째 열은 펜스 단위 검사(보안 형태·중복 펜스)를 위한 것이다. 앞 3열은 그대로이므로
+# 기존 `cut -f3` 소비처는 영향을 받지 않는다.
 codelines() {
   awk '
     # 표식은 ❌/✅ 가 영어 단어보다 우선한다. 단어 판정의 경계에서 _ 와 숫자를 빼야
@@ -52,18 +58,19 @@ codelines() {
     function isbad(s)  { return (index(s,"❌")>0 || (index(s,"✅")==0 && s ~ /(^|[^A-Za-z0-9_])(Bad|BAD)([^A-Za-z0-9_]|$)/)) }
     function isgood(s) { return (index(s,"✅")>0 || (index(s,"❌")==0 && s ~ /(^|[^A-Za-z0-9_])(Good|GOOD)([^A-Za-z0-9_]|$)/)) }
     function iscomment(s) { return (s ~ /^[[:space:]]*(\/\/|#|\*|\/\*|--)/) }
-    FNR==1 { inf=0; pol=1; lastprose="" }
-    /^[[:space:]]*```/ { if (!inf) { inf=1; pol = isbad(lastprose) ? 0 : 1 } else { inf=0 }; next }
+    FNR==1 { inf=0; pol=1; lastprose=""; fn=0 }
+    /^[[:space:]]*```/ { if (!inf) { inf=1; fn++; pol = isbad(lastprose) ? 0 : 1 } else { inf=0 }; next }
     !inf { if ($0 ~ /[^[:space:]]/) lastprose=$0; next }
     iscomment($0) { if (isbad($0)) pol=0; else if (isgood($0)) pol=1; next }
-    pol { print FILENAME "\t" FNR "\t" $0 }
+    pol { print FILENAME "\t" FNR "\t" $0 "\t" FILENAME "#" fn }
   ' "$@"
 }
 
-guide_files() { ls "$1/SKILL.md" "$1"/resources/*.md 2>/dev/null; }
+# 가이드(SKILL.md)와 축 팩(PACK.md)을 모두 받는다 — --pack 모드가 같은 검사를 재사용한다.
+guide_files() { ls "$1/SKILL.md" "$1/PACK.md" "$1"/resources/*.md 2>/dev/null; }
 
 # 프레임워크가 이름을 정하는 export — 서로 다른 라우트에서 시그니처가 갈리는 것이 정상이다
-FRAMEWORK_EXPORTS='^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|default|middleware|config|metadata|generateMetadata|generateStaticParams|loader|action|handler)$'
+FRAMEWORK_EXPORTS='^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|default|middleware|config|metadata|generateMetadata|generateStaticParams|loader|action|handler|Component|ErrorBoundary)$'
 
 # ════════════════════════════════════════════════════════════════════
 # --guide : 가이드 1개 검사
@@ -94,6 +101,10 @@ run_guide() {
   check_ledger "$G"
   check_pack_iface "$G"
   check_policies "$G"
+  check_security_shapes "$G"
+  check_claims "$G"
+  check_duplicate_fences "$G"
+  check_blocking_proof "$G"
 }
 
 # ── 1. 구조: frontmatter + 필수 섹션 8개 순서 ──
@@ -348,7 +359,9 @@ check_env() {
   local G="$1"
   sec "env 키 커버리지"
 
-  grep -oE '^[[:space:]]*[A-Z][A-Z0-9_]{2,}:[[:space:]]*[A-Za-z_$][A-Za-z0-9_$]*\.' "$TMP/code.txt" \
+  # 값이 `z.string()...` 형태만이 아니라 `ms(60_000)...` 같은 **헬퍼 호출**일 수 있다.
+  # 점만 인정하면 헬퍼로 선언한 키가 미선언으로 잡혀 정상 코드가 FAIL한다 (node-api 실측).
+  grep -oE '^[[:space:]]*[A-Z][A-Z0-9_]{2,}:[[:space:]]*[A-Za-z_$][A-Za-z0-9_$]*[.(]' "$TMP/code.txt" \
     | sed -E 's/^[[:space:]]*//; s/:.*//' | sort -u > "$TMP/envdecl.txt"
   local nd; nd=$(num "$(grep -c . "$TMP/envdecl.txt" | tr -d ' ')")
   if [ "$nd" -eq 0 ]; then
@@ -537,15 +550,8 @@ check_policies() {
   local pol="$PLUGIN_GUIDES/$pack/$PACK_POLICIES_NAME"
   [ -f "$pol" ] || { warn "팩 정책 파일 없음: $pol"; return; }
 
-  # | id | 판정 | 대상 | `정규식` | 예외 파일 | 설명 |
-  # 정규식 안의 \| 는 마크다운 표의 이스케이프다. 열 구분보다 먼저 보호하지 않으면
-  # 'await (params\' 처럼 절단된 정규식이 쓰인다 (게이트 최초 실행에서 확인).
-  awk '/^## 기계 검사/{f=1;next} /^## /{f=0} f' "$pol" \
-    | grep -E '^\|[[:space:]]*`' \
-    | sed 's/\\|/\x01/g' \
-    | awk -F'|' 'NF>=7 {
-        for(i=2;i<=6;i++){ gsub(/^[[:space:]]+|[[:space:]]+$/,"",$i); gsub(/`/,"",$i); gsub(/\x01/,"|",$i) }
-        if ($2!="") print $2"\t"$3"\t"$4"\t"$5"\t"$6 }' > "$TMP/pol.tsv"
+  # 파싱은 _parse_policies가 단일 소유한다 (두 파서가 갈리면 검사와 증명이 어긋난다).
+  _parse_policies "$pol" "$TMP/pol.tsv"
 
   local n; n=$(num "$(grep -c . "$TMP/pol.tsv" | tr -d ' ')")
   [ "$n" -eq 0 ] && { warn "팩 정책에서 항목을 읽지 못함: $pol"; return; }
@@ -553,8 +559,8 @@ check_policies() {
   # 팩 소유 파일 목록 (대상=seam 판정에 쓴다)
   local packfiles; packfiles=$(grep -oE '"packFiles"[^]]*\]' "$ASSEMBLY" | grep -oE '"[a-z0-9.-]+\.md"' | tr -d '"' | tr '\n' ' ')
 
-  local id verdict scope rx except viol=0 pass=0 targets f base hits
-  while IFS=$'\t' read -r id verdict scope rx except; do
+  local id verdict scope rx except ex has viol=0 pass=0 targets f base hits
+  while IFS=$'\t' read -r id verdict scope rx except ex has; do
     [ -z "$id" ] && continue
     # 대상 범위를 파일 목록으로 환원한다
     targets=""
@@ -590,6 +596,658 @@ check_policies() {
   done < "$TMP/pol.tsv"
 
   [ "$viol" -eq 0 ] && ok "팩 정책 ${pass}건 통과"
+
+  check_policy_proof "$G" "$pol" "$packfiles"
+}
+
+# ── 공용: 정책 표 파싱 ──────────────────────────────────────────────
+# | id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
+# 출력: id \t 판정 \t 대상 \t 정규식 \t 예외 \t 증명예 \t 증명예열있음(0/1)
+# 정규식 안의 \| 는 마크다운 표의 이스케이프다 — 열 구분보다 먼저 보호한다.
+_parse_policies() {
+  awk '/^## 기계 검사/{f=1;next} /^## /{f=0} f' "$1" \
+    | grep -E '^\|[[:space:]]*`' \
+    | sed 's/\\|/\x01/g' \
+    | awk -F'|' 'NF>=7 {
+        for(i=2;i<=7;i++){ gsub(/^[[:space:]]+|[[:space:]]+$/,"",$i); gsub(/`/,"",$i); gsub(/\x01/,"|",$i) }
+        # 대상(scope) 열만 마크다운 강조를 벗긴다. 정규식·증명 예의 * 는 의미가 있으므로 건드리지 않는다.
+        # 실측: vue 팩이 대상을 **seam**으로 적어 게이트가 scope를 인식하지 못했고,
+        # 감사가 지시한 "이음매를 겨눈다"는 수리가 조용히 무효였다.
+        gsub(/[*_]/,"",$4)
+        ex = (NF>=9) ? $7 : ""; has = (NF>=9) ? 1 : 0
+        if ($2!="") print $2"\t"$3"\t"$4"\t"$5"\t"$6"\t"ex"\t"has }' > "$2"
+}
+
+# 정책 1건의 대상 파일 목록. packfiles가 비면 scope=seam은 대상 0개가 된다.
+_policy_targets() {
+  local G="$1" scope="$2" except="$3" packfiles="$4" f base out=""
+  for f in $(guide_files "$G"); do
+    base=$(basename "$f")
+    case "$scope" in
+      seam)  case " $packfiles " in *" $base "*) continue;; esac ;;
+      pack)  case " $packfiles " in *" $base "*) ;; *) continue;; esac ;;
+      file:*) [ "$base" = "${scope#file:}" ] || continue ;;
+    esac
+    case "$except" in ""|"—"|"-") ;; *)
+      case ",$(printf '%s' "$except" | tr -d ' ')," in *",$base,"*) continue;; esac ;;
+    esac
+    out="$out $f"
+  done
+  printf '%s' "$out"
+}
+
+# ── 14. 정책 차단 증명 (증명 예 열) ─────────────────────────────────
+# 실측(2026-08-23) vue 팩 저작의 벽시계를 지배한 것이 "정책마다 결함 픽스처를 만들어
+# 실제로 잡히는지 돌리기"였다. 그 왕복을 표의 한 열 + 여기의 단언으로 바꾼다.
+#   ① 증명 예가 자기 정규식에 매치되는가 (아니면 죽은 정규식이다)
+#   ② forbid면 그 예가 대상 파일에 실재하지 않는가 (실재하면 자기 정책을 어긴 것)
+# 판정이 저자의 기억에서 게이트의 상시 단언으로 올라간다.
+check_policy_proof() {
+  local G="$1" pol="$2" packfiles="${3:-}"
+  sec "정책 차단 증명 (증명 예)"
+  [ -f "$pol" ] || { warn "정책 파일 없음: $pol"; return 0; }
+  _parse_policies "$pol" "$TMP/polproof.tsv"
+  local n; n=$(num "$(grep -c . "$TMP/polproof.tsv" | tr -d ' ')")
+  [ "$n" -eq 0 ] && { warn "정책에서 항목을 읽지 못함: $pol" "형식: | id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |"; return 0; }
+
+  local id verdict scope rx except ex has viol=0 pass=0 skip=0 targets
+  while IFS=$'\t' read -r id verdict scope rx except ex has; do
+    [ -z "$id" ] && continue
+    if [ "$has" != "1" ] || [ -z "$ex" ] || [ "$ex" = "—" ] || [ "$ex" = "-" ]; then
+      bad "정책 '$id' — 증명 예 없음" "차단 증명이 저자의 기억에만 남는다. 표에 '증명 예' 열을 채운다"
+      viol=$((viol+1)); continue
+    fi
+    if ! printf '%s\n' "$ex" | grep -qE "$rx" 2>/dev/null; then
+      bad "정책 '$id' — 증명 예가 자기 정규식에 안 잡힌다" "예: $ex  ·  정규식: $rx — 죽은 정규식이거나 예가 틀렸다"
+      viol=$((viol+1)); continue
+    fi
+    if [ "$verdict" = "forbid" ]; then
+      targets=$(_policy_targets "$G" "$scope" "$except" "$packfiles")
+      if [ -z "$targets" ]; then skip=$((skip+1)); pass=$((pass+1)); continue; fi
+      # shellcheck disable=SC2086
+      if codelines $targets | cut -f3 | grep -qF -- "$ex" 2>/dev/null; then
+        bad "정책 '$id' — 증명 예가 본문에 실재한다" "금지 패턴의 예가 코드 행에 있다 = 자기 정책을 어겼다"
+        viol=$((viol+1)); continue
+      fi
+    fi
+    pass=$((pass+1))
+  done < "$TMP/polproof.tsv"
+  [ "$viol" -eq 0 ] && ok "정책 ${pass}건 차단 증명 통과 (대상 0개로 건너뛴 실재 검사 ${skip}건)"
+  return 0
+}
+
+# ── 15. 보안 형태: 재발 형태 차단 ───────────────────────────────────
+# 팩별 정책이 아니라 축 무관 형태다 — 그래서 policies.md가 아니라 게이트가 소유한다.
+# 실측(2026-08-23): safeReturnTo의 origin 검사가 `/..//evil.example`에 뚫렸다.
+# new URL()이 origin을 통과시킨 뒤 점 세그먼트를 정규화해 `/..`가 선행 `/`를 삼킨다.
+# 출하본 네 곳 전부 4/4 벡터가 통과했다. 발명하지 않는다 — 실측이 찾은 두 형태만 본다.
+check_security_shapes() {
+  local G="$1"
+  sec "보안 형태 (재발 차단)"
+  local files; files=$(guide_files "$G")
+  [ -n "$files" ] || return 0
+
+  cat > "$TMP/sec.awk" <<'AWKSEC'
+BEGIN { FS = "\t" }
+{ t[$4] = t[$4] "\n" $3; if (!($4 in loc)) loc[$4] = $1 ":" $2 }
+END {
+  for (k in t) {
+    s = t[k]
+    hasURL   = (index(s, "new URL(") > 0)
+    hasOrig  = (s ~ /\.origin[[:space:]]*[!=]==/ || s ~ /[!=]==[[:space:]]*[A-Za-z0-9_.]*\.origin/)
+    hasPath  = (index(s, "pathname") > 0)
+    hasSlash = (index(s, "'//'") > 0 || index(s, "\"//\"") > 0)
+    if (hasURL && hasOrig && !(hasPath && hasSlash))
+      print "origin-only-redirect\t" loc[k]
+    hasSW    = (s ~ /startsWith\('\/'\)/ || s ~ /startsWith\("\/"\)/)
+    hasRedir = (s ~ /returnTo|redirectTo|returnPath|callbackUrl|safeReturn|safeInternal/)
+    if (hasSW && hasRedir && !hasSlash)
+      print "prefix-only-redirect\t" loc[k]
+  }
+}
+AWKSEC
+
+  # shellcheck disable=SC2086
+  codelines $files | awk -f "$TMP/sec.awk" | sort -u > "$TMP/secshape.txt"
+
+  # ③ 요청에서 온 값으로 리다이렉트하라는 **지시**. 이 형태는 산문·표에 실리므로
+  # 펜스만 보면 놓친다 (node-api 실측: 오용 대조표의 '현재 형태' 칸이 검증 없이
+  # `req.get('Referer')`를 읽으라고 했고, 실행에서 javascript:·절대 URL이 전부 통과했다).
+  # 이 저장소에서 오픈 리다이렉트는 이번이 세 번째다 — 좁게 걸되 기계로 건다.
+  # `searchParams.set('redirect', …)`처럼 값을 **싣는** 방향은 `redirect(`가 없어 걸리지 않는다.
+  # shellcheck disable=SC2086
+  grep -nE 'redirect\(' $files 2>/dev/null \
+    | grep -E 'Referer|req\.get\(|req\.query|req\.body|req\.headers|searchParams\.get\(|location\.search' \
+    | grep -vE 'safe[A-Za-z]*\(|allowlist|허용목록|\.origin' \
+    | sed -E 's/^([^:]*):([0-9]+):.*/request-derived-redirect\t\1:\2/' | sort -u >> "$TMP/secshape.txt"
+
+  local shape where n=0
+  while IFS=$'\t' read -r shape where; do
+    [ -z "$shape" ] && continue
+    n=$((n+1))
+    case "$shape" in
+      origin-only-redirect)
+        bad "복귀 경로를 origin 비교만으로 판정 ($(basename "$where"))" \
+            "new URL()이 origin을 통과시킨 뒤 점 세그먼트를 정규화한다 — '/..//host'가 '//host'가 된다. 출력 pathname을 검증하라" ;;
+      prefix-only-redirect)
+        bad "복귀 경로를 startsWith('/')만으로 판정 ($(basename "$where"))" \
+            "'//host'·'/\\host'는 브라우저에서 외부 URL로 파싱된다 — 문자열 prefix 검사로는 막히지 않는다" ;;
+      request-derived-redirect)
+        bad "요청에서 온 값으로 리다이렉트 ($(basename "$where"))" \
+            "Referer·쿼리·본문은 공격자가 정한다 — 절대 URL·javascript:·프로토콜 상대가 그대로 통과한다. 검증 함수를 통과시키거나 허용목록을 쓴다" ;;
+    esac
+  done < "$TMP/secshape.txt"
+  [ "$n" -eq 0 ] && ok "알려진 취약 형태 없음"
+  return 0
+}
+
+# ── 16. 버전 주장 인벤토리 ──────────────────────────────────────────
+# 감사자에게 넘기는 "버전 주장 목록"을 지금은 손으로 만든다. 게이트가 산문에서 전수
+# 수집한다. 실측(2026-08-23)에서 이 부류 5건이 거짓이었고, 잘못 확신한 지식은 생성
+# 규율로 막을 수 없다 — 감사의 고유 영역이므로 목록을 정확히 넘기는 것이 일이다.
+# FAIL이 아니라 WARN인 이유: 산문 정규식은 위양성을 낸다. 목록 자동화가 목적이다.
+check_claims() {
+  local G="$1"
+  sec "버전 주장 인벤토리"
+  local files; files=$(guide_files "$G")
+  [ -n "$files" ] || return 0
+
+  cat > "$TMP/claims.awk" <<'AWKCLAIM'
+BEGIN { FS = "\n" }
+FNR == 1 { inf = 0; prev = "" }
+/^[[:space:]]*```/ { inf = !inf; prev = ""; next }
+inf { next }
+{
+  line = $0
+  if (line !~ /[^[:space:]]/) { prev = ""; next }
+  claim = 0
+  if (line ~ /[Vv][0-9]+(\.[0-9]+)*[[:space:]]*(에서|부터|이후|이상|미만)/) claim = 1
+  if (line ~ /이제는|이제 더|더 이상|더는|이전 버전|구버전|폐기(됐|되|된)/) claim = 1
+  if (line ~ /deprecated|Deprecated|no longer|was added in|since v[0-9]|removed in/) claim = 1
+  if (line ~ /버전(부터|에서)|메이저(부터|에서)/) claim = 1
+  # 한국어 실행 단정 마커. 저자가 태그 대신 산문으로 "실행 확인"이라 쓰면 태그 스캔이
+  # 놓치는데, **거짓 주장이 정확히 그 사각지대에 몰려 있었다** (node-api 감사 B: 거짓
+  # 4건 중 3건이 미태그 "(실행 확인)" 블록). 태그 규율이 도달하지 못한 곳만 살아남았다.
+  if (line ~ /실행 확인|실행으로 확인|차단 확인|타입 확인|계측했|재현했/) claim = 1
+  # 저자가 단 태그 자체가 주장 선언이다 — 문구 스캔이 놓친 것을 이것이 건진다.
+  # 태그만 보고 인벤토리에서 빼면 전부 태그된 팩에서 감사 B가 빈손이 된다.
+  tagged = 0
+  if (line ~ /<!--[[:space:]]*(un)?verified/) { tagged = 1; claim = 1 }
+  # 앞 줄 귀속은 **그 줄이 태그만 있는 독립 주석일 때만** 인정한다. 내용이 함께 있는
+  # 줄(표 행 안의 인라인 태그 등)에서 귀속을 허용하면 태그 하나가 뒤따르는 표 행 전부를
+  # '태그됨'으로 덮어 미태그 주장이 검사를 통과하면서 검사를 피한다 (감사 B 지적).
+  else if (prev ~ /^[[:space:]]*<!--[^>]*(un)?verified[^>]*-->[[:space:]]*$/) { tagged = 1; claim = 1 }
+  if (!claim) { prev = line; next }
+  print (tagged ? "T" : "U") "\t" FILENAME ":" FNR "\t" substr(line, 1, 120)
+  prev = line
+}
+AWKCLAIM
+
+  # shellcheck disable=SC2086
+  awk -f "$TMP/claims.awk" $files > "$TMP/claims.tsv" 2>/dev/null
+
+  local tot unt
+  tot=$(num "$(grep -c . "$TMP/claims.tsv" | tr -d ' ')")
+  unt=$(num "$(grep -c '^U' "$TMP/claims.tsv" | tr -d ' ')")
+  if [ "$tot" -eq 0 ]; then ok "버전 주장 없음"; return 0; fi
+
+  if [ "$unt" -gt 0 ]; then
+    warn "태그 없는 버전 주장 ${unt}건 (전체 ${tot}건)" "<!-- verified: 근거 --> 또는 <!-- unverified -->로 표시하면 통과한다"
+  else
+    ok "버전 주장 ${tot}건 전부 태그됨"
+  fi
+
+  # 인벤토리는 태그 여부와 무관하게 **전수 출력**한다 — 감사 B의 입력이 이것이고,
+  # 태그된 항목이야말로 판정 대상이다(태그는 "주장했다"는 선언이지 "참"이라는 증명이 아니다).
+  # 태그 없는 것만 찍으면 전부 태그된 팩에서 감사 B가 빈손이 된다 (node-api 실측).
+  printf "      ${C_D}── 버전 주장 인벤토리 %s건 (감사 B 입력) ──${C_0}\n" "$tot"
+  local st loc txt shown=0
+  while IFS=$'\t' read -r st loc txt; do
+    [ -z "$loc" ] && continue
+    shown=$((shown+1))
+    [ "$shown" -le 40 ] && printf "      ${C_D}[%s] %s${C_0}  %s\n" "$st" "$loc" "$txt"
+  done < "$TMP/claims.tsv"
+  [ "$shown" -gt 40 ] && printf "      ${C_D}… 그 외 %s건은 %s 에서 읽는다 (생략 아님)${C_0}\n" "$((shown-40))" "$TMP/claims.tsv"
+  return 0
+}
+
+# ── 17. 중복 펜스: 병렬 저작이 만드는 중복 서술 ─────────────────────
+# 원장은 심볼만 추적하고 서술은 보지 않는다. 클러스터를 갈라 저작하면 같은 코드 예시를
+# 각자 쓰게 되고, 300줄 예산을 갉아먹은 뒤 둘이 갈라지면 자기모순이 된다.
+# FAIL이 아니라 REVIEW인 이유: 정당한 반복이 있다(공통 import 블록, 안티패턴과 수리형).
+check_duplicate_fences() {
+  local G="$1"
+  sec "중복 펜스 (파일 간 같은 코드)"
+  local files; files=$(guide_files "$G")
+  [ -n "$files" ] || return 0
+
+  # shellcheck disable=SC2086
+  codelines $files | awk -F'\t' '
+    { line=$3
+      gsub(/^[[:space:]]+|[[:space:]]+$/,"",line); gsub(/[[:space:]]+/," ",line)
+      if (line=="") next
+      t[$4]=t[$4] line "\002"; c[$4]++; f[$4]=$1; if (!($4 in l)) l[$4]=$2 }
+    END { for (k in t) if (c[k]>=3) print f[k] ":" l[k] "\t" t[k] }' \
+    | sort -t"$(printf '\t')" -k2 > "$TMP/fences.tsv"
+
+  awk -F'\t' '$2==p && $1!=pf { print pf " ↔ " $1 } { p=$2; pf=$1 }' "$TMP/fences.tsv" \
+    | sed -E 's#[^ ]*/([^/ ]+)#\1#g' | sort -u > "$TMP/dupfence.txt"
+
+  local n; n=$(num "$(grep -c . "$TMP/dupfence.txt" | tr -d ' ')")
+  if [ "$n" -gt 0 ]; then
+    rev "파일 간 동일 코드펜스 ${n}쌍" "$(head -4 "$TMP/dupfence.txt" | tr '\n' ';') — 정당한 반복(공통 import·안티패턴 쌍)이면 통과, 아니면 한 곳으로 모은다"
+  else
+    ok "파일 간 중복 코드펜스 없음"
+  fi
+  return 0
+}
+
+# ── 17-B. 차단 증명 없는 테스트 ─────────────────────────────────────
+# 실측(2026-08-23): 팩이 「이 축에서 가장 비싼 테스트」로 제시한 소유권 회귀 테스트가
+# 부정 단언(404)만 걸어, 쿼리 함수를 통째로 `return null`로 바꿔도 초록이었다.
+# **차단 장치가 차단을 증명하지 못한다** — 이 저장소가 자기 게이트에 적용하는 규범을
+# 팩의 테스트가 어긴 것이다. 기계가 의미를 판정할 수 없으므로 REVIEW다.
+check_blocking_proof() {
+  local G="$1"
+  sec "테스트의 차단 증명"
+  local files; files=$(guide_files "$G")
+  [ -n "$files" ] || return 0
+
+  # 테스트 코드가 있는 파일만 본다
+  # shellcheck disable=SC2086
+  codelines $files | awk -F'\t' '$3 ~ /(^|[^A-Za-z])(it|test)\(/ {print $1}' | sort -u > "$TMP/testfiles.txt"
+  local n; n=$(num "$(grep -c . "$TMP/testfiles.txt" | tr -d ' ')")
+  [ "$n" -eq 0 ] && { ok "테스트 코드 없음 — 해당 없음"; return 0; }
+
+  local f neg pos base hit=0
+  while read -r f; do
+    [ -z "$f" ] && continue
+    base=$(basename "$f")
+    neg=$(num "$(codelines "$f" | cut -f3 | grep -cE 'toBe\((40[0-9]|41[0-9]|42[0-9]|50[0-9])\)|status\).toBe\(4' 2>/dev/null || true)")
+    pos=$(num "$(codelines "$f" | cut -f3 | grep -cE 'toBe\(20[0-9]\)' 2>/dev/null || true)")
+    if [ "$neg" -gt 0 ] && [ "$pos" -eq 0 ]; then
+      rev "$base — 실패 단언 ${neg}건, 성공 단언 0건" \
+          "구현을 통째로 실패시켜도 통과하는 테스트다. 긍정 경로를 짝으로 걸어야 차단이 증명된다"
+      hit=$((hit+1))
+    fi
+  done < "$TMP/testfiles.txt"
+  [ "$hit" -eq 0 ] && ok "테스트 ${n}파일 — 긍정·부정 짝 확인"
+  return 0
+}
+
+# ── 18. 팩 메타: pack.json ↔ 실파일 ↔ fixesVariants ─────────────────
+# 축 팩은 프레임워크·ORM 같은 변형을 못박는데, 지금까지 그것을 선언하지 않았고 조립
+# 시점에 대조하지도 않았다. NestJS를 고른 프로젝트가 Express 팩을 받으면 없는 것을
+# 받는 게 아니라 **틀린 것**을 받는다. fixesVariants가 그 선언이고 여기가 그 정합 검사다.
+check_pack_meta() {
+  local P="$1" j="$1/pack.json"
+  sec "팩 메타 (pack.json)"
+  [ -f "$j" ] || { bad "pack.json 없음: $j"; return 0; }
+
+  local nm ax
+  nm=$(grep -m1 -oE '"name"[[:space:]]*:[[:space:]]*"[^"]+"' "$j" | sed -E 's/.*"([^"]+)"$/\1/')
+  ax=$(grep -m1 -oE '"axis"[[:space:]]*:[[:space:]]*"[^"]+"' "$j" | sed -E 's/.*"([^"]+)"$/\1/')
+  [ "$nm" = "$(basename "$P")" ] && ok "name = 디렉토리명 ($nm)" || bad "pack.json name '$nm' ≠ 디렉토리 '$(basename "$P")'"
+  case "$ax" in frontend|backend) ok "axis = $ax";; *) bad "axis가 frontend/backend가 아님: '$ax'";; esac
+
+  # resources[] ↔ 실파일 차집합
+  grep -oE '"file"[[:space:]]*:[[:space:]]*"[^"]+"' "$j" | sed -E 's/.*"([^"]+)"$/\1/' | sort -u > "$TMP/pjres.txt"
+  ls "$P"/resources/*.md 2>/dev/null | while read -r f; do basename "$f"; done | sort -u > "$TMP/realres.txt"
+  local miss ghost
+  miss=$(comm -13 "$TMP/pjres.txt" "$TMP/realres.txt" | tr '\n' ' ')
+  ghost=$(comm -23 "$TMP/pjres.txt" "$TMP/realres.txt" | tr '\n' ' ')
+  [ -n "$(printf '%s' "$miss" | tr -d ' ')" ] && bad "pack.json resources[]에 없는 실파일: $miss" "Navigation Guide 행이 생기지 않아 조립본에서 도달 불가가 된다"
+  [ -n "$(printf '%s' "$ghost" | tr -d ' ')" ] && bad "pack.json resources[]가 없는 파일을 가리킴: $ghost"
+  [ -z "$(printf '%s%s' "$miss" "$ghost" | tr -d ' ')" ] && ok "resources[] $(num "$(wc -l < "$TMP/pjres.txt")")개 ↔ 실파일 일치"
+
+  # exampleDomain — 도메인 어휘 고정 (병렬 저작의 어휘 분기를 막는 계약)
+  grep -q '"exampleDomain"' "$j" && ok "exampleDomain 선언됨" || bad "exampleDomain 없음" "도메인 어휘가 고정되지 않으면 파일마다 다른 리소스 이름을 쓴다 (실측: /tasks ↔ /notes)"
+
+  # fixesVariants — 못박은 변형 선언 (없으면 {}를 명시한다)
+  if ! grep -q '"fixesVariants"' "$j"; then
+    bad "fixesVariants 선언 없음" "팩이 못박은 프레임워크·ORM을 선언하지 않으면 조립 시점에 대조할 수 없다. 못박은 게 없으면 {}를 명시한다"
+    return 0
+  fi
+  local pkgs; pkgs=$(tr -d '\n' < "$j" | grep -oE '"pkgs"[[:space:]]*:[[:space:]]*\[[^]]*\]' | tr 'A-Z' 'a-z')
+  local fv; fv=$(tr -d '\n' < "$j" | grep -oE '"fixesVariants"[[:space:]]*:[[:space:]]*\{[^}]*\}')
+  local pairs; pairs=$(printf '%s' "$fv" | grep -oE '"[A-Za-z]+"[[:space:]]*:[[:space:]]*"[^"]+"' | sed -E 's/"([A-Za-z]+)"[[:space:]]*:[[:space:]]*"([^"]+)"/\1\t\2/')
+  if [ -z "$pairs" ]; then ok "fixesVariants 비어 있음 (못박은 변형 없음을 명시)"; return 0; fi
+
+  # 상호 배타 제품군 — 선언한 값의 경쟁 제품이 pkgs에 있으면 선언이 거짓이다
+  cat > "$TMP/variants.tsv" <<'VARTBL'
+framework	express	express
+framework	hono	hono
+framework	fastify	fastify
+framework	koa	koa
+framework	nestjs	@nestjs/
+orm	prisma	prisma
+orm	drizzle	drizzle-orm,drizzle-kit
+orm	sequelize	sequelize
+orm	typeorm	typeorm
+orm	knex	knex
+store	pinia	pinia
+store	vuex	vuex
+store	zustand	zustand
+store	redux	@reduxjs/
+store	jotai	jotai
+query	vue-query	@tanstack/vue-query
+query	react-query	@tanstack/react-query
+query	swr	swr
+query	apollo	@apollo/
+VARTBL
+
+  local dim val grp prod toks t mine="" hit=0 n=0
+  while IFS=$'\t' read -r dim val; do
+    [ -z "$val" ] && continue
+    n=$((n+1))
+    local lval; lval=$(printf '%s' "$val" | tr 'A-Z' 'a-z')
+    # 선언 값이 어느 제품인가
+    mine=""; grp=""
+    while IFS=$'\t' read -r g prod toks; do
+      for t in $(printf '%s' "$toks" | tr ',' ' '); do
+        case "$lval" in *"$t"*) mine="$prod"; grp="$g";; esac
+        [ "$lval" = "$prod" ] && { mine="$prod"; grp="$g"; }
+      done
+    done < "$TMP/variants.tsv"
+    if [ -z "$mine" ]; then
+      printf '%s' "$pkgs" | grep -qF "$lval" && ok "fixesVariants.$dim = $val (pkgs에 등장)" \
+        || warn "fixesVariants.$dim = '$val' — pkgs에서 확인 불가" "알려진 제품군이 아니고 패키지 목록에도 없다. 오타이거나 선언이 낡았다"
+      continue
+    fi
+    # 같은 군의 다른 제품이 pkgs에 있으면 모순
+    while IFS=$'\t' read -r g prod toks; do
+      [ "$g" = "$grp" ] || continue
+      [ "$prod" = "$mine" ] && continue
+      for t in $(printf '%s' "$toks" | tr ',' ' '); do
+        if printf '%s' "$pkgs" | grep -qF "$t"; then
+          bad "fixesVariants.$dim = '$val'인데 pkgs에 경쟁 제품 '$t'" "선언과 실물이 모순이다 — 조립 시점 대조가 거짓 통과한다"
+          hit=$((hit+1))
+        fi
+      done
+    done < "$TMP/variants.tsv"
+  done <<EOF
+$pairs
+EOF
+  [ "$hit" -eq 0 ] && ok "fixesVariants ${n}건 ↔ pkgs 모순 없음"
+  return 0
+}
+
+# ── 19. 팩 원장: provides 정의 대조 ─────────────────────────────────
+# 조립 전에는 requires를 검사할 수 없다(이음매가 아직 없다). provides는 축 안에서
+# 닫히므로 지금 검사할 수 있고, 병렬 저작의 팬인 지점이 바로 여기다 —
+# L0가 배정한 정의 파일에 실제로 정의가 들어갔는지 확인한다.
+check_pack_ledger() {
+  local P="$1" led="$1/ledger.md"
+  sec "팩 원장 (provides 배정 대조)"
+  [ -f "$led" ] || { bad "팩 원장 없음: $led"; return 0; }
+
+  # provides 표는 4열이다: | 심볼 | 정의 파일 | 형태 | 성격 |
+  # 「형태」가 없으면 형제 클러스터가 시그니처를 **추측한다** — 실측(2026-08-23)에서
+  # getTask(ownerId, id)를 다른 클러스터가 getTask(id, ownerId)로 불렀고 두 인자가 모두
+  # string이라 TypeScript도 이 게이트도 잡지 못했다. 치명 결함 2건의 단일 원인이다.
+  # 형태 셀에는 유니온·제네릭 때문에 이스케이프한 `\|`가 흔하다. 열 구분보다 먼저
+  # 보호하지 않으면 형태가 잘리고 인자 개수 대조가 엉뚱한 값을 본다 (정책 표와 같은 함정).
+  awk '/^## provides/{f=1;next} /^## /{f=0} f' "$led" \
+    | grep -E '^\|[[:space:]]*`' \
+    | sed 's/\\|/\x01/g' \
+    | awk -F'|' 'NF>=4 { gsub(/[[:space:]]/,"",$3); shape=(NF>=6)?$4:""
+        gsub(/^[[:space:]]+|[[:space:]]+$/,"",shape); gsub(/\x01/,"|",shape)
+        print $2"\t"$3"\t"shape }' > "$TMP/prov.raw"
+
+  # 한 행에 여러 심볼(`a` · `b`)이 오는 관용구가 실재한다 — 분해한다
+  : > "$TMP/prov.tsv"
+  local syms deff shape s noshape=0
+  while IFS=$'\t' read -r syms deff shape; do
+    [ -z "$syms" ] && continue
+    case "$shape" in ""|"—"|"-") noshape=$((noshape+1)); shape="";; esac
+    for s in $(printf '%s' "$syms" | tr -d ' ' | tr '`' ' ' | tr '·' ' '); do
+      [ -z "$s" ] && continue
+      printf '%s\t%s\t%s\n' "$s" "$deff" "$shape" >> "$TMP/prov.tsv"
+    done
+  done < "$TMP/prov.raw"
+
+  if [ "$noshape" -gt 0 ]; then
+    bad "provides 「형태」 열이 빈 행 ${noshape}건" \
+        "소유 파일만 배정하고 형태를 비우면 형제 클러스터가 시그니처를 추측한다. 인자 순서·반환·실패 시 던지는 것·호출자가 배선할 것을 적는다"
+  else
+    ok "provides 전 행에 형태 선언됨"
+  fi
+
+  local rows; rows=$(num "$(grep -c . "$TMP/prov.tsv" | tr -d ' ')")
+  if [ "$rows" -eq 0 ]; then
+    warn "팩 원장 provides가 비었음" "패턴 지식형 팩(export 0개)이면 정상이다 — pack.json의 symbolSurface로 선언한다"
+    return 0
+  fi
+
+  local n_def=0 rf declared actual
+  while IFS=$'\t' read -r s deff shape; do
+    [ -z "$s" ] && continue
+    rf=$(_resolve "$P" "$deff")
+    if [ -z "$rf" ]; then bad "팩 원장 '$s'의 정의 파일이 실재하지 않음: $deff"; n_def=$((n_def+1)); continue; fi
+    codelines "$rf" | cut -f3 | grep -qE "(export[[:space:]]+)?(async[[:space:]]+)?(function|const|let|class|type|interface|enum)[[:space:]]+$s\b" \
+      || { bad "팩 원장 '$s'의 정의가 $(basename "$rf")에 없음" "L0가 배정한 소유 파일에 정의가 들어가지 않았다 — 넣거나 원장을 고친다"; n_def=$((n_def+1)); continue; }
+
+    # 형태가 호출 시그니처를 선언했으면 실제 정의의 인자 개수와 대조한다.
+    # 이름 순서까지는 기계가 못 보지만 **개수 불일치는 잡는다** — 형태를 적어 놓고
+    # 정의를 다르게 쓰면 소비자가 원장을 믿고 틀린 호출을 쓴다.
+    local bare; bare=$(printf '%s' "$shape" | tr -d '`')
+    declared=$(printf '%s' "$bare" | sed -nE "s/^$s\(([^)]*)\).*/\1/p" | head -1)
+    if printf '%s' "$bare" | grep -qE "^$s\("; then
+      local dn=0
+      [ -n "$(printf '%s' "$declared" | tr -d ' ')" ] && dn=$(printf '%s' "$declared" | awk -F',' '{print NF}')
+      actual=$(awk -F'\t' -v n="$s" '$1==n {print $2; exit}' "$TMP/defs.tsv")
+      if [ -n "$actual" ] && [ "$dn" -ne "$(num "$actual")" ]; then
+        bad "원장 '$s'의 형태는 인자 ${dn}개인데 정의는 $(num "$actual")개" \
+            "$(basename "$rf") — 소비자는 원장을 믿는다. 둘 중 하나가 틀렸다"
+        n_def=$((n_def+1))
+      fi
+    fi
+  done < "$TMP/prov.tsv"
+
+  cut -f1 "$TMP/prov.tsv" | sort -u > "$TMP/provsym.txt"
+
+  # requires로 선언한 심볼을 팩이 스스로 export하면 자기모순이다 — 이음매가 소유한다고
+  # 해놓고 자기가 정의한 것이므로, 조립 후 같은 이름이 두 곳에서 정의된다.
+  # (실측: react-vite 팩이 useTasksQuery를 requires에 두고 PACK.md에서 export했다)
+  awk '/^## requires/{f=1;next} /^## /{f=0} f' "$led" \
+    | grep -E '^\|[[:space:]]*`' \
+    | awk -F'|' 'NF>=4 { gsub(/`|[[:space:]]/,"",$2); if ($2!="") print $2 }' | sort -u > "$TMP/reqsym.txt"
+  # requires 심볼을 **팩이 호출하면서** 형태에 시그니처를 적지 않으면, 이음매는 인자
+  # 순서를 추측한다. 실측(2026-08-23): react-vite가 `ApiError(500, 'BAD_SHAPE', msg)`로
+  # 부르는데 형태에는 필드 목록만 있었다 — 뒤 두 인자가 모두 string이라 뒤바꿔도
+  # TypeScript가 잡지 못한다. provides의 「형태」 열과 같은 구멍이 requires에 남아 있었다.
+  awk '/^## requires/{f=1;next} /^## /{f=0} f' "$led" \
+    | grep -E '^\|[[:space:]]*`' | sed 's/\\|/\x01/g' \
+    | awk -F'|' 'NF>=4 { gsub(/`|[[:space:]]/,"",$2); sh=$4
+        gsub(/^[[:space:]]+|[[:space:]]+$/,"",sh); gsub(/\x01/,"|",sh)
+        if ($2!="") print $2"\t"sh }' > "$TMP/reqshape.tsv"
+
+  local rsym rshape nosig=0
+  while IFS=$'\t' read -r rsym rshape; do
+    [ -z "$rsym" ] && continue
+    # 팩이 이 심볼을 호출하는가. 산문은 codelines()가 이미 제외했고, **꼬리 주석**도
+    # 뗀다 — `// ✅ 라우터 → notFound → errorHandler(4인자)`가 호출로 잡히던 오탐이다.
+    sed 's/[[:space:]]\/\/.*$//' "$TMP/code.txt" > "$TMP/code.nocomment.txt"
+    grep -qE "(^|[^A-Za-z0-9_.\$])(new[[:space:]]+)?$rsym\(" "$TMP/code.nocomment.txt" 2>/dev/null || continue
+    printf '%s' "$rshape" | grep -qF "$rsym(" && continue
+    bad "requires '$rsym'을 호출하면서 형태에 시그니처가 없음" \
+        "이음매가 인자 순서를 추측한다. 같은 타입 인자가 둘 이상이면 뒤바꿔도 타입이 통과한다 — 형태에 \`$rsym(...)\`를 적는다"
+    nosig=$((nosig+1))
+  done < "$TMP/reqshape.tsv"
+  [ "$nosig" -eq 0 ] && ok "호출하는 requires 심볼 전부 시그니처 선언됨"
+
+  local both; both=$(comm -12 "$TMP/exports.txt" "$TMP/reqsym.txt" | tr '\n' ' ')
+  if [ -n "$(printf '%s' "$both" | tr -d ' ')" ]; then
+    bad "requires로 선언한 심볼을 팩이 스스로 export함:$both" \
+        "이음매가 소유한다고 해놓고 자기가 정의했다 — 조립 후 정의가 둘이 된다. 예시라면 requires에서 빼거나 예시임을 원장에 명시한다"
+  else
+    ok "requires ↔ export 충돌 없음"
+  fi
+
+  # 예제 전용 심볼은 원장의 '예제' 절에 선언한다 (vue 팩의 관용구).
+  # 예시 컴포넌트인지 실제 모듈인지는 기계가 판정할 수 없으므로 REVIEW다 —
+  # FAIL로 만들면 저자가 예시를 provides에 밀어 넣게 되고 그것이 더 나쁘다.
+  awk '/^## .*예제/{f=1;next} /^## /{f=0} f' "$led" \
+    | grep -oE '`[A-Za-z_][A-Za-z0-9_]*`' | tr -d '`' | sort -u > "$TMP/exsym.txt"
+  cat "$TMP/provsym.txt" "$TMP/exsym.txt" | sort -u > "$TMP/declared.txt"
+  local unreg; unreg=$(comm -23 "$TMP/exports.txt" "$TMP/declared.txt" | tr '\n' ' ')
+  if [ -n "$(printf '%s' "$unreg" | tr -d ' ')" ]; then
+    rev "원장에 없는 export 심볼:$unreg" "배정 밖 심볼이다 — provides에 올리거나, 예시면 원장의 '예제' 절에 적는다"
+  else
+    ok "export 심볼 전부 원장에 선언됨"
+  fi
+  [ "$n_def" -eq 0 ] && ok "팩 원장 ${rows}행 정의 대조 통과"
+  return 0
+}
+
+# ── 19-B. 완전 파일 펜스의 import 완결성 ───────────────────────────
+# `<!-- file: 경로 -->`는 저자가 "이 펜스만으로 그 파일이다"라고 주장하는 표시다.
+# 그 주장이 참이면 **원장 심볼을 쓰면서 정의도 import도 하지 않는 일이 있을 수 없다.**
+# 실측(2026-08-23): vue 팩의 clearClientState가 STORAGE_KEY를 import 없이 써서 그대로
+# 복사하면 ReferenceError였다. 게이트의 기존 로컬 import 검사는 `@/`로 시작하는 경로만
+# 봐서 상대 경로(`./ui`) 파일을 놓쳤고, 그 방향(import된 것이 정의되었나)만 봤다 —
+# 이 검사는 반대 방향(쓰인 것이 조달되었나)이다.
+# 라벨 펜스(`// 경로`)는 발췌가 정상이므로 검사하지 않는다.
+check_fence_imports() {
+  local P="$1"
+  [ -s "$TMP/provsym.txt" ] || return 0
+  sec "완전 파일 펜스의 import 완결성"
+  local files; files=$(guide_files "$P")
+  [ -n "$files" ] || return 0
+
+  # `<!-- file: -->` 직후 펜스만 뽑는다: <파일>\t<시작줄>\t<본문>
+  # shellcheck disable=SC2086
+  awk '
+    FNR==1 { inf=0; claim=0 }
+    /^[[:space:]]*<!--[[:space:]]*file:/ { claim=1; next }
+    /^[[:space:]]*```/ {
+      if (!inf) { inf=1; use=claim; start=FNR; claim=0 } else { inf=0; use=0 }
+      next
+    }
+    !inf { if ($0 ~ /[^[:space:]]/) claim=0; next }
+    # 주석 행은 제외한다 — 심볼이 설명에만 등장하는 것을 "사용"으로 세면 오탐이다
+    # (개발 중 실측: `// ① readyz가 503을 낸다`가 미조달로 잡혔다).
+    # codelines()와 같은 주석 판정을 쓴다.
+    use && $0 !~ /^[[:space:]]*(\/\/|#|\*|\/\*|--)/ {
+      line=$0
+      sub(/[[:space:]]\/\/.*$/, "", line)   # 꼬리 주석도 뗀다 — `beginDrain(); // readyz가 503을 낸다`
+      print FILENAME "\t" start "\t" line
+    }
+  ' $files > "$TMP/fileunits.tsv"
+
+  local nu; nu=$(cut -f1,2 "$TMP/fileunits.tsv" 2>/dev/null | sort -u | grep -c . | tr -d ' ')
+  nu=$(num "$nu")
+  [ "$nu" -eq 0 ] && { warn "완전 파일 주장 펜스 0개 — 검사 대상 없음" "보안 원시함수·설정·테스트 하네스 펜스 앞에 <!-- file: 경로 -->를 단다"; return 0; }
+
+  local key bad_n=0 sym body
+  while IFS= read -r key; do
+    [ -z "$key" ] && continue
+    body=$(awk -F'\t' -v k="$key" '$1"\t"$2==k {print $3}' "$TMP/fileunits.tsv")
+    while read -r sym; do
+      [ -z "$sym" ] && continue
+      # 점 뒤의 이름은 속성 접근이지 모듈 바인딩 사용이 아니다
+      # (`process.env`가 원장 심볼 `env`로 잡히던 오탐 — 개발 중 실측).
+      # 점 뒤(속성 접근)와 콜론 앞(객체 키·타입 주석)은 모듈 바인딩 사용이 아니다.
+      # `process.env` · `env: { ... }` 가 원장 심볼 `env`로 잡히던 오탐 (개발 중 실측).
+      printf '%s\n' "$body" | grep -qE "(^|[^.[:alnum:]_$])$sym([^A-Za-z0-9_:]|$)" || continue
+      # 이 펜스 안에서 정의되었거나 import되었는가
+      printf '%s\n' "$body" | grep -qE "(export[[:space:]]+)?(async[[:space:]]+)?(function|const|let|class|type|interface|enum)[[:space:]]+$sym\b" && continue
+      printf '%s\n' "$body" | grep -qE "^[[:space:]]*import[^;]*\b$sym\b" && continue
+      bad "완전 파일이 '$sym'을 조달 없이 사용 (${key%%$'\t'*} 기준)" \
+          "$(basename "${key%%$'\t'*}"):${key##*$'\t'} — 그대로 복사하면 ReferenceError다. import를 넣거나 라벨(// 경로)로 낮춘다"
+      bad_n=$((bad_n+1))
+    done < "$TMP/provsym.txt"
+  done < <(cut -f1,2 "$TMP/fileunits.tsv" | sort -u)
+
+  [ "$bad_n" -eq 0 ] && ok "완전 파일 ${nu}개 — 원장 심볼 조달 완결"
+  return 0
+}
+
+# ── 20. 팩 정책 집행 (조립 전) ──────────────────────────────────────
+# check_policies는 assembly.json(=조립본)을 전제한다. 팩 저작 직후에는 이음매가 없으므로
+# 축 안에서 판정 가능한 것만 돌린다: forbid는 확정 판정(FAIL), require는 이음매가 채울 수
+# 있으므로 부재를 REVIEW로 둔다. 대상이 seam인 정책은 판정 자체가 불가능하다 — 명시 보고한다.
+check_pack_policies() {
+  local P="$1" pol="$1/$PACK_POLICIES_NAME"
+  sec "팩 정책 집행 (조립 전 판정 가능분)"
+  [ -f "$pol" ] || { warn "팩 정책 파일 없음: $pol"; return 0; }
+  _parse_policies "$pol" "$TMP/packpol.tsv"
+  local n; n=$(num "$(grep -c . "$TMP/packpol.tsv" | tr -d ' ')")
+  [ "$n" -eq 0 ] && { warn "팩 정책에서 항목을 읽지 못함: $pol"; return 0; }
+
+  local packfiles; packfiles=$(_pack_basenames "$P")
+  local id verdict scope rx except ex has targets hits viol=0 pass=0 defer=0
+  while IFS=$'\t' read -r id verdict scope rx except ex has; do
+    [ -z "$id" ] && continue
+    targets=$(_policy_targets "$P" "$scope" "$except" "$packfiles")
+    if [ -z "$targets" ]; then defer=$((defer+1)); continue; fi
+    # shellcheck disable=SC2086
+    hits=$(num "$(codelines $targets | cut -f3 | grep -cE "$rx" 2>/dev/null || true)")
+    if [ "$verdict" = "forbid" ]; then
+      if [ "$hits" -gt 0 ]; then
+        # shellcheck disable=SC2086
+        bad "팩이 자기 정책 '$id'을 어김 — 금지 패턴 ${hits}건" \
+            "$(codelines $targets | grep -E "$rx" | head -2 | awk -F'\t' '{printf "%s:%s ", substr($1,match($1,/[^\/]*$/)), $2}')"
+        viol=$((viol+1))
+      else pass=$((pass+1)); fi
+    else
+      if [ "$hits" -eq 0 ]; then
+        rev "필수 패턴 '$id'이 팩에 없음" "정규식: $rx — 이음매가 채울 자리면 정상이다. 대상을 seam으로 옮길지 판단한다"
+      else pass=$((pass+1)); fi
+    fi
+  done < "$TMP/packpol.tsv"
+  [ "$viol" -eq 0 ] && ok "팩 정책 ${pass}건 통과 (대상=seam이라 조립 후로 미룬 ${defer}건 제외)"
+  return 0
+}
+
+# 팩 파일 basename 목록 — _policy_targets의 scope 판정에 쓴다.
+# 팩 모드에서 이 목록을 주면 scope=seam은 대상 0개가 되어 자동으로 조립 후로 미뤄진다.
+_pack_basenames() {
+  local f out=""
+  for f in $(guide_files "$1"); do out="$out $(basename "$f")"; done
+  printf '%s' "$out"
+}
+
+# ════════════════════════════════════════════════════════════════════
+# --pack : 축 팩 1개 검사 (조립 전)
+# ════════════════════════════════════════════════════════════════════
+# 팩은 지금까지 단독으로 검증할 수 없었다 — run_guide가 SKILL.md를 전제하고 팩은
+# PACK.md를 갖기 때문이다. 그래서 이음매가 없는 신규 팩은 저작 직후에 검사할 방법이
+# 없었고 vue 팩 저작이 임기응변이 된 원인이기도 하다.
+# 축 안에서 닫히는 검사만 돌린다. 조합의 함수인 것(requires 충족·--pair)은 조립 후다.
+run_pack() {
+  local P="$1"
+  printf "\n${C_D}guide-gate --pack${C_0}  %s\n" "$P"
+
+  [ -d "$P" ] || { printf "팩 디렉토리 없음: %s\n" "$P" >&2; exit 2; }
+  [ -f "$P/PACK.md" ] || { bad "PACK.md 없음"; return; }
+
+  local FILES; FILES=$(guide_files "$P")
+  [ -n "$FILES" ] || { bad "resources/*.md 없음"; return; }
+  # shellcheck disable=SC2086
+  codelines $FILES > "$TMP/code.tsv"
+  cut -f3 "$TMP/code.tsv" > "$TMP/code.txt"
+
+  check_pack_meta "$P"
+  check_budget "$P"
+  check_fences "$P"
+  check_symbols "$P"
+  check_pack_ledger "$P"
+  check_env "$P"
+  check_leak "$P"
+  check_pm "$P"
+  check_pack_policies "$P"
+  check_policy_proof "$P" "$P/$PACK_POLICIES_NAME" "$(_pack_basenames "$P")"
+  check_security_shapes "$P"
+  check_claims "$P"
+  check_duplicate_fences "$P"
+  check_blocking_proof "$P"
+  check_fence_imports "$P"
+
+  sec "조립 후로 미루는 검사 (명시)"
+  warn "팩 requires 충족 검사는 건너뜀" "이음매가 아직 없다 — install-guide.sh 조립 후 --guide --assembly 로 돌린다"
+  warn "와이어 계약 대조(--pair)는 건너뜀" "상대 축 가이드가 있어야 한다 — 조립 후 --pair --contract 로 돌린다"
+  warn "대상=seam 정책은 판정 불가" "이음매를 겨눈 정책이다 — 조립 후 --guide --assembly 가 판정한다"
 }
 
 _resolve() {
@@ -742,6 +1400,7 @@ run_self_test() {
   sec "양성 픽스처 (차단해야 한다)"
   _fx_assert "$fx/dangling/sample-backend-guide"  1 "dangling 리소스 참조"  --generated
   _fx_assert "$fx/envkey/sample-backend-guide"    1 "env 스키마 미선언 키"  --generated
+  _fx_assert "$fx/envhelper/sample-backend-guide" 0 "헬퍼로 선언한 env 키가 오탐되지 않음" --generated
   _fx_assert "$fx/dupexport/sample-backend-guide" 1 "중복 export 상이 정의" --generated
   _fx_assert "$fx/budget/sample-backend-guide"    1 "리소스 300줄 초과"     --generated
   _fx_assert "$fx/fence/sample-backend-guide"     1 "닫히지 않은 코드펜스"  --generated
@@ -760,8 +1419,358 @@ run_self_test() {
   _fx_assert "$fx/clean/sample-backend-guide" 1 "팩 정책 위반 (forbid)"     --generated --assembly "$A" --plugin-guides "$PG" --pack-ledger-name ledger-ok.md --pack-policies-name policies-forbid.md
   _fx_assert "$fx/clean/sample-backend-guide" 1 "팩 정책 위반 (require 부재)" --generated --assembly "$A" --plugin-guides "$PG" --pack-ledger-name ledger-ok.md --pack-policies-name policies-require-missing.md
   _fx_assert "$fx/clean/sample-backend-guide" 0 "정책 예외 열이 실제로 먹음"  --generated --assembly "$A" --plugin-guides "$PG" --pack-ledger-name ledger-ok.md --pack-policies-name policies-excepted.md
+
+  # ── 축 팩 단독 검사 (v3.13.0) ──
+  # 팩은 이음매 없이 검증할 수 없었다. --pack이 그 자리이고, 병렬 저작의 팬인 지점이다.
+  _fx_build_pack "$fx" || { bad "팩 픽스처 생성 실패"; return; }
+
+  sec "무해 팩 픽스처 (통과해야 한다)"
+  _fx_assert_pack "$fx/pk/clean/fxpack2"     0 "결함 없는 축 팩"
+  _fx_assert_pack "$fx/pk/secok/fxpack2"     0 "수리된 복귀 경로 검증이 오탐되지 않음"
+  _fx_assert_pack "$fx/pk/dupfence/fxpack2"  0 "파일 간 동일 펜스는 REVIEW이지 FAIL 아님"
+
+  sec "양성 팩 픽스처 (차단해야 한다)"
+  _fx_assert_pack "$fx/pk/polnoex/fxpack2"   1 "정책 증명 예 열 없음"
+  _fx_assert_pack "$fx/pk/polbadex/fxpack2"  1 "증명 예가 자기 정규식에 미매치"
+  _fx_assert_pack "$fx/pk/polrealex/fxpack2" 1 "forbid 증명 예가 본문에 실재"
+  _fx_assert_pack "$fx/pk/secorigin/fxpack2" 1 "복귀 경로를 origin 비교만으로 판정"
+  _fx_assert_pack "$fx/pk/secprefix/fxpack2" 1 "복귀 경로를 startsWith('/')만으로 판정"
+  _fx_assert_pack "$fx/pk/secrefer/fxpack2"  1 "요청에서 온 값으로 리다이렉트 (산문 지시)"
+  _fx_assert_pack "$fx/pk/ledgerbad/fxpack2" 1 "원장 배정 파일에 정의 없음"
+  _fx_assert_pack "$fx/pk/reqexport/fxpack2" 1 "requires 심볼을 팩이 스스로 export"
+  _fx_assert_pack "$fx/pk/fvbad/fxpack2"     1 "fixesVariants ↔ pkgs 모순"
+  _fx_assert_pack "$fx/pk/vocab/fxpack2"     1 "어휘 정책 위반 (L0 발행 forbid)"
+  _fx_assert_pack "$fx/pk/noshape/fxpack2"   1 "provides 형태 열이 빔"
+  _fx_assert_pack "$fx/pk/badarity/fxpack2"  1 "형태의 인자 개수 ≠ 실제 정의"
+  _fx_assert_pack "$fx/pk/noimport/fxpack2"  1 "완전 파일이 원장 심볼을 조달 없이 사용"
+  _fx_assert_pack "$fx/pk/reqnosig/fxpack2"  1 "requires 심볼을 호출하나 시그니처 미선언"
+
+  sec "REVIEW 픽스처 (판정이 사람에게 넘어가야 한다)"
+  _fx_review_assert "$fx/pk/noproof/fxpack2" "차단 증명 없는 테스트" "실패 단언"
+  _fx_review_assert "$fx/pk/clean/fxpack2"   "" "실패 단언"
+
+  run_shipped_corpus
 }
 
+# ── 출하 팩 회귀 코퍼스 ─────────────────────────────────────────────
+# 합성 픽스처만으로는 **오탐**을 못 잡는다. 이 게이트의 결함 4건이 전부 실사용에서만
+# 드러났다 (node-api 실측): check_env가 헬퍼 선언을 미선언으로 오판, check_claims가
+# 태그된 주장을 인벤토리에서 제외, 앞줄 태그 귀속 과대, 보안 형태가 산문을 못 봄.
+# 그래서 **출하 중인 팩 전체를 자기검사에 넣는다** — 새 검사가 실물에 오탐하면
+# --self-test가 즉시 빨개진다. 미탐만큼 오탐도 게이트를 못 쓰게 만든다.
+run_shipped_corpus() {
+  sec "출하 팩 회귀 코퍼스 (오탐 차단)"
+  if [ ! -d "$PLUGIN_GUIDES" ]; then
+    warn "출하 팩 디렉토리 없음: $PLUGIN_GUIDES" "--plugin-guides로 경로를 주면 회귀가 켜진다 — 지금은 **미검사**다"
+    return 0
+  fi
+  local d n=0 code
+  for d in "$PLUGIN_GUIDES"/frontend/*/ "$PLUGIN_GUIDES"/backend/*/; do
+    [ -f "$d/PACK.md" ] || continue
+    n=$((n+1))
+    code=0; bash "$0" --pack "${d%/}" >/dev/null 2>&1 || code=$?
+    if [ "$code" -eq 0 ]; then
+      ok "출하 팩 $(basename "$(dirname "${d%/}")")/$(basename "${d%/}") → FAIL 0"
+    else
+      bad "출하 팩 $(basename "$(dirname "${d%/}")")/$(basename "${d%/}") → exit $code" \
+          "$(bash "$0" --pack "${d%/}" 2>&1 | grep '✗' | head -2 | sed 's/^  *//' | tr '\n' ';')"
+    fi
+  done
+  [ "$n" -eq 0 ] && warn "출하 팩 0개 — 회귀 코퍼스가 비었다"
+  return 0
+}
+
+
+# REVIEW는 exit 코드를 바꾸지 않으므로 출력으로 판정한다.
+# want가 비면 "그 REVIEW가 **없어야** 한다"는 뜻이다 (오탐 차단).
+_fx_review_assert() {
+  local dir="$1" label="$2" needle="$3"
+  local out; out=$(bash "$0" --pack "$dir" 2>&1)
+  if [ -n "$label" ]; then
+    if printf '%s' "$out" | grep -q "$needle"; then ok "$label → REVIEW 발생"
+    else bad "$label → REVIEW가 나오지 않음" "차단 증명 없는 테스트를 통과시켰다"; fi
+  else
+    if printf '%s' "$out" | grep -q "$needle"; then bad "무해 팩에 '$needle' REVIEW 오탐"
+    else ok "무해 팩에 차단 증명 REVIEW 없음"; fi
+  fi
+  return 0
+}
+
+_fx_assert_pack() {
+  local dir="$1" want="$2" label="$3"; shift 3
+  local out code=0
+  out=$(bash "$0" --pack "$dir" "$@" 2>&1) || code=$?
+  if [ "$code" -eq "$want" ]; then
+    ok "$label → exit $code"
+    # 차단은 됐는데 **다른 이유로** 차단된 픽스처는 픽스처가 아니다.
+    # EPCC_FX_WHY=1 로 실제 FAIL 사유를 보고 의도와 대조한다.
+    [ -n "${EPCC_FX_WHY:-}" ] && [ "$want" -eq 1 ] && \
+      printf "      ${C_D}%s${C_0}\n" "$(printf '%s' "$out" | grep '✗' | head -2 | sed 's/^  *//' | tr '\n' ';')"
+  else
+    bad "$label → exit $code (기대 $want)" "$(printf '%s' "$out" | grep -E '✗|통과 ' | head -3 | tr '\n' ';')"
+  fi
+}
+
+# 축 팩 픽스처 — v3.13.0에서 생긴 표면(--pack · 증명 예 · 보안 형태 · 변형 선언)을 고정한다.
+_fx_build_pack() {
+  local fx="$1" b="$1/pk/clean/fxpack2" m
+  mkdir -p "$b/resources" || return 1
+
+  cat > "$b/PACK.md" <<'FXPM'
+<!-- epcc-pack: backend/fxpack2 v0.0.0 verified 2026-01-01 zod@4 -->
+
+# fxpack2 축 팩 — 허브 조각
+
+<!-- pack-slot: directory-structure -->
+## Directory Structure
+
+```
+src/
+├── env.ts
+└── boot.ts
+```
+<!-- /pack-slot -->
+FXPM
+
+  cat > "$b/resources/a.md" <<'FXPA'
+# 스키마와 환경변수
+
+```ts
+import { z } from 'zod'
+
+export const EnvSchema = z.object({
+  PORT: z.string(),
+})
+```
+
+`EnvSchema`는 b.md의 부팅 경로가 쓴다.
+FXPA
+
+  cat > "$b/resources/b.md" <<'FXPB'
+# 부팅
+
+```ts
+import { EnvSchema } from '@/env'
+
+export function boot(raw) {
+  return EnvSchema.parse(raw)
+}
+```
+
+`boot`는 진입점이 한 번만 호출한다.
+FXPB
+
+  cat > "$b/ledger.md" <<'FXPL'
+## provides — 이 팩이 정의한다
+
+| 심볼 | 정의 파일 | 형태 | 성격 |
+| --- | --- | --- | --- |
+| `EnvSchema` | a.md | `ZodObject` — `safeParse(process.env)`로 적용 | env 스키마 |
+| `boot` | b.md | `boot(raw: unknown) => Env` — 실패는 throw | 부팅 |
+
+## requires — 이음매가 제공해야 한다
+
+| 심볼 | 종류 | 형태 | 이유 |
+| --- | --- | --- | --- |
+| `logger` | 프로젝트 | 구조적 로거 | 이음매 소유 |
+FXPL
+
+  cat > "$b/policies.md" <<'FXPP'
+## 기계 검사
+
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `zod-present` | require | guide | `from 'zod'` | — | `import { z } from 'zod'` | 스키마 라이브러리 고정 |
+| `no-console` | forbid | guide | `console\.log\(` | — | `console.log(user)` | 구조적 로거만 쓴다 |
+FXPP
+
+  cat > "$b/pack.json" <<'FXPJ'
+{
+  "axis": "backend",
+  "name": "fxpack2",
+  "exampleDomain": { "entity": "Task", "collection": "tasks" },
+  "fixesVariants": { "orm": "prisma" },
+  "pkgs": ["zod@4", "prisma@6"],
+  "resources": [
+    { "file": "a.md", "nav": "스키마" },
+    { "file": "b.md", "nav": "부팅" }
+  ]
+}
+FXPJ
+
+  for m in polnoex polbadex polrealex secorigin secprefix secok secrefer ledgerbad reqexport fvbad vocab dupfence noproof noshape badarity noimport reqnosig; do
+    mkdir -p "$fx/pk/$m" && cp -R "$b" "$fx/pk/$m/" || return 1
+  done
+  # c.md를 더하는 픽스처는 pack.json에도 실어야 의도한 검사에서 차단된다.
+  # 싣지 않으면 'resources[] 불일치'로 먼저 걸려 픽스처가 다른 것을 증명하게 된다.
+  local v
+  for v in secorigin secprefix secok; do
+    sed -i.bak 's#{ "file": "b.md", "nav": "부팅" }#{ "file": "b.md", "nav": "부팅" },\
+    { "file": "c.md", "nav": "복귀 경로" }#' "$fx/pk/$v/fxpack2/pack.json" && rm -f "$fx/pk/$v/fxpack2/pack.json.bak"
+  done
+
+  # ① 증명 예 열 자체가 없다 (구 6열 형식)
+  cat > "$fx/pk/polnoex/fxpack2/policies.md" <<'FXP1'
+## 기계 검사
+
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 설명 |
+| --- | --- | --- | --- | --- | --- |
+| `no-console` | forbid | guide | `console\.log\(` | — | 구조적 로거만 쓴다 |
+FXP1
+
+  # ② 증명 예가 자기 정규식에 안 잡힌다 — 죽은 정규식을 드러낸다
+  cat > "$fx/pk/polbadex/fxpack2/policies.md" <<'FXP2'
+## 기계 검사
+
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `no-console` | forbid | guide | `console\.error\(` | — | `console.log(user)` | 예와 정규식이 어긋난다 |
+FXP2
+
+  # ③ forbid의 증명 예가 팩 본문에 실재한다 — 자기 정책을 어긴 것이다
+  cat > "$fx/pk/polrealex/fxpack2/policies.md" <<'FXP3'
+## 기계 검사
+
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `no-zod` | forbid | guide | `from 'zod'` | — | `import { z } from 'zod'` | 본문에 그대로 있다 |
+FXP3
+
+  # ④·⑤ 보안 형태 — 실측(2026-08-23)이 출하본 네 곳에서 찾은 두 형태
+  cat > "$fx/pk/secorigin/fxpack2/resources/c.md" <<'FXP4'
+# 복귀 경로
+
+```ts
+export function safeReturnTo(raw: string, fallback = '/') {
+  const url = new URL(raw, window.location.origin);
+  if (url.origin !== window.location.origin) return fallback;
+  return url.pathname + url.search;
+}
+```
+FXP4
+  cat > "$fx/pk/secprefix/fxpack2/resources/c.md" <<'FXP5'
+# 복귀 경로
+
+```ts
+export function safeReturnTo(raw: string, fallback = '/') {
+  if (!raw.startsWith('/')) return fallback;
+  return raw;
+}
+```
+FXP5
+  # 차단을 증명하지 못하는 테스트 — 실패 단언만 있고 성공 단언이 없다.
+  # 구현을 통째로 실패시켜도 통과하므로 "차단 장치"가 아니다 (node-api 실측).
+  cat > "$fx/pk/noproof/fxpack2/resources/b.md" <<'FXP12'
+# 부팅
+
+```ts
+import { EnvSchema } from '@/env'
+
+export function boot(raw) {
+  return EnvSchema.parse(raw)
+}
+```
+
+`boot`는 진입점이 한 번만 호출한다.
+
+```ts
+it('남의 것을 읽으면 404다', async () => {
+  const res = await request(app).get('/x')
+  expect(res.status).toBe(404)
+})
+```
+FXP12
+
+  # 요청 유래 리다이렉트는 **산문·표에도 실린다** — 펜스만 보면 놓친다.
+  # node-api 실측에서 오용 대조표의 칸이 검증 없이 Referer를 읽으라고 지시했다.
+  cat > "$fx/pk/secrefer/fxpack2/resources/c.md" <<'FXP7'
+# 오용 목록
+
+| 구 습관 | 현재 형태 |
+| --- | --- |
+| `res.redirect('back')` | 특수 처리가 없어졌다. `req.get('Referer')`를 직접 읽는다 |
+FXP7
+
+  # 무해 대조군: 수리된 형태는 통과해야 한다 (오탐은 미탐만큼 게이트를 못 쓰게 만든다)
+  cat > "$fx/pk/secok/fxpack2/resources/c.md" <<'FXP6'
+# 복귀 경로
+
+```ts
+export function safeReturnTo(raw: string, fallback = '/') {
+  const url = new URL(raw, window.location.origin);
+  if (url.origin !== window.location.origin) return fallback;
+  const p = url.pathname;
+  if (!p.startsWith('/') || p.startsWith('//')) return fallback;
+  return p + url.search;
+}
+```
+FXP6
+
+  # ⑪ 형태 열이 비었다 — 형제 클러스터가 시그니처를 추측하게 된다
+  sed -i.bak 's#| `boot` | b.md | `boot(raw: unknown) => Env` — 실패는 throw |#| `boot` | b.md | — |#' \
+    "$fx/pk/noshape/fxpack2/ledger.md" && rm -f "$fx/pk/noshape/fxpack2/ledger.md.bak"
+
+  # ⑫ 형태가 선언한 인자 개수와 실제 정의가 다르다
+  sed -i.bak 's#`boot(raw: unknown) => Env` — 실패는 throw#`boot(raw: unknown, opts: Opts) => Env` — 실패는 throw#' \
+    "$fx/pk/badarity/fxpack2/ledger.md" && rm -f "$fx/pk/badarity/fxpack2/ledger.md.bak"
+
+  # ⑭ requires 심볼을 호출하면서 형태에 시그니처가 없다 — 이음매가 인자 순서를 추측한다
+  printf '\n```ts\nlogger(env, "boot")\n```\n' >> "$fx/pk/reqnosig/fxpack2/resources/b.md"
+
+  # ⑬ 완전 파일이 원장 심볼을 조달 없이 쓴다 — 그대로 복사하면 ReferenceError
+  cat > "$fx/pk/noimport/fxpack2/resources/b.md" <<'FXP13'
+# 부팅
+
+<!-- file: src/boot.ts -->
+```ts
+// src/boot.ts
+export function boot(raw) {
+  return EnvSchema.parse(raw)
+}
+```
+
+`boot`는 진입점이 한 번만 호출한다.
+FXP13
+
+  # ⑥ 원장이 배정한 파일에 정의가 없다 — 병렬 저작의 팬인 결함
+  sed -i.bak 's#| `boot` | b.md |#| `boot` | a.md |#' "$fx/pk/ledgerbad/fxpack2/ledger.md" && rm -f "$fx/pk/ledgerbad/fxpack2/ledger.md.bak"
+
+  # ⑦ requires로 선언한 심볼을 팩이 스스로 export한다 (실측: react-vite의 useTasksQuery)
+  sed -i.bak 's#| `logger` | 프로젝트 |#| `boot` | 프로젝트 |#' "$fx/pk/reqexport/fxpack2/ledger.md" && rm -f "$fx/pk/reqexport/fxpack2/ledger.md.bak"
+
+  # ⑧ 선언한 변형과 pkgs가 모순 — 조립 시점 대조가 거짓 통과한다
+  sed -i.bak 's#"prisma@6"#"drizzle-orm@0"#' "$fx/pk/fvbad/fxpack2/pack.json" && rm -f "$fx/pk/fvbad/fxpack2/pack.json.bak"
+
+  # ⑨ 어휘 정책 — L0가 발행하는 forbid 행이 병렬 저작의 어휘 분기를 잡는가
+  cat > "$fx/pk/vocab/fxpack2/policies.md" <<'FXP9'
+## 기계 검사
+
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `vocab-task` | forbid | guide | `\bnote(s)?\b` | — | `const notes = []` | 도메인 어휘는 Task로 고정 (L0 발행) |
+FXP9
+  printf '\n```ts\nexport const notes = []\n```\n' >> "$fx/pk/vocab/fxpack2/resources/b.md"
+  sed -i.bak 's#| `boot` | b.md | 부팅 |#| `boot` | b.md | 부팅 |\n| `notes` | b.md | 어휘 위반 |#' "$fx/pk/vocab/fxpack2/ledger.md" && rm -f "$fx/pk/vocab/fxpack2/ledger.md.bak"
+
+  # ⑩ 무해: 파일 간 같은 코드펜스는 REVIEW이지 FAIL이 아니다 (공통 import 블록이 실재한다)
+  cat >> "$fx/pk/dupfence/fxpack2/resources/a.md" <<'FXP10'
+
+```ts
+import { z } from 'zod'
+import { boot } from '@/boot'
+import { EnvSchema } from '@/env'
+```
+FXP10
+  cat >> "$fx/pk/dupfence/fxpack2/resources/b.md" <<'FXP11'
+
+```ts
+import { z } from 'zod'
+import { boot } from '@/boot'
+import { EnvSchema } from '@/env'
+```
+FXP11
+  return 0
+}
 
 _fx_assert() {
   local dir="$1" want="$2" label="$3"; shift 3
@@ -920,12 +1929,15 @@ FXL2
 | `connect` | a.md | b.md |
 FXL3
 
-  for m in dangling envkey dupexport budget fence section nostamp leak; do
+  for m in dangling envkey envhelper dupexport budget fence section nostamp leak; do
     mkdir -p "$fx/$m" && cp -R "$b" "$fx/$m/" || return 1
   done
 
   printf '| 없는 파일 | `resources/missing.md` |\n' >> "$fx/dangling/sample-backend-guide/SKILL.md"
   printf '\n```ts\nconst timeout = env.REQUEST_TIMEOUT_MS\n```\n' >> "$fx/envkey/sample-backend-guide/resources/b.md"
+  # 헬퍼 호출로 선언한 키를 그대로 소비한다 — 정상 코드이므로 통과해야 한다
+  printf '\n```ts\nexport const ms = (max) => max\nexport const Extra = {\n  DRAIN_DELAY_MS: ms(60000),\n}\n```\n' >> "$fx/envhelper/sample-backend-guide/resources/a.md"
+  printf '\n```ts\nconst drain = env.DRAIN_DELAY_MS\n```\n' >> "$fx/envhelper/sample-backend-guide/resources/b.md"
   printf '\n```ts\nexport function connect(url, options) {\n  return url\n}\n```\n' >> "$fx/dupexport/sample-backend-guide/resources/c.md"
   awk 'BEGIN{ for (i=0; i<310; i++) print "패딩 행 — 예산 초과를 만든다" }' >> "$fx/budget/sample-backend-guide/resources/d.md"
   printf '\n```ts\nconst unclosed = 1\n' >> "$fx/fence/sample-backend-guide/resources/e.md"
@@ -960,30 +1972,30 @@ FXLEDOK
 
   cat > "$pk/policies.md" <<'FXPOL'
 ## 기계 검사
-| id | 판정 | 대상 | 정규식 | 예외 파일 | 설명 |
-| --- | --- | --- | --- | --- | --- |
-| `zod-present` | require | guide | `from 'zod'` | — | 스키마 라이브러리 고정 |
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `zod-present` | require | guide | `from 'zod'` | — | `import { z } from 'zod'` | 스키마 라이브러리 고정 |
 FXPOL
 
   cat > "$pk/policies-forbid.md" <<'FXPOLV'
 ## 기계 검사
-| id | 판정 | 대상 | 정규식 | 예외 파일 | 설명 |
-| --- | --- | --- | --- | --- | --- |
-| `no-zod` | forbid | guide | `from 'zod'` | — | 차단 증명용 |
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `no-zod` | forbid | guide | `from 'zod'` | — | `import { z } from 'zod'` | 차단 증명용 |
 FXPOLV
 
   cat > "$pk/policies-require-missing.md" <<'FXPOLR'
 ## 기계 검사
-| id | 판정 | 대상 | 정규식 | 예외 파일 | 설명 |
-| --- | --- | --- | --- | --- | --- |
-| `must-have-graphql` | require | guide | `from 'graphql'` | — | 차단 증명용 |
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `must-have-graphql` | require | guide | `from 'graphql'` | — | `import { gql } from 'graphql'` | 차단 증명용 |
 FXPOLR
 
   cat > "$pk/policies-excepted.md" <<'FXPOLE'
 ## 기계 검사
-| id | 판정 | 대상 | 정규식 | 예외 파일 | 설명 |
-| --- | --- | --- | --- | --- | --- |
-| `no-zod` | forbid | guide | `from 'zod'` | `a.md` | 유일 등장 파일을 예외로 두면 통과해야 한다 |
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `no-zod` | forbid | guide | `from 'zod'` | `a.md` | `import { z } from 'zod'` | 유일 등장 파일을 예외로 두면 통과해야 한다 |
 FXPOLE
 
   printf '{ "axis": "backend", "pack": "backend/fxpack", "packFiles": ["a.md"], "seamFiles": ["b.md","c.md","d.md","e.md","f.md"] }\n' > "$fx/clean/asm.json"
@@ -999,6 +2011,7 @@ PLUGIN_GUIDES="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../
 while [ $# -gt 0 ]; do
   case "$1" in
     --guide)     MODE="guide"; GUIDE="${2:-}"; shift 2 || exit 2 ;;
+    --pack)      MODE="pack";  GUIDE="${2:-}"; shift 2 || exit 2 ;;
     --pair)      MODE="pair"; shift ;;
     --self-test) MODE="selftest"; shift ;;
     --contract)  CONTRACT="${2:-}"; shift 2 || exit 2 ;;
@@ -1012,16 +2025,17 @@ while [ $# -gt 0 ]; do
     --pack-ledger-name)   PACK_LEDGER_NAME="${2:-}"; shift 2 || exit 2 ;;   # --self-test 전용
     --pack-policies-name) PACK_POLICIES_NAME="${2:-}"; shift 2 || exit 2 ;; # --self-test 전용
     --generated) GENERATED=1; shift ;;
-    -h|--help)   sed -n '2,20p' "$0" | sed -E 's/^#[[:space:]]?//'; exit 0 ;;
+    -h|--help)   sed -n '2,25p' "$0" | sed -E 's/^#[[:space:]]?//'; exit 0 ;;
     *)           printf "알 수 없는 옵션: %s (--help 참조)\n" "$1" >&2; exit 2 ;;
   esac
 done
 
 case "$MODE" in
   guide) [ -n "$GUIDE" ] || { printf -- "--guide <디렉토리> 필요\n" >&2; exit 2; }; run_guide "$GUIDE" ;;
+  pack)  [ -n "$GUIDE" ] || { printf -- "--pack <디렉토리> 필요\n" >&2; exit 2; };  run_pack "$GUIDE" ;;
   pair)  run_pair ;;
   selftest) run_self_test ;;
-  *)     printf "모드 없음: --guide 또는 --pair (--help 참조)\n" >&2; exit 2 ;;
+  *)     printf "모드 없음: --guide · --pack · --pair (--help 참조)\n" >&2; exit 2 ;;
 esac
 
 printf "\n${C_D}────────────────────────────────────────────${C_0}\n"

@@ -11,15 +11,25 @@
 **검사 대상은 `codelines()`가 추출한 행뿐이다** — 코드펜스 안 · 주석 아님 · ❌/Bad 구간
 아님. 아래는 전부 **추출 시점에 사전 제작 이음매로 시험해 위반 0을 확인**했다.
 
-| id | 판정 | 대상 | 정규식 | 예외 파일 | 설명 |
-| --- | --- | --- | --- | --- | --- |
-| `no-inline-style` | forbid | guide | `style=\{\{` | — | 스타일은 Tailwind 유틸리티 + `cn()`. 인라인 `style`은 디자인 토큰 밖으로 새는 통로다 |
-| `cn-for-classnames` | require | guide | `\bcn\(` | — | 조건부 클래스는 문자열 접합이 아니라 `cn()`으로 병합한다 |
-| `await-request-apis` | require | guide | `await (params\|searchParams\|cookies\(\))` | — | Next 15에서 `params`·`searchParams`·`cookies()`는 Promise다. await 없이 쓰면 런타임에 조용히 undefined가 흐른다 |
-| `no-data-client-in-pack` | forbid | pack | `createClient\(` | — | **팩 자신을 검사한다.** 프론트엔드 축 팩은 데이터 클라이언트를 직접 만들지 않는다 — 만들면 그 순간 백엔드 축에 묶여 다른 조합에서 틀린 지침이 된다 (추출 시 4곳을 이 규칙으로 걷어냈다) |
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `no-inline-style` | forbid | guide | `style=\{\{` | — | `style={{ marginTop: 8 }}` | 스타일은 Tailwind 유틸리티 + `cn()`. 인라인 `style`은 디자인 토큰 밖으로 새는 통로다 |
+| `cn-for-classnames` | require | guide | `\bcn\(` | — | `cn('px-4 py-2', className)` | 조건부 클래스는 문자열 접합이 아니라 `cn()`으로 병합한다 |
+| `await-request-apis` | require | guide | `await (params\|searchParams\|cookies\(\))` | — | `const { id } = await params` | Next 15에서 `params`·`searchParams`·`cookies()`는 Promise다. await 없이 쓰면 런타임에 조용히 undefined가 흐른다 |
+| `no-data-client-in-pack` | forbid | pack | `createClient\(` | — | `const db = createClient(url, key)` | **팩 자신을 검사한다.** 프론트엔드 축 팩은 데이터 클라이언트를 직접 만들지 않는다 — 만들면 그 순간 백엔드 축에 묶여 다른 조합에서 틀린 지침이 된다 (추출 시 4곳을 이 규칙으로 걷어냈다) |
 
 `대상`: `guide`=조립된 가이드 전체 · `seam`=이음매 파일만 · `pack`=이 팩의 리소스만 ·
 `file:<이름>`=그 파일만. `require`는 최소 1회 등장이면 충족이다.
+
+**`증명 예` 열은 의무다** (없으면 게이트 FAIL). 그 정규식이 실제로 잡는 문자열 하나를
+적는다. 게이트가 두 가지를 단언한다: ① 예가 자기 정규식에 매치되는가 — 매치되지 않으면
+아무것도 못 잡는 죽은 정규식이다 ② `forbid`면 그 예가 대상 파일에 실재하지 않는가 —
+실재하면 팩이 자기 정책을 어긴 것이다. 실측(2026-08-23) vue 팩 저작에서 정책마다 결함
+픽스처를 만들어 돌리는 일이 벽시계를 지배했고, 이 열이 그 왕복을 밀리초로 대체한다.
+
+**`대상` 값에 마크다운 강조를 쓰지 않는다.** `**seam**`은 게이트가 scope로 인식하지
+못해 정책이 조용히 전 파일을 겨눈다 — vue 팩에서 실제로 그랬고, "이음매를 겨눈다"는
+감사 수리가 무효인 채로 출하됐다. 게이트가 이제 강조를 벗기지만 표에는 맨 값을 쓴다.
 
 ## 사람이 지킬 것 (기계로 판정 불가)
 

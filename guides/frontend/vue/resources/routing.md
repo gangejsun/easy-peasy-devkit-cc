@@ -137,6 +137,7 @@ router.beforeEach(async (to) => {
 `returnTo`는 URL 쿼리에서 온 **밖에서 들어온 값**이다. `//evil.example`, `/\evil.example`,
 제어문자가 섞인 값은 브라우저에서 외부 URL로 파싱된다. `startsWith('/')` 검사로는 막히지 않는다.
 
+<!-- file: src/lib/safeReturnTo.ts -->
 ```ts
 // src/lib/safeReturnTo.ts
 export function safeReturnTo(raw: unknown, fallback = '/tasks'): string {
