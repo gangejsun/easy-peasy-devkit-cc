@@ -26,6 +26,12 @@
 # 멱등하다. 스탬프 동일 → 건너뜀 / 구버전 → .bak 후 갱신 / 스탬프 동일 + 내용 상이
 # → 사용자 수정본으로 보고 보존.
 #
+# **스택 전제는 프로젝트가 고정한다.** 이미 설치된 가이드의 pkgs 메이저가 플러그인 팩과
+# 다르면 갱신하지 않는다 — 프로젝트는 시작 시점의 스택 위에 코드를 쌓았고, 다른 메이저의
+# 패턴으로 바꾸면 낡은 것이 아니라 이 프로젝트에 대해 틀린 지침이 된다. 버전 상승은
+# 의존성을 올릴 때 함께 하는 프로젝트의 결정이다. 같은 메이저 안의 수정(결함·보안)은
+# 갱신한다. 의도적으로 넘기려면 --force.
+#
 # 종료 코드: 0 = 성공, 1 = 설치 후 검증 실패, 2 = 사용법·자산 오류
 
 set -Eeuo pipefail
@@ -123,6 +129,24 @@ assemble() { # $1=frontend|backend  $2=팩이름
   fi
 
   [ -d "$packdir" ] || { printf 'FATAL: 팩 없음: %s\n' "$packdir" >&2; exit 2; }
+
+  # 스택 전제 고정 — 설치본과 팩의 pkgs 메이저가 다르면 팩을 건드리지 않는다.
+  # 정책을 메시지로만 두면 강제되지 않는다 (선언 위치 ≠ 강제 위치).
+  local PINNED=0
+  if [ -f "$dst/SKILL.md" ] && [ "$FORCE" -eq 0 ]; then
+    local have want
+    have=$({ grep -m1 -oE 'pkgs=[^>]*' "$dst/SKILL.md" 2>/dev/null || true; } \
+           | grep -oE '[@A-Za-z0-9._/-]+@[0-9]+' | sort -u | tr '\n' ' ')
+    want=$({ grep -oE '"[@A-Za-z0-9._/-]+@[0-9.]+"' "$packdir/pack.json" 2>/dev/null | tr -d '"' || true; } \
+           | grep -oE '[@A-Za-z0-9._/-]+@[0-9]+' | sort -u | tr '\n' ' ')
+    if [ -n "$have" ] && [ -n "$want" ] && [ "$have" != "$want" ]; then
+      PINNED=1
+      printf '  [%s-guide]  스택 전제 고정 — 팩을 갱신하지 않습니다\n' "$axis"
+      printf '    설치본: %s\n    플러그인: %s\n' "$have" "$want"
+      printf '    의존성을 올릴 때 /stack-guide-generator로 함께 옮기거나, 알고 넘기려면 --force\n'
+      return 0
+    fi
+  fi
 
   printf '  [%s-guide]  팩 %s%s\n' "$axis" "$pack" "${seamsrc:+ + 이음매 $seamsrc}"
   [ "$DRY" -eq 0 ] && mkdir -p "$dst/resources"

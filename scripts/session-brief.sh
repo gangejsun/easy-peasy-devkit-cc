@@ -84,22 +84,47 @@ if [ -f "$HOOKS_JSON" ] && command -v jq >/dev/null 2>&1; then
   fi
 fi
 
-# ── 3.3 플러그인 갱신이 프로젝트에 도달했는가 ────────────────────────
-# 설치기(install-rules.sh·install-guide.sh)는 스탬프 기반 멱등 갱신을 하지만
-# **아무도 다시 호출하지 않는다** — epcc-init·epcc-migrate에서만 불린다.
-# 그래서 플러그인을 올려도 오래된 프로젝트는 옛 사본을 그대로 쓴다.
-# 유지자가 부지런히 감사해도 그 결과가 도달하지 않으면 감사하지 않은 것과 같다.
+# ── 3.3 플러그인 갱신 도달 — 단, 스택 전제는 프로젝트가 고정한다 ────
+# 프로젝트는 시작 시점의 스택 전제 위에 코드를 쌓는다. 플러그인 팩이 next@16 패턴으로
+# 옮겼는데 이 프로젝트가 15라면 갱신본은 낡은 것이 아니라 **이 프로젝트에 대해 틀린**
+# 지침이다. 버전 상승은 의존성을 올릴 때 함께 하는 프로젝트의 결정이다.
+#
+# 그래서 고정하는 것은 "스택 전제"이지 "지침의 정확성"이 아니다:
+#   pkgs 메이저 동일 + 팩 버전 상승 → 같은 전제 안의 수정(결함·보안) → 알린다
+#   pkgs 메이저 상이                → 전제가 이동했다 → 침묵. 프로젝트가 결정한다
+# 근거: 사전 제작 가이드에 권한 상승 취약점이 몇 달간 있었다. 그건 버전 문제가 아니라
+# 결함이었고, 같은 스택을 쓰는 프로젝트에 도달하지 않으면 안 된다.
 PLUG_VER=$({ grep -m1 -oE '"version"[[:space:]]*:[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+"' \
   "$PLUGIN_ROOT/.claude-plugin/plugin.json" 2>/dev/null || true; } | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)
+
+epcc_majors() {  # stdin: "pkgs=a@1 b@2 ..." → 정렬된 "a@1 b@2"
+  grep -oE '[@A-Za-z0-9._/-]+@[0-9]+' 2>/dev/null | sort -u | tr '\n' ' '
+}
+
 if [ -n "${PLUG_VER:-}" ]; then
-  DRIFT=""
-  # 팩 — assembly.json의 packVersion과 대조
+  FIXES=""; PINNED=""
   for AJ in "$EPCC_ROOT"/.claude/skills/*/assembly.json; do
     [ -f "$AJ" ] || continue
+    GD=$(dirname "$AJ"); GN=$(basename "$GD")
     PKV=$({ grep -m1 -oE '"packVersion"[[:space:]]*:[[:space:]]*"[0-9.]+"' "$AJ" 2>/dev/null || true; } | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)
-    [ -n "${PKV:-}" ] && [ "$PKV" != "$PLUG_VER" ] && DRIFT="$DRIFT $(basename "$(dirname "$AJ")")($PKV)"
+    [ -n "${PKV:-}" ] && [ "$PKV" = "$PLUG_VER" ] && continue     # 최신 — 조용
+    PACK=$({ grep -m1 -oE '"pack"[[:space:]]*:[[:space:]]*"[^"]+"' "$AJ" 2>/dev/null || true; } | sed -E 's/.*"([^"]+)"$/\1/')
+    PJ="$PLUGIN_ROOT/guides/$PACK/pack.json"
+    [ -f "$PJ" ] || continue
+    HAVE=$({ grep -m1 -oE 'pkgs=[^>]*' "$GD/SKILL.md" 2>/dev/null || true; } | epcc_majors)
+    WANT=$({ grep -oE '"[@A-Za-z0-9._/-]+@[0-9.]+"' "$PJ" 2>/dev/null | tr -d '"' || true; } | epcc_majors)
+    if [ -n "$HAVE" ] && [ -n "$WANT" ] && [ "$HAVE" != "$WANT" ]; then
+      PINNED="$PINNED $GN"          # 전제 이동 — 프로젝트가 결정한다
+    else
+      FIXES="$FIXES $GN(v$PKV)"     # 같은 전제 안의 수정 — 도달해야 한다
+    fi
   done
-  # T1 규칙 카드 — epcc-rule-version과 대조 (플러그인 원본 대비 구버전만)
+  [ -n "$FIXES" ] && printf -- '- 같은 스택 전제의 가이드 수정본이 있습니다 (플러그인 v%s ↔ 설치본%s) — `bash "%s/scripts/install-guide.sh" --frontend <팩> --backend <팩>`\n' \
+    "$PLUG_VER" "$FIXES" "$PLUGIN_ROOT"
+  [ -n "$PINNED" ] && printf -- '- %s: 플러그인 팩이 다른 스택 메이저로 이동했습니다 — **갱신하지 않습니다**. 의존성을 올릴 때 `/stack-guide-generator`로 함께 옮기세요\n' \
+    "$(printf '%s' "$PINNED" | sed 's/^ //')"
+
+  # T1 규칙 카드는 스택 전제가 없다 (코드 변경 규율·되돌림·교훈) — 항상 최신이 옳다
   RDRIFT=0
   for RC in "$EPCC_ROOT"/.claude/rules/*.md; do
     [ -f "$RC" ] || continue
@@ -108,10 +133,6 @@ if [ -n "${PLUG_VER:-}" ]; then
     TV=$({ grep -m1 -oE 'epcc-rule-version: [0-9.]+' "$RC"  2>/dev/null || true; } | awk '{print $2}')
     [ -n "${SV:-}" ] && [ -n "${TV:-}" ] && [ "$SV" != "$TV" ] && RDRIFT=$((RDRIFT+1))
   done
-  if [ -n "$DRIFT" ]; then
-    printf -- '- 플러그인 v%s인데 설치된 가이드 팩이 구버전:%s — `bash "%s/scripts/install-guide.sh" --frontend <팩> --backend <팩>` 재실행\n' \
-      "$PLUG_VER" "$DRIFT" "$PLUGIN_ROOT"
-  fi
   [ "$RDRIFT" -gt 0 ] && printf -- '- T1 규칙 카드 %s개가 구버전 — `bash "%s/scripts/install-rules.sh"` 재실행\n' "$RDRIFT" "$PLUGIN_ROOT"
 fi
 
