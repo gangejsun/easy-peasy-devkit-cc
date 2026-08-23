@@ -10,7 +10,14 @@
 #
 #   --frontend react-vite     guides/frontend/react-vite 를 쓴다
 #   --backend  supabase       guides/backend/supabase 를 쓴다
-#   --seam     nextjs+supabase  사전 제작 이음매를 함께 설치한다 (없으면 팩만)
+#   --seam     nextjs+supabase  사전 제작 이음매를 함께 설치한다 (없으면 캐시 → 팩만)
+#   --save-seam <조합>          방금 감사를 통과한 이음매를 캐시에 넣는다 (생성 직후 호출)
+#   --no-cache                  캐시를 읽지도 쓰지도 않는다
+#
+# 이음매 캐시 — 조합당 한 번만 만든다:
+#   ~/.claude/epcc/seam-cache/<조합>@<플러그인버전>/{frontend,backend}/
+#   사전 제작 이음매가 없어도 같은 조합의 두 번째 프로젝트부터는 생성 없이 조립된다.
+#   이음매는 양쪽 축 메이저 버전에 모두 부패하므로 플러그인 버전으로 캐시를 가른다.
 #
 # 소유권이 나뉜다 (install-rules.sh의 T1 카드 ↔ 프로젝트 카드와 같은 구조):
 #   팩 파일   → 플러그인 소유. epcc-pack 스탬프로 갱신을 판정한다
@@ -27,12 +34,17 @@ PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && p
 PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 G="$PLUGIN_ROOT/guides"
 
-FE=""; BE=""; SEAM=""; DRY=0; FORCE=0
+FE=""; BE=""; SEAM=""; DRY=0; FORCE=0; SAVE_SEAM=""; NO_CACHE=0
+PLUGIN_VER=$(grep -m1 -oE '"version"[[:space:]]*:[[:space:]]*"[0-9.]+"' "$PLUGIN_ROOT/.claude-plugin/plugin.json" 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)
+PLUGIN_VER="${PLUGIN_VER:-0.0.0}"
+CACHE_ROOT="${EPCC_SEAM_CACHE:-$HOME/.claude/epcc/seam-cache}"
 while [ $# -gt 0 ]; do
   case "$1" in
     --frontend) FE="${2:-}"; shift 2 ;;
     --backend)  BE="${2:-}"; shift 2 ;;
-    --seam)     SEAM="${2:-}"; shift 2 ;;
+    --seam)       SEAM="${2:-}"; shift 2 ;;
+    --save-seam)  SAVE_SEAM="${2:-}"; shift 2 ;;
+    --no-cache)   NO_CACHE=1; shift ;;
     --dry-run)  DRY=1; shift ;;
     --force)    FORCE=1; shift ;;
     -h|--help)  sed -n '2,25p' "$0" | sed -E 's/^# ?//'; exit 0 ;;
@@ -41,7 +53,7 @@ while [ $# -gt 0 ]; do
 done
 
 [ -d "$G" ] || { printf 'FATAL: guides/ 없음: %s\n' "$G" >&2; exit 2; }
-[ -n "$FE" ] || [ -n "$BE" ] || { printf 'FATAL: --frontend 또는 --backend 중 하나는 필요합니다\n' >&2; exit 2; }
+[ -n "$SAVE_SEAM" ] || [ -n "$FE" ] || [ -n "$BE" ] || { printf 'FATAL: --frontend 또는 --backend 중 하나는 필요합니다\n' >&2; exit 2; }
 
 stamp_of() { grep -m1 -oE 'epcc-(pack|seam): [^ ]+ v[0-9]+\.[0-9]+\.[0-9]+' "$1" 2>/dev/null | awk '{print $3}' || true; }
 TODAY=$(date +%Y-%m-%d)
@@ -102,12 +114,17 @@ assemble() { # $1=frontend|backend  $2=팩이름
   local axis="$1" pack="$2"
   local packdir="$G/$axis/$pack"
   local dst="$PROJECT_ROOT/.claude/skills/$axis-guide"
-  local seamdir=""
-  [ -n "$SEAM" ] && [ -d "$G/seams/$SEAM/$axis" ] && seamdir="$G/seams/$SEAM/$axis"
+  local seamdir="" seamsrc=""
+  if [ -n "$SEAM" ] && [ -d "$G/seams/$SEAM/$axis" ]; then
+    seamdir="$G/seams/$SEAM/$axis"; seamsrc="prebuilt/$SEAM"
+  elif [ "$NO_CACHE" -eq 0 ] && [ -d "$CACHE_ROOT/${FE:-none}+${BE:-none}@$PLUGIN_VER/$axis" ]; then
+    # 캐시 히트 — 이 조합을 이미 한 번 만들었고 감사를 통과했다
+    seamdir="$CACHE_ROOT/${FE:-none}+${BE:-none}@$PLUGIN_VER/$axis"; seamsrc="cache/${FE:-none}+${BE:-none}@$PLUGIN_VER"
+  fi
 
   [ -d "$packdir" ] || { printf 'FATAL: 팩 없음: %s\n' "$packdir" >&2; exit 2; }
 
-  printf '  [%s-guide]  팩 %s%s\n' "$axis" "$pack" "${seamdir:+ + 사전 제작 이음매 $SEAM}"
+  printf '  [%s-guide]  팩 %s%s\n' "$axis" "$pack" "${seamsrc:+ + 이음매 $seamsrc}"
   [ "$DRY" -eq 0 ] && mkdir -p "$dst/resources"
 
   local pv; pv=$(grep -m1 -oE 'v[0-9]+\.[0-9]+\.[0-9]+' "$packdir/PACK.md" 2>/dev/null || echo v0.0.0)
@@ -117,13 +134,19 @@ import json,sys
 try: print('pkgs=' + ' '.join(json.load(open('$packdir/pack.json'))['pkgs']))
 except Exception: print('')" 2>/dev/null)
 
-  local SEAMLABEL; if [ -n "$seamdir" ]; then SEAMLABEL="prebuilt/$SEAM"; else SEAMLABEL="generated"; fi
+  local SEAMLABEL="${seamsrc:-generated}"
   local info="<!-- epcc-guide: assembled $TODAY combo=${FE:-none}+${BE:-none} packs=$axis/$pack@${pv#v} seam=$SEAMLABEL $pkgs -->"
 
   for f in "$packdir/resources"/*.md; do [ -f "$f" ] && put "$f" "$dst/resources/$(basename "$f")"; done
   if [ -n "$seamdir" ]; then
     for f in "$seamdir/resources"/*.md; do [ -f "$f" ] && put "$f" "$dst/resources/$(basename "$f")"; done
-    put_hub "$seamdir/HUB.md" "$dst/SKILL.md" "$axis-guide" "$info"
+    # 캐시 항목은 허브 없이 리소스만 있을 수 있다 (허브가 생기기 전에 적재된 경우).
+    # 없는 허브를 전제하면 조립이 조용히 중단된다 — 명시적으로 갈라 처리한다.
+    if [ -f "$seamdir/HUB.md" ]; then
+      put_hub "$seamdir/HUB.md" "$dst/SKILL.md" "$axis-guide" "$info"
+    else
+      printf '    ! SKILL.md 미생성 — 이음매 리소스는 있으나 허브가 없습니다\n'
+    fi
   else
     printf '    ! SKILL.md 미생성 — 이음매가 없습니다. stack-guide-generator가 허브와 이음매를 만듭니다\n'
   fi
@@ -131,7 +154,7 @@ except Exception: print('')" 2>/dev/null)
   # 조립 원장 — 무엇이 어디서 왔는지. 게이트가 팩 소유 파일을 식별하는 근거
   if [ "$DRY" -eq 0 ]; then
     { printf '{\n  "axis": "%s",\n  "pack": "%s/%s",\n  "packVersion": "%s",\n' "$axis" "$axis" "$pack" "${pv#v}"
-      printf '  "seam": %s,\n  "assembledAt": "%s",\n' "$([ -n "$seamdir" ] && printf '"prebuilt/%s"' "$SEAM" || echo null)" "$TODAY"
+      printf '  "seam": %s,\n  "assembledAt": "%s",\n' "$([ -n "$seamsrc" ] && printf '"%s"' "$seamsrc" || echo null)" "$TODAY"
       printf '  "packFiles": ['
       first=1; for f in "$packdir/resources"/*.md; do [ -f "$f" ] || continue
         [ $first -eq 0 ] && printf ', '; printf '"%s"' "$(basename "$f")"; first=0; done
@@ -151,6 +174,40 @@ except Exception: print('')" 2>/dev/null)
     printf '    검증: 리소스 %s개 · assembly.json ✓\n' "$n"
   fi
 }
+
+# ── 캐시 적재 ──────────────────────────────────────────────────────
+# 생성 + 게이트 + 감사 + 수리를 마친 이음매만 넣는다. 미검증 산출물을 캐시에 넣으면
+# 그 조합의 모든 후속 프로젝트가 같은 결함을 물려받는다 — 캐시가 결함의 증폭기가 된다.
+save_seam() {
+  local combo="$1" axis src n=0
+  local dir="$CACHE_ROOT/$combo@$PLUGIN_VER"   # 같은 local 문에서 앞 변수를 참조하면 set -u가 잡는다
+  [ "$NO_CACHE" -eq 0 ] || { printf '  --no-cache 지정 — 캐시에 넣지 않습니다\n'; return 0; }
+  for axis in frontend backend; do
+    src="$PROJECT_ROOT/.claude/skills/$axis-guide"
+    [ -d "$src/resources" ] || continue
+    # 팩 소유 파일은 캐시에 넣지 않는다 — 플러그인이 이미 갖고 있고,
+    # 넣으면 팩 갱신이 캐시에 가려 영영 도달하지 않는다
+    local packfiles=""
+    [ -f "$src/assembly.json" ] && packfiles=$(grep -oE '"packFiles"[^]]*\]' "$src/assembly.json" | grep -oE '"[^"]+\.md"' | tr -d '"' | tr '\n' ' ')
+    [ "$DRY" -eq 0 ] && mkdir -p "$dir/$axis/resources"
+    local f base
+    for f in "$src/resources"/*.md; do
+      [ -f "$f" ] || continue
+      base=$(basename "$f")
+      case " $packfiles " in *" $base "*) continue;; esac
+      [ "$DRY" -eq 0 ] && cp "$f" "$dir/$axis/resources/$base"
+      n=$((n+1))
+    done
+    [ -f "$src/SKILL.md" ] && [ "$DRY" -eq 0 ] && cp "$src/SKILL.md" "$dir/$axis/HUB.md"
+  done
+  if [ "$n" -eq 0 ]; then
+    printf 'FATAL: 캐시에 넣을 이음매 파일이 없습니다 (%s)\n' "$combo" >&2; exit 1
+  fi
+  printf '이음매 캐시 적재: %s (%s개 파일)\n  %s\n' "$combo@$PLUGIN_VER" "$n" "$dir"
+  return 0
+}
+
+if [ -n "$SAVE_SEAM" ]; then save_seam "$SAVE_SEAM"; exit 0; fi
 
 printf '가이드 조립\n  플러그인: %s\n  프로젝트: %s\n\n' "$G" "$PROJECT_ROOT/.claude/skills"
 [ -n "$FE" ] && [ "$FE" != none ] && assemble frontend "$FE"

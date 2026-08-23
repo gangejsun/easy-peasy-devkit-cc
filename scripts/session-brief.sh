@@ -84,6 +84,37 @@ if [ -f "$HOOKS_JSON" ] && command -v jq >/dev/null 2>&1; then
   fi
 fi
 
+# ── 3.3 플러그인 갱신이 프로젝트에 도달했는가 ────────────────────────
+# 설치기(install-rules.sh·install-guide.sh)는 스탬프 기반 멱등 갱신을 하지만
+# **아무도 다시 호출하지 않는다** — epcc-init·epcc-migrate에서만 불린다.
+# 그래서 플러그인을 올려도 오래된 프로젝트는 옛 사본을 그대로 쓴다.
+# 유지자가 부지런히 감사해도 그 결과가 도달하지 않으면 감사하지 않은 것과 같다.
+PLUG_VER=$({ grep -m1 -oE '"version"[[:space:]]*:[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+"' \
+  "$PLUGIN_ROOT/.claude-plugin/plugin.json" 2>/dev/null || true; } | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)
+if [ -n "${PLUG_VER:-}" ]; then
+  DRIFT=""
+  # 팩 — assembly.json의 packVersion과 대조
+  for AJ in "$EPCC_ROOT"/.claude/skills/*/assembly.json; do
+    [ -f "$AJ" ] || continue
+    PKV=$({ grep -m1 -oE '"packVersion"[[:space:]]*:[[:space:]]*"[0-9.]+"' "$AJ" 2>/dev/null || true; } | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)
+    [ -n "${PKV:-}" ] && [ "$PKV" != "$PLUG_VER" ] && DRIFT="$DRIFT $(basename "$(dirname "$AJ")")($PKV)"
+  done
+  # T1 규칙 카드 — epcc-rule-version과 대조 (플러그인 원본 대비 구버전만)
+  RDRIFT=0
+  for RC in "$EPCC_ROOT"/.claude/rules/*.md; do
+    [ -f "$RC" ] || continue
+    SRC="$PLUGIN_ROOT/rules/$(basename "$RC")"; [ -f "$SRC" ] || continue
+    SV=$({ grep -m1 -oE 'epcc-rule-version: [0-9.]+' "$SRC" 2>/dev/null || true; } | awk '{print $2}')
+    TV=$({ grep -m1 -oE 'epcc-rule-version: [0-9.]+' "$RC"  2>/dev/null || true; } | awk '{print $2}')
+    [ -n "${SV:-}" ] && [ -n "${TV:-}" ] && [ "$SV" != "$TV" ] && RDRIFT=$((RDRIFT+1))
+  done
+  if [ -n "$DRIFT" ]; then
+    printf -- '- 플러그인 v%s인데 설치된 가이드 팩이 구버전:%s — `bash "%s/scripts/install-guide.sh" --frontend <팩> --backend <팩>` 재실행\n' \
+      "$PLUG_VER" "$DRIFT" "$PLUGIN_ROOT"
+  fi
+  [ "$RDRIFT" -gt 0 ] && printf -- '- T1 규칙 카드 %s개가 구버전 — `bash "%s/scripts/install-rules.sh"` 재실행\n' "$RDRIFT" "$PLUGIN_ROOT"
+fi
+
 # ── 3.4 미완 가이드 작업 (세션이 죽어도 20분이 사라지지 않게) ────────
 # 가이드 생성은 init의 임계 경로 밖에서 돈다. 세션이 끊기면 그 사실을 아는 것이
 # 이 훅뿐이므로, 여기서 알리지 않으면 작업은 조용히 유실된다.
