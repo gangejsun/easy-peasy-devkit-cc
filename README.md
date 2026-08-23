@@ -2,7 +2,7 @@
 
 AI Native Dev Harness for Claude Code — 되돌림 가능성 축 워크플로우, 자기검증 훅, 그래프 계측.
 
-![version](https://img.shields.io/badge/version-3.11.0-blue)
+![version](https://img.shields.io/badge/version-3.12.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 ## 무엇인가
@@ -181,7 +181,7 @@ bash scripts/doctor.sh --all        # 전체
 |------|--------------|
 | 규칙 (`.claude/rules/`) | **프로젝트 소유** — install-rules가 사용자 수정본을 감지하면 보존 (버전 스탬프) |
 | 훅 (`settings.json`) | 프로젝트 훅과 플러그인 훅이 **모두** 실행됨 (병존, 충돌 없음) |
-| 스킬 | 플러그인 스킬은 `epcc-devkit:이름`으로, 프로젝트 스킬은 `이름`으로 **병존**합니다. 강한 우선권이 필요하면 **다른 이름 + description에 경계 선언**이 확실합니다 — 이 플러그인이 스택 가이드를 `frontend-guide`(프로젝트 생성)와 `nextjs-frontend-guide`(플러그인)로 나눈 것이 그 방식입니다 |
+| 스킬 | 플러그인 스킬은 `epcc-devkit:이름`으로, 프로젝트 스킬은 `이름`으로 **병존**합니다. 강한 우선권이 필요하면 **다른 이름 + description에 경계 선언**이 확실합니다 — 이 플러그인이 스택 가이드를 프로젝트의 `frontend-guide`로만 두고 플러그인 쪽에는 스킬이 아닌 **축 팩**(`guides/`)으로 둔 이유가 그것입니다 — 이름이 겹치지 않으면 우선권 다툼 자체가 없습니다 |
 
 커스터마이즈 예:
 

@@ -84,6 +84,24 @@ if [ -f "$HOOKS_JSON" ] && command -v jq >/dev/null 2>&1; then
   fi
 fi
 
+# ── 3.4 미완 가이드 작업 (세션이 죽어도 20분이 사라지지 않게) ────────
+# 가이드 생성은 init의 임계 경로 밖에서 돈다. 세션이 끊기면 그 사실을 아는 것이
+# 이 훅뿐이므로, 여기서 알리지 않으면 작업은 조용히 유실된다.
+GJ="$EPCC_ROOT/.epcc/guide-job.json"
+if [ -f "$GJ" ]; then
+  GJ_STATUS=$({ grep -oE '"status"[[:space:]]*:[[:space:]]*"[a-z]+"' "$GJ" 2>/dev/null || true; } | sed -E 's/.*"([a-z]+)"$/\1/')
+  GJ_COMBO=$({ grep -oE '"combo"[[:space:]]*:[[:space:]]*"[^"]*"' "$GJ" 2>/dev/null || true; } | sed -E 's/.*"([^"]*)"$/\1/')
+  case "${GJ_STATUS:-}" in
+    pending|running|interrupted)
+      printf -- '- 가이드 생성 미완 (`%s`, 상태 %s) — `/stack-guide-generator`로 이어서 만듭니다\n' \
+        "${GJ_COMBO:-?}" "$GJ_STATUS"
+      epcc_edge "session-start" "stack-guide-generator" ;;
+    failed)
+      printf -- '- ⚠️ 가이드 생성 실패 (`%s`) — `.epcc/guide-job.json`의 사유 확인 후 `/stack-guide-generator` 재시도\n' \
+        "${GJ_COMBO:-?}" ;;
+  esac
+fi
+
 # ── 3.5 미설정 프로젝트 넛지 (설치 후 가장 이른 대화형 접점) ─────────
 if [ ! -f "$EPCC_ROOT/epcc.config.json" ]; then
   printf -- '- 미설정 프로젝트 — `/epcc-init`로 기술 스택(백엔드·DB 포함)을 선택하면 스택 맞춤 가이드가 생성됩니다\n'

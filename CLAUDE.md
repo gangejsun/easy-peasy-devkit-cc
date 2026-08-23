@@ -22,7 +22,7 @@
 `README.md` 배지 · `.claude-plugin/marketplace.json`(2군데). doctor가 4곳 전부 대조한다.
 
 **스크립트 배치** — 스킬 전용이면 `skills/<스킬>/scripts/`에 두고 `<skill-dir>`로 호출한다.
-루트 `scripts/`는 훅과 doctor 전용이다. 여기 두면 ⓐ `doctor --fast`의 자기 lint가 검사
+루트 `scripts/`는 훅·doctor·**설치기**(`install-rules.sh`·`install-guide.sh`) 전용이다. 여기 두면 ⓐ `doctor --fast`의 자기 lint가 검사
 스크립트에 문자열로 담긴 정규식을 오탐하고 ⓑ doctor의 이중 루트 전제와 어긋난다.
 
 **셸 규약** — 훅은 `scripts/lib/common.sh`를 source한다. **검사 스크립트는 하지 않는다**:
@@ -30,6 +30,12 @@
 `scripts/doctor.sh`의 `ok/warn/bad/sec` + `num()` + 종료 코드 0/1/2 + `--help`=헤더 주석을
 **복사**한다. 주의: 원본 `bad`/`warn`은 `$2`가 비면 **반환값이 1**이다 (doctor가 `set -e`를
 쓰지 않는 이유). 복사할 때 `return 0`을 명시한다.
+
+**가이드는 스킬이 아니라 `guides/` 자산이다** (v3.12.0) — 사전 제작 단위가 조합(32)이
+아니라 축(프론트 4 · 백엔드 8)이라서다. 팩 5종을 `install-guide.sh`가 이음매와 조립한다.
+**팩 리소스를 고치면 `ledger.md`·`policies.md`도 함께 본다** — 게이트가 그 둘로 이음매를
+검사한다. 계약(`seams/*/contract.md`)의 **값은 목록·표 행에만** 쓴다: 산문의 백틱은
+설명으로 취급되고, 부정문을 목록에 쓰면 양쪽에 요구하는 값이 된다.
 
 **차단 장치를 만들었으면 차단을 증명한다** — 결함을 심은 픽스처가 실제로 exit 1을 받는지
 확인한다. 살아있음 ≠ 작동함이고, 잡지 못하는 픽스처는 픽스처가 아니다.
