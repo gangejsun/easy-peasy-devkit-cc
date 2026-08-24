@@ -13,6 +13,8 @@
 #   --seam     nextjs+supabase  사전 제작 이음매를 함께 설치한다 (없으면 캐시 → 팩만)
 #   --save-seam <조합>          방금 감사를 통과한 이음매를 캐시에 넣는다 (생성 직후 호출)
 #   --no-cache                  캐시를 읽지도 쓰지도 않는다
+#   --check-freshness           조립 직전에 팩의 pkgs 메이저가 오늘도 맞는지 대조한다
+#                               (scripts/guide-freshness.sh). 네트워크가 없으면 미판정 보고
 #
 # 이음매 캐시 — 조합당 한 번만 만든다:
 #   ~/.claude/epcc/seam-cache/<조합>@<플러그인버전>/{frontend,backend}/
@@ -40,7 +42,7 @@ PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && p
 PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 G="$PLUGIN_ROOT/guides"
 
-FE=""; BE=""; SEAM=""; DRY=0; FORCE=0; SAVE_SEAM=""; NO_CACHE=0
+FE=""; BE=""; SEAM=""; DRY=0; FORCE=0; SAVE_SEAM=""; NO_CACHE=0; CHECK_FRESH=0
 PLUGIN_VER=$(grep -m1 -oE '"version"[[:space:]]*:[[:space:]]*"[0-9.]+"' "$PLUGIN_ROOT/.claude-plugin/plugin.json" 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)
 PLUGIN_VER="${PLUGIN_VER:-0.0.0}"
 CACHE_ROOT="${EPCC_SEAM_CACHE:-$HOME/.claude/epcc/seam-cache}"
@@ -51,6 +53,7 @@ while [ $# -gt 0 ]; do
     --seam)       SEAM="${2:-}"; shift 2 ;;
     --save-seam)  SAVE_SEAM="${2:-}"; shift 2 ;;
     --no-cache)   NO_CACHE=1; shift ;;
+    --check-freshness) CHECK_FRESH=1; shift ;;
     --dry-run)  DRY=1; shift ;;
     --force)    FORCE=1; shift ;;
     -h|--help)  sed -n '2,25p' "$0" | sed -E 's/^# ?//'; exit 0 ;;
@@ -129,6 +132,28 @@ assemble() { # $1=frontend|backend  $2=팩이름
   fi
 
   [ -d "$packdir" ] || { printf 'FATAL: 팩 없음: %s\n' "$packdir" >&2; exit 2; }
+
+  # 신선도 판정 — **최초 설치일 때만 돈다.**
+  # 기존 프로젝트는 이미 스택을 고정했고(아래 PINNED 블록), 그 고정을 흔드는 정보는
+  # 결정이 아니라 소음이다. 최초 설치는 반대다 — 프로젝트가 아직 아무것도 고정하지
+  # 않았으므로 팩이 전제한 메이저가 오늘도 맞는지가 실제 판단 재료다.
+  # 「최초」의 판정 기준은 assembly.json이다 — SKILL.md는 이음매가 없으면 아예 안 생겨
+  # (node-api 실측) 매번 최초로 오판한다.
+  if [ "$CHECK_FRESH" -eq 1 ] && [ ! -f "$dst/assembly.json" ]; then
+    local fscript="$PLUGIN_ROOT/scripts/guide-freshness.sh" fcode=0
+    if [ -f "$fscript" ]; then
+      printf '  [%s-guide]  신선도 판정 (%s)\n' "$axis" "$pack"
+      bash "$fscript" --pack "$packdir" || fcode=$?
+      if [ "$fcode" -ne 0 ]; then
+        printf '    ↑ 메이저 상승이 있습니다. **설치는 계속합니다** — 선언된 메이저가 이 팩이\n'
+        printf '      실제로 검증한 것이고, 다른 메이저의 패턴은 낡은 것이 아니라 틀린 것입니다.\n'
+        printf '      「팩 전제가 바뀌었다」는 플러그인 갱신 사안이고, 「부분 부패」는 해당\n'
+        printf '      리소스만 재저작할 대상입니다 (stack-guide-generator Step 4-1).\n'
+      fi
+    else
+      printf '    ! 신선도 판정 생략 — %s 없음\n' "$fscript"
+    fi
+  fi
 
   # 스택 전제 고정 — 설치본과 팩의 pkgs 메이저가 다르면 팩을 건드리지 않는다.
   # 정책을 메시지로만 두면 강제되지 않는다 (선언 위치 ≠ 강제 위치).
