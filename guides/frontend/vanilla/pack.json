@@ -1,0 +1,75 @@
+{
+  "axis": "frontend",
+  "name": "vanilla",
+  "displayName": "Vanilla JavaScript + Vite 8 (프레임워크 없음 · JSDoc + zod)",
+  "packVersion": "3.14.0",
+  "verified": "2026-08-24",
+  "extractedFrom": "신규 생성 — 실증 원본 없음. 다른 팩을 형식 참조로도 열지 않았다 (assets/pack-resource-template.md만 사용)",
+
+  "registry": "npm",
+  "symbolSurface": true,
+
+  "exampleDomain": {
+    "entity": "Task",
+    "collection": "tasks",
+    "route": "/tasks",
+    "korean": "작업",
+    "note": "모든 팩과 이음매가 같은 예제 도메인을 쓴다. L0가 이 값에서 어휘 정책(`vocab-task`)을 발행해 게이트가 분기를 차단한다 — 실측에서 프론트가 /tasks를, 백엔드가 /notes를 써서 완전 예제가 서로 실행 불가였다"
+  },
+
+  "fixesVariants": { "language": "javascript", "bundler": "vite", "router": "history-api" },
+  "fixesVariantsNote": "**언어가 이 팩의 전부다.** 프리셋이 기본을 JavaScript로 두고, 그 선택이 타입 표준 슬롯을 **JSDoc + 런타임 스키마 검증**으로 대체한다 — TypeScript를 고른 프로젝트는 그 슬롯이 되살아나므로 이 팩은 변형이 아니라 **틀린 것**을 준다. 라우팅은 **History API 단일 진입점**을 못박는다: 다중 HTML 진입점을 고르면 라우터·상태 복원·링크 인터셉트 서술 전체가 무의미해진다(Vite의 다중 입력 설정 문제로 바뀐다). 번들러는 Vite다 — `import.meta.env`와 모듈 해석 규칙이 본문의 전제다",
+
+  "pkgs": [
+    "vite@8", "zod@4", "vitest@4", "happy-dom@20", "typescript@7"
+  ],
+  "pkgsNote": "**`typescript`는 이 팩이 배송하는 언어가 아니라 검사기다.** `checkJs`를 켠 tsc가 JSDoc 주석을 타입으로 읽어 검사한다 — 그것이 이 축의 타입 표준 슬롯을 실제로 강제하는 유일한 장치다. `pack-smoke.sh --online`은 `pkgs`만 설치하므로 여기 없으면 타입체크가 skip으로 남고 **그 skip은 통과가 아니라 미검사**다. 실측(2026-08-24): `allowJs`만으로는 JSDoc 타입 오류를 심어도 「타입체크 통과」가 났다. `happy-dom`은 Vitest의 DOM 환경이다 — jsdom보다 가볍고 이 팩이 쓰는 표면(DOM·이벤트·History)을 덮는다",
+
+  "runtime": { "nodejs": "22", "browsers": "ES2022 모듈을 네이티브로 지원하는 브라우저 (Vite의 기본 타깃)" },
+  "runtimeNote": "실행 환경이지 npm 의존성이 아니다",
+
+  "notesLanguage": "이 팩에는 `dataLayerPolicyEngine`이 없다 — 그 값은 **백엔드 축의 성질**이고 프론트 축은 조합 시점에야 안다. 이음매 생성 시 백엔드 팩의 그 값을 함께 전달해야 하며, 값이 `false`인 조합(자체 서버·DynamoDB 등)에서 「데이터 계층이 백업한다」는 서술을 쓰면 정확히 반대 지침이 된다",
+
+  "hubFragments": "PACK.md",
+  "ledger": "ledger.md",
+  "policies": "policies.md",
+
+  "resources": [
+    { "file": "types-and-testing.md",   "nav": "JSDoc 타입 규약과 checkJs · zod 스키마와 경계 재검증 · 검증된 환경 값(config) · Vitest + happy-dom · 무엇을 테스트하지 않는가" },
+    { "file": "state-management.md",    "nav": "모듈 스코프 스토어 · 구독과 해지 · 파생 값 · 로컬 vs 전역 판단 기준 · 스토어를 쓰지 말 자리" },
+    { "file": "component-patterns.md",  "nav": "DOM 조작 경계 · template 요소로 만들기 · 이벤트 위임 · 공통 컴포넌트 추출과 생성 전 탐색 의무 · 정리(cleanup) 계약" },
+    { "file": "styling.md",             "nav": "CSS 커스텀 프로퍼티와 @layer · 컴포넌트가 소유하는 토큰 · 클래스 이름 규약 · 인라인 스타일 금지 경계" },
+    { "file": "routing.md",             "nav": "History API 라우터 · 링크 인터셉트와 수정자 키 · 보호 라우트 자리 · 복귀 경로 검증(safeReturnTo) · 404와 스크롤 복원" },
+    { "file": "loading-error-states.md","nav": "로딩·빈·에러 3상태 · AbortController와 경합 · 재시도와 백오프 · 낙관적 갱신을 하지 말 자리" }
+  ],
+
+  "seamSlots": ["data-fetching", "auth-and-session", "complete-example"],
+
+  "seamSlotNotes": {
+    "data-fetching": "실제 API 호출·봉투 파싱·캐시. 봉투는 와이어 계약의 함수이므로 축이 아니라 조합이 정한다. **축이 못박는 것 둘**: ⓐ 응답은 신뢰 입력이 아니므로 **경계에서 zod로 파싱한다**(`TaskSchema.safeParse`) ⓑ 취소는 `AbortController`로 하고 그 시그널을 `createResource`에 넘긴다",
+    "auth-and-session": "토큰·세션 보관 위치와 갱신 · 로그인/로그아웃 흐름 · 보호 라우트의 판정. **인증 방식은 축의 함수가 아니다** — 백엔드 축이 세션 쿠키냐 베어러 토큰이냐를 정한다. **축이 제공하는 것은 `safeReturnTo` 하나**이고, 이음매는 로그인 후 복귀에 그것을 **반드시 통과시켜야 한다**",
+    "complete-example": "스키마 → 스토어 → 컴포넌트 → 라우트 → 테스트 관통"
+  },
+
+  "clusters": [
+    { "id": "C1", "pilot": true, "files": ["types-and-testing.md", "state-management.md"],
+      "why": "**새 툴체인의 첫 팩이므로 파일럿이 필수다.** JSDoc 규약과 zod 스키마가 다른 모든 파일의 전제이고, 스토어의 제네릭(`@template T`)이 JSDoc에서 가장 어려운 자리다 — `checkJs`를 켠 tsc가 그 형태를 실제로 검사하는지가 여기서 처음 확인된다. 틀린 규약 위에 세 클러스터를 동시에 띄우면 전부 되돌려진다" },
+    { "id": "C2", "files": ["component-patterns.md", "styling.md"],
+      "why": "컴포넌트가 소유하는 디자인 토큰이 두 파일에 걸친다. 클래스 이름 규약과 DOM 생성 형태가 같은 결정이다" },
+    { "id": "C3", "files": ["routing.md", "loading-error-states.md"],
+      "why": "라우트 전환이 진행 중인 요청을 취소해야 하므로 `AbortController`의 수명이 라우터의 수명에 묶인다. 3상태 렌더와 404 렌더가 같은 컨테이너를 다툰다" }
+  ],
+
+  "knownGaps": [
+    {
+      "what": "실 브라우저 왕복 미검증",
+      "where": "resources/routing.md · resources/component-patterns.md · resources/styling.md",
+      "detail": "저작·검증 환경에 브라우저가 없다. **DOM·이벤트·History는 `happy-dom`으로 대리 검증**하고(Vitest 환경), 실제 렌더·CSS 계산값·스크롤 복원·`popstate`의 브라우저별 차이는 실물로 돌리지 못한다. 각 태그에 대리 범위를 적는다"
+    },
+    {
+      "what": "이음매를 겨눈 기계 정책은 조립 후에만 판정된다",
+      "where": "policies.md의 대상=seam 항목",
+      "detail": "이음매가 있어야 대상 파일이 생긴다. `--pack`은 그것들을 「조립 후로 미룸」으로 명시 보고하고, `install-guide.sh` 조립 뒤 `--guide --assembly`가 판정한다"
+    }
+  ]
+}
