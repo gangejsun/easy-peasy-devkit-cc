@@ -11,6 +11,9 @@
 #       --out <디렉토리>   작업 디렉토리 (기본 mktemp, 종료 시 삭제)
 #       --keep             작업 디렉토리를 남긴다 (감사 A에 넘길 때)
 #       --no-vectors       보안 벡터 시험을 건너뛴다
+#       --online           pack.json의 pkgs를 작업 디렉토리에 **메이저 고정**으로 설치한다.
+#                          이것이 없으면 tsc는 skip이고 감사 A가 그 설치를 대신 한다 —
+#                          그 대기가 감사 임계 경로에 얹혔다. 네트워크 실패는 skip이지 FAIL이 아니다
 #   pack-smoke.sh --self-test
 #   pack-smoke.sh --help
 #
@@ -104,23 +107,178 @@ extract_files() {
   printf '%s' "$u"
 }
 
+
+# ── 원장 requires 심볼 ─────────────────────────────────────────────
+# **스텁은 「이음매가 줄 것」에만 쓴다.** 그 구분이 없으면 팩의 **경로 오기**까지 스텁이
+# 덮어 파일 간 정합성 오류가 통째로 사라진다 — 두 번 재발했다(fastapi의
+# `app/db/models.py`, firebase의 `./model.js`). 어느 쪽도 게이트가 잡지 못했고
+# 감사가 실경로로 다시 조립해서야 드러났다.
+_any_required() { # $1=출력디렉토리 $2=import한 이름 목록 → 하나라도 requires면 0
+  local nm
+  [ -s "$1/.requires.txt" ] || return 0     # 원장을 못 읽으면 예전대로 스텁한다
+  while read -r nm; do
+    [ -z "$nm" ] && continue
+    grep -qxF "$nm" "$1/.requires.txt" && return 0
+  done < <(printf '%s\n' "$2" | tr ',' '\n' \
+      | sed -E 's/^[[:space:]]*//; s/[[:space:]]*$//; s/^type[[:space:]]+//; s/[[:space:]]+as[[:space:]]+.*//' \
+      | grep -E '^[A-Za-z_][A-Za-z0-9_]*$')
+  return 1
+}
+
+requires_syms() { # $1=팩디렉토리 → 심볼 이름 목록(줄바꿈 구분)
+  local led="$1/ledger.md"
+  [ -f "$led" ] || return 0
+  awk '/^## requires/{f=1;next} f&&/^## /{f=0} f' "$led" \
+    | grep -oE '^\|[[:space:]]*`[A-Za-z_][A-Za-z0-9_]*`' \
+    | grep -oE '`[A-Za-z_][A-Za-z0-9_]*`' | tr -d '`' | sort -u
+  return 0
+}
+
+# 상대 import를 유닛의 목표 경로 기준으로 접는다. 대상 파일이 아직 없으므로
+# realpath를 쓸 수 없다 — 순수 문자열 정규화다.
+normalize_rel() { # $1=기준 디렉토리 $2=상대 경로
+  local combined seg out="" oldIFS="$IFS"
+  combined="$1/$2"
+  IFS=/
+  # shellcheck disable=SC2086
+  set -- $combined
+  IFS="$oldIFS"
+  for seg in "$@"; do
+    case "$seg" in
+      ''|'.') ;;
+      '..') case "$out" in */*) out="${out%/*}";; *) out="";; esac ;;
+      *) out="${out:+$out/}$seg" ;;
+    esac
+  done
+  printf '%s' "$out"
+}
+
 # ── 2. 스텁: 해소되지 않는 로컬 import를 채운다 ─────────────────────
 # 원장의 requires는 이음매가 줄 것이므로 팩만 놓고 보면 항상 미해소다.
 # 그것을 스텁으로 채워야 타입체크가 "이음매 미구현"이 아니라 팩 자신의 결함을 본다.
 make_stubs() {
-  local OUT="$1" made=0 spec names mod target
+  local OUT="$1" PACK="$2" made=0 orphan=0 spec names mod target
+  : > "$OUT/.orphan.txt"
+  : > "$OUT/.stubbed.txt"
+  requires_syms "$PACK" > "$OUT/.requires.txt" 2>/dev/null || : > "$OUT/.requires.txt"
   [ -s "$OUT/.units.tsv" ] || { printf '0'; return 0; }
 
-  grep -rhoE "import( type)? \{[^}]*\} from '@/[^']*'" "$OUT/units" 2>/dev/null \
-    | sort -u > "$OUT/.imports.txt"
+  # 별칭(@/…)과 **상대 경로**를 모두 본다. 상대 경로만 쓰는 팩에서 스텁이 하나도 만들어지지
+  # 않아 tsc가 이음매 미구현을 팩 결함으로 보고했다 (aws-serverless 실측 — 오탐).
+  # 상대 경로는 **import한 파일의 위치** 기준이므로 유닛의 목표 경로와 함께 모은다.
+  : > "$OUT/.imports.txt"
+  local uid upath uspec
+  while IFS=$'\t' read -r uid upath _rest; do
+    [ -z "$uid" ] && continue
+    [ -f "$OUT/units/$uid" ] || continue
+    grep -ohE "import( type)? \{[^}]*\} from '@/[^']*'" "$OUT/units/$uid" 2>/dev/null \
+      | while IFS= read -r uspec; do printf '.\t%s\n' "$uspec"; done >> "$OUT/.imports.txt"
+    grep -ohE "import( type)? \{[^}]*\} from '\.[^']*'" "$OUT/units/$uid" 2>/dev/null \
+      | while IFS= read -r uspec; do printf '%s\t%s\n' "$(dirname "$upath")" "$uspec"; done >> "$OUT/.imports.txt"
+  done < "$OUT/.units.tsv"
+  sort -u -o "$OUT/.imports.txt" "$OUT/.imports.txt"
 
-  while IFS= read -r spec; do
+  # ── Python: `from app.http.handlers import install_error_handlers` ──
+  # 원장 requires는 이음매가 줄 것이므로 팩만 놓고 보면 항상 미해소다. 이것을 채우지
+  # 않으면 pyright가 이음매 미구현을 팩 결함으로 보고하고, **스키마 실행까지 막힌다**
+  # (fastapi 팬인 실측). 지역 패키지 판정은 복원된 유닛 경로의 최상위 디렉토리로 한다 —
+  # 라이브러리 import를 스텁하면 진짜 의존성을 가려 버린다.
+  local roots; roots=$(cut -f2 "$OUT/.units.tsv" | grep '/' | cut -d/ -f1 | sort -u)
+  local pyline pymod pynames pytarget root
+  while IFS= read -r pyline; do
+    [ -z "$pyline" ] && continue
+    pymod=$(printf '%s' "$pyline" | sed -E 's/^[[:space:]]*from[[:space:]]+([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]+import.*/\1/')
+    case "$pymod" in ''|*' '*) continue ;; esac
+    root="${pymod%%.*}"
+    printf '%s\n' "$roots" | grep -qxF "$root" || continue     # 라이브러리다
+    pytarget=$(printf '%s' "$pymod" | tr '.' '/').py
+    [ -f "$OUT/$pytarget" ] && continue
+    awk -F'\t' '$5=="file"{print $2}' "$OUT/.units.tsv" | grep -qxF "$pytarget" && continue
+    # **패키지를 모듈로 가리지 않는다.** `from app.db import x`를 `app/db.py`로 스텁하면
+    # 실재하는 `app/db/` 패키지를 가려 그 안의 모든 모듈이 미해소가 된다
+    # (fastapi 최종 팬인 실측 — 정상 팩이 타입체크 실패로 보고됐다).
+    [ -d "$OUT/${pytarget%.py}" ] && continue
+    cut -f2 "$OUT/.units.tsv" | grep -q "^${pytarget%.py}/" && continue
+    pynames=$(printf '%s' "$pyline" | sed -E 's/.*[[:space:]]import[[:space:]]+//; s/#.*//')
+    if ! cut -f2 "$OUT/.units.tsv" | grep -qxF "$pytarget" && ! _any_required "$OUT" "$pynames"; then
+      printf '%s\t%s\n' "$pytarget" "$(printf '%s' "$pynames" | tr -d '\n')" >> "$OUT/.orphan.txt"
+      orphan=$((orphan+1)); continue
+    fi
+    mkdir -p "$OUT/$(dirname "$pytarget")" 2>/dev/null
+    {
+      printf '# pack-smoke 스텁 — 원장 requires(이음매 소유). 팩만으로는 해소되지 않는다.\n'
+      printf 'from typing import Any\n'
+      # **쓰임새로 형태를 가른다.** 파이썬 스텁에는 두 자리를 동시에 만족하는 형태가 없다:
+      #   `NAME: Any = None` → 값 자리는 되지만 타입 표현식에서 `형식 식에는 변수를 사용할
+      #                         수 없습니다`가 된다
+      #   `class NAME: ...`   → 타입 자리는 되지만 값 자리에서 `type[NAME]`이 되어
+      #                         구체 타입을 요구하는 인자에 못 넣는다
+      # 둘 다 fastapi 팬인에서 **스텁 산물이 팩 결함으로 보고되는** 오탐을 냈다.
+      # 그래서 유닛 본문에서 그 이름이 타입 표현식(`-> NAME` · `: NAME` · `[NAME]`)으로
+      # 쓰이는지 보고 클래스와 값 중 하나를 고른다.
+      printf '%s\n' "$pynames" | tr ',' '\n' \
+        | sed -E 's/^[[:space:]]*//; s/[[:space:]]*$//; s/^.*[[:space:]]+as[[:space:]]+//' \
+        | grep -E '^[A-Za-z_][A-Za-z0-9_]*$' | sort -u | while read -r nm; do
+            if grep -rhqE "(->[[:space:]]*$nm\\b|:[[:space:]]*$nm\\b|\\[$nm\\]|except[[:space:]]+$nm\\b)" "$OUT/units" 2>/dev/null; then
+              printf 'class %s(Exception):\n' "$nm"
+              printf '    def __init__(self, *a: Any, **k: Any) -> None: ...\n'
+              printf '    def __call__(self, *a: Any, **k: Any) -> Any: ...\n'
+              printf '    def __getattr__(self, n: str) -> Any: ...\n'
+            else
+              printf '%s: Any = None\n' "$nm"
+            fi
+          done
+    } >> "$OUT/$pytarget"
+    printf '%s\n' "$pytarget" >> "$OUT/.stubbed.txt"
+    # __init__.py가 없으면 pyright가 패키지로 보지 않는다
+    local d="$OUT/$(dirname "$pytarget")"
+    while [ "$d" != "$OUT" ] && [ -n "$d" ]; do
+      [ -f "$d/__init__.py" ] || : > "$d/__init__.py"
+      d=$(dirname "$d")
+    done
+    made=$((made+1))
+  done < <(grep -rhE "^[[:space:]]*from[[:space:]]+[A-Za-z_][A-Za-z0-9_.]*[[:space:]]+import[[:space:]]" "$OUT/units" 2>/dev/null | sort -u)
+
+  local base
+  while IFS=$'\t' read -r base spec; do
     [ -z "$spec" ] && continue
-    mod=$(printf '%s' "$spec" | sed -E "s/.*from '@\///; s/'$//")
     names=$(printf '%s' "$spec" | sed -E "s/import( type)? \{//; s/\} from '.*//")
-    target="src/$mod"
-    case "$target" in *.ts|*.tsx) ;; *) target="$target.ts" ;; esac
+    case "$spec" in
+      *"from '@/"*)
+        mod=$(printf '%s' "$spec" | sed -E "s/.*from '@\///; s/'$//")
+        # `@/*`가 `src/`인지 루트인지는 팩의 배치가 정한다 — 유닛 경로로 판정한다
+        # (nextjs는 app/·stores/를 루트에 둔다. src/로 못박으면 정상 import가 전부 미해소가 된다)
+        if cut -f2 "$OUT/.units.tsv" | grep -q '^src/'; then target="src/$mod"; else target="$mod"; fi ;;
+      *)
+        mod=$(printf '%s' "$spec" | sed -E "s/.*from '//; s/'$//")
+        target=$(normalize_rel "$base" "$mod") ;;
+    esac
+    [ -n "$target" ] || continue
+    # **TS ESM은 `./model.js`로 쓰고 `model.ts`로 해소된다.** 확장자를 그대로 믿고 스텁하면
+    # 실재하는 형제 모듈을 `any`로 덮어 **파일 간 정합성 오류를 통째로 가린다** —
+    # firebase 감사 A 실측: tsc 통과가 정합성의 증거가 아니었고, 실경로로 다시 조립해서야
+    # TS2307·TS2459가 드러났다. fastapi의 `app/db/models.py`와 같은 부류의 두 번째 재발이다.
+    case "$target" in
+      *.js)  target="${target%.js}.ts" ;;
+      *.mjs) target="${target%.mjs}.mts" ;;
+      *.ts|*.tsx|*.mts) ;;
+      *) target="$target.ts" ;;
+    esac
     [ -f "$OUT/$target" ] && continue
+    # **팩이 그 경로를 「완전 파일」로 주장했으면 스텁하지 않는다.** 유닛은 아직 units/
+    # 아래에 있어 파일 존재 검사로는 걸리지 않는다 — 스텁을 얹으면 프로필이 실파일로
+    # 옮길 때 같은 심볼이 두 번 선언돼 TS2451이 난다 (aws-serverless 실측 — 오탐).
+    # **라벨 발췌는 제외 대상이 아니다** — 복원되지 않으므로 스텁이 없으면 미해소로
+    # 남는다 (fastapi 실측: app/http/handlers.py가 라벨이라 스텁을 못 받았다)
+    awk -F'\t' '$5=="file"{print $2}' "$OUT/.units.tsv" | grep -qxF "$target" && continue
+    # **원장 requires에 없으면 스텁하지 않는다.** 그것은 이음매가 줄 것이 아니라
+    # 팩이 스스로 조달했어야 하는 것이고, 스텁으로 덮으면 경로 오기가 사라진다.
+    # 정확한 경로가 유닛에 있으면 **팩이 제공하는 것**이다(라벨 발췌이므로 복원만 안 됐다).
+    # 고아가 아니므로 예전대로 스텁한다.
+    if ! cut -f2 "$OUT/.units.tsv" | grep -qxF "$target" && ! _any_required "$OUT" "$names"; then
+      printf '%s\t%s\n' "$target" "$(printf '%s' "$names" | tr -d '\n')" >> "$OUT/.orphan.txt"
+      orphan=$((orphan+1)); continue
+    fi
     mkdir -p "$OUT/$(dirname "$target")" 2>/dev/null
     {
       printf '// pack-smoke 스텁 — 원장 requires(이음매 소유). 팩만으로는 해소되지 않는다.\n'
@@ -130,9 +288,72 @@ make_stubs() {
             printf 'export const %s: any = undefined as any;\n' "$nm"
           done
     } >> "$OUT/$target"
+    printf '%s\n' "$target" >> "$OUT/.stubbed.txt"
     made=$((made+1))
   done < "$OUT/.imports.txt"
   printf '%s' "$made"
+}
+
+
+# ── 2-B. 툴체인 설치 (--online) ─────────────────────────────────────
+# **메이저를 고정한다.** 0.x는 마이너까지 읽는다 — semver의 0.y.z에서 y가 파괴적 변경
+# 축이고, 마이너를 흘리면 `fastapi@0.141` 같은 항목이 통째로 설치 목록에서 빠진다
+# (fastapi 팬인 실측: 12개 중 5개가 조용히 누락됐다).
+# 팩이 typescript@5를 확정했는데 `npm i typescript`는 오늘 7.x를
+# 받는다 — 다른 메이저의 판정은 이 팩에 대해 「낡음」이 아니라 「틀림」이다.
+# 설치가 없으면 tsc는 모듈을 못 찾아 TS2307을 쏟는다. 그래서 typescript만 넣지 않고
+# 팩이 선언한 pkgs 전부를 같은 메이저로 넣는다.
+install_toolchain() {
+  local P="$1" OUT="$2" specs sp
+  specs=$(awk '/"pkgs"[[:space:]]*:/{f=1} f{print} f&&/\]/{exit}' "$P/pack.json" 2>/dev/null \
+    | grep -oE '"[^"]+@[0-9]+(\.[0-9]+)?"' | tr -d '"' | sort -u | tr '\n' ' ')
+  if [ -z "$(printf '%s' "$specs" | tr -d ' ')" ]; then
+    skip "pack.json에 메이저가 붙은 pkgs가 없음 — 설치 생략" "타입체크는 프로필이 다시 판정한다"
+    return 0
+  fi
+  # 생태계는 pack.json의 registry가 정한다 (없으면 npm).
+  local reg; reg=$(grep -m1 -oE '"registry"[[:space:]]*:[[:space:]]*"[^"]+"' "$P/pack.json" 2>/dev/null | sed -E 's/.*"([^"]+)"$/\1/')
+  reg="${reg:-npm}"
+  local n; n=$(printf '%s' "$specs" | wc -w | tr -d ' ')
+
+  if [ "$reg" = "pypi" ]; then
+    # `name@N` → `name>=N,<N+1`. 메이저 고정의 뜻은 생태계가 달라도 같다.
+    local pyspecs="" nm mj
+    for sp in $specs; do
+      nm="${sp%@*}"; mj="${sp##*@}"; mj="${mj%%.*}"
+      case "$mj" in ''|*[!0-9]*) continue ;; esac
+      pyspecs="$pyspecs $nm>=$mj,<$((mj+1))"
+    done
+    local venv="$OUT/.venv"
+    if command -v uv >/dev/null 2>&1; then
+      # shellcheck disable=SC2086
+      if (cd "$OUT" && uv venv "$venv" >/dev/null 2>&1 && uv pip install --python "$venv/bin/python" $pyspecs) >"$OUT/.pip.log" 2>&1; then
+        ok "툴체인 설치 (uv) — 메이저 고정 ${n}개"
+      else
+        skip "툴체인 설치 실패 — 타입체크·스키마 실행은 미검사로 남는다" "$(tail -2 "$OUT/.pip.log" | tr '\n' ' ') — 오프라인이면 정상이다"
+      fi
+    elif command -v python3 >/dev/null 2>&1; then
+      # shellcheck disable=SC2086
+      if (cd "$OUT" && python3 -m venv "$venv" >/dev/null 2>&1 && "$venv/bin/pip" install -q $pyspecs) >"$OUT/.pip.log" 2>&1; then
+        ok "툴체인 설치 (venv+pip) — 메이저 고정 ${n}개"
+      else
+        skip "툴체인 설치 실패 — 타입체크·스키마 실행은 미검사로 남는다" "$(tail -2 "$OUT/.pip.log" | tr '\n' ' ') — 오프라인이면 정상이다"
+      fi
+    else
+      skip "uv·python3 없음 — 툴체인 설치 생략" "$specs"
+    fi
+    return 0
+  fi
+
+  command -v npm >/dev/null 2>&1 || { skip "npm 없음 — 툴체인 설치 생략" "$specs"; return 0; }
+  printf '{ "name": "pack-smoke", "private": true, "type": "module" }\n' > "$OUT/package.json"
+  # shellcheck disable=SC2086
+  if (cd "$OUT" && npm i -D --silent --no-audit --no-fund $specs) >"$OUT/.npm.log" 2>&1; then
+    ok "툴체인 설치 — 메이저 고정 ${n}개"
+  else
+    skip "툴체인 설치 실패 — 타입체크는 미검사로 남는다" "$(tail -2 "$OUT/.npm.log" | tr '\n' ' ') — 오프라인이면 정상이다"
+  fi
+  return 0
 }
 
 # ── 3. 보안 벡터: security-vectors.md의 A절을 실제로 돌린다 ─────────
@@ -259,9 +480,43 @@ run_smoke() {
     [ "$nfile" -eq 0 ] && warn "완전 파일을 주장한 펜스가 0개" "구문·타입 검사의 대상이 없다. 보안 원시함수·설정·테스트 하네스 펜스 앞에 <!-- file: 경로 -->를 단다"
   fi
 
-  local st; st=$(make_stubs "$OUT_DIR")
-  [ "$(num "$st")" -gt 0 ] && ok "미해소 로컬 import 스텁 ${st}개 생성 (원장 requires)" || ok "미해소 로컬 import 없음"
+  local st; st=$(make_stubs "$OUT_DIR" "$P")
+  if [ "$(num "$st")" -gt 0 ]; then
+    ok "미해소 로컬 import 스텁 ${st}개 생성 (원장 requires)" \
+       "$(cut -f1 "$OUT_DIR/.stubbed.txt" 2>/dev/null | tr '\n' ' ')"
+  else
+    ok "미해소 로컬 import 없음"
+  fi
+  # **원장 requires에 없는데 해소되지 않는 로컬 import는 팩의 결함이다.**
+  # 스텁으로 덮으면 경로 오기가 사라진다 — 두 번 재발한 부류다(fastapi `app/db/models.py`,
+  # firebase `./model.js`). 둘 다 타입체크를 「통과」시켰고 감사가 실경로로 다시
+  # 조립해서야 드러났다.
+  # **두 경우를 가른다.** 같은 파일 이름을 팩이 **다른 경로에** 배송했으면 경로 오기이고
+  # 그것은 결함이다(FAIL). 그런 이름이 아예 없으면 프로젝트가 만드는 예제 앱 심볼이라
+  # 정상이다(WARN — 목록만 남긴다). 가르지 않고 전부 FAIL로 두면 출하 팩 6개가 깨지고,
+  # **오탐이 검사를 죽인다.**
+  local orph mism=0 illus=0 t nm base
+  orph=$(num "$(grep -c . "$OUT_DIR/.orphan.txt" 2>/dev/null | tr -d ' ')")
+  if [ "$orph" -gt 0 ]; then
+    : > "$OUT_DIR/.mismatch.txt"; : > "$OUT_DIR/.illus.txt"
+    while IFS=$'\t' read -r t nm; do
+      [ -z "$t" ] && continue
+      base=$(basename "$t")
+      if cut -f2 "$OUT_DIR/.units.tsv" | grep -qE "(^|/)$base$"; then
+        printf '%s\t%s\n' "$t" "$nm" >> "$OUT_DIR/.mismatch.txt"; mism=$((mism+1))
+      else
+        printf '%s\t%s\n' "$t" "$nm" >> "$OUT_DIR/.illus.txt"; illus=$((illus+1))
+      fi
+    done < "$OUT_DIR/.orphan.txt"
+    if [ "$mism" -gt 0 ]; then
+      bad "경로 불일치 ${mism}건 — 같은 파일을 팩이 **다른 경로에** 배송한다" \
+          "$(awk -F'\t' '{printf "%s ", $1}' "$OUT_DIR/.mismatch.txt")— import 경로와 배송 경로가 갈렸다. 조립하면 모듈을 찾지 못한다(감사가 실경로로 재조립해야 드러나던 부류다)"
+    fi
+    [ "$illus" -gt 0 ] && warn "팩이 배송하지 않는 로컬 import ${illus}건" \
+        "$(awk -F'\t' '{printf "%s ", $1}' "$OUT_DIR/.illus.txt")— 프로젝트가 만드는 예제 앱 심볼이면 정상이다. 원장의 「예제에 등장하는 앱 심볼」 표에 있는지 확인한다"
+  fi
 
+  [ "$ONLINE" -eq 1 ] && { sec "툴체인 설치 (--online)"; install_toolchain "$P" "$OUT_DIR"; }
   [ "$PROFILE" = "auto" ] && PROFILE=$(detect_profile "$OUT_DIR")
   run_profile "$P" "$OUT_DIR" "$PROFILE"
   [ "$NO_VECTORS" -eq 0 ] && run_vectors "$OUT_DIR" || skip "보안 벡터 생략 (--no-vectors)" ""
@@ -316,6 +571,84 @@ export function safeReturnTo(raw: unknown, fallback = '/'): string {
 ```
 FXF
 
+  # ── 경로 불일치 픽스처 ──────────────────────────────────────────
+  # **스텁이 팩의 경로 오기를 덮던 부류.** 두 번 재발했다(fastapi `app/db/models.py`,
+  # firebase `./model.js`) — 둘 다 타입체크를 「통과」시켰고 감사가 실경로로 다시
+  # 조립해서야 드러났다. 스텁은 원장 requires에만 쓴다.
+  mkdir -p "$fx/pathbad/resources" || { bad "경로 픽스처 생성 실패"; return; }
+  printf '<!-- epcc-pack: backend/fx v0 -->\n# fx 팩\n' > "$fx/pathbad/PACK.md"
+  printf '{ "axis": "backend", "name": "fx", "pkgs": ["typescript@5"] }\n' > "$fx/pathbad/pack.json"
+  cat > "$fx/pathbad/ledger.md" <<'FXPL2'
+## provides — 이 팩이 정의한다
+
+| 심볼 | 정의 파일 | 형태 | 성격 |
+| --- | --- | --- | --- |
+| `keys` | a.md | `keys.task(o, i) => string` | 키 조립 |
+
+## requires — 이음매가 제공해야 한다
+
+| 심볼 | 종류 | 형태 | 이유 |
+| --- | --- | --- | --- |
+| `logger` | 프로젝트 | 구조적 로거 | 이음매 소유 |
+FXPL2
+  cat > "$fx/pathbad/resources/a.md" <<'FXPA2'
+# 키
+
+<!-- file: src/db/keys.ts -->
+```ts
+export const keys = { task: (o: string, i: string) => `${o}#${i}` }
+```
+
+<!-- file: src/db/tasks.ts -->
+```ts
+import { keys } from '../model/keys'
+export const pk = keys.task('a', 'b')
+```
+FXPA2
+
+  # ── Python 프로필 픽스처 ────────────────────────────────────────
+  # 실측 최악의 결함은 **문법이 완벽한 스키마**였다 — partial()과 default()가 겹쳐
+  # 부분 수정이 보내지 않은 필드를 덮어썼고 실행만이 그것을 드러냈다.
+  # Pydantic v2에서 같은 부류는 「선택 필드에 None 아닌 기본값」으로 재발한다.
+  mkdir -p "$fx/py-ok/resources" "$fx/py-bad/resources" || { bad "python 픽스처 생성 실패"; return; }
+  for m in py-ok py-bad; do
+    printf '<!-- epcc-pack: backend/fx v0 -->\n# fx 팩\n' > "$fx/$m/PACK.md"
+    printf '{ "axis": "backend", "name": "fx", "registry": "pypi", "pkgs": ["pydantic@2"] }\n' > "$fx/$m/pack.json"
+  done
+  cat > "$fx/py-ok/resources/schemas.md" <<'FXPOK'
+# 스키마
+
+<!-- file: app/schemas.py -->
+```python
+# app/schemas.py
+from pydantic import BaseModel, ConfigDict
+
+
+class TaskUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str | None = None
+    status: str | None = None
+```
+FXPOK
+  cat > "$fx/py-bad/resources/schemas.md" <<'FXPBAD'
+# 스키마
+
+<!-- file: app/schemas.py -->
+```python
+# app/schemas.py
+from pydantic import BaseModel, ConfigDict
+
+
+class TaskUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str | None = None
+    status: str = "open"
+    priority: int = 0
+```
+FXPBAD
+
   local out code
   sec "양성 픽스처 (차단해야 한다)"
   out=$(bash "$0" --pack "$fx/broken" --no-vectors 2>&1); code=$?
@@ -329,14 +662,36 @@ FXF
     bad "수리 전 safeReturnTo가 차단되지 않음 → exit $code" "$(printf '%s' "$out" | grep -E '✓|✗|–' | tail -2 | tr '\n' ';')"
   fi
 
+  code=0; out=$(bash "$0" --pack "$fx/pathbad" --no-vectors 2>&1) || code=$?
+  if [ "$code" -eq 1 ] && printf '%s' "$out" | grep -q '경로 불일치'; then
+    ok "같은 파일을 다른 경로에서 import → exit 1 (의도한 이유로)"
+    [ -n "${EPCC_FX_WHY:-}" ] && printf "      ${C_D}%s${C_0}\n" "$(printf '%s' "$out" | grep '✗' | head -1 | sed 's/^  *//')"
+  else
+    bad "경로 불일치를 잡지 못한다 → exit $code" "$(printf '%s' "$out" | grep -E '✗|!' | head -2 | tr '\n' ';')"
+  fi
+
+  code=0; out=$(bash "$0" --pack "$fx/py-bad" --no-vectors 2>&1) || code=$?
+  if [ "$code" -eq 1 ] && printf '%s' "$out" | grep -q '부분 수정이 보내지 않은 필드를 채운다'; then
+    ok "부분 수정 스키마의 기본값 → exit 1 (의도한 이유로)"
+    [ -n "${EPCC_FX_WHY:-}" ] && printf "      ${C_D}%s${C_0}\n" "$(printf '%s' "$out" | grep '✗' | head -1 | sed 's/^  *//')"
+  elif [ "$code" -ne 1 ]; then
+    bad "부분 수정 스키마의 기본값 → exit $code (기대 1)" "python 프로필이 이 부류를 잡지 못한다"
+  else
+    bad "exit 1이지만 **다른 이유**다" "$(printf '%s' "$out" | grep '✗' | head -2 | tr '\n' ';')"
+  fi
+
   sec "무해 픽스처 (통과해야 한다)"
+  code=0; out=$(bash "$0" --pack "$fx/py-ok" --no-vectors 2>&1) || code=$?
+  [ "$code" -eq 0 ] && ok "선택 필드가 전부 None 기본값 → exit 0 (오탐 없음)" \
+    || bad "정상 Pydantic 스키마를 FAIL시킨다 → exit $code" "$(printf '%s' "$out" | grep '✗' | head -2 | tr '\n' ';')"
+
   code=0; out=$(bash "$0" --pack "$fx/fixed" 2>&1) || code=$?
   if [ "$code" -eq 0 ]; then ok "수리 후 safeReturnTo → exit 0 (오탐 없음)"
   else bad "수리된 형태가 오탐됨 → exit $code" "$(printf '%s' "$out" | grep '✗' | head -2 | tr '\n' ';')"; fi
 }
 
 # ════════════════════════════════════════════════════════════════════
-MODE=""; PACK=""; PROFILE="auto"; OUT_DIR=""; KEEP=0; NO_VECTORS=0
+MODE=""; PACK=""; PROFILE="auto"; OUT_DIR=""; KEEP=0; NO_VECTORS=0; ONLINE=0
 
 [ $# -eq 0 ] && { printf "인자 없음 (--help 참조)\n" >&2; exit 2; }
 while [ $# -gt 0 ]; do
@@ -346,6 +701,7 @@ while [ $# -gt 0 ]; do
     --out)         OUT_DIR="${2:-}"; shift 2 || exit 2 ;;
     --keep)        KEEP=1; shift ;;
     --no-vectors)  NO_VECTORS=1; shift ;;
+    --online)      ONLINE=1; shift ;;
     --self-test)   MODE="selftest"; shift ;;
     -h|--help)     sed -n '2,25p' "$0" | sed -E 's/^#[[:space:]]?//'; exit 0 ;;
     *)             printf "알 수 없는 옵션: %s (--help 참조)\n" "$1" >&2; exit 2 ;;

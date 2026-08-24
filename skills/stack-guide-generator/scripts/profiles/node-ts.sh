@@ -34,6 +34,11 @@ for (const f of files) {
   const src = readFileSync(join(dir, f), 'utf8');
   // JSX와 SFC는 타입 스트리핑 대상이 아니다 — 판정하지 않고 미검사로 보고한다.
   if (/\.(tsx|jsx|vue|svelte)$/.test(f))              { console.log(`UNSUP\t${f}\tJSX/SFC는 스트리핑 대상이 아니다`); continue; }
+  // 이 툴체인이 파싱하지 않는 형식 — `check_fence_imports`는 이미 데이터 파일로 예외
+  // 처리하는데 분류기만 짝이 안 맞아 `firestore.rules`가 구문 오류로 잡혔다 (C1 실측).
+  if (/\.(rules|ya?ml|toml|sql|env|ini|cfg|txt|md|graphql|prisma)$/.test(f)) {
+    console.log(`UNSUP\t${f}\t이 툴체인이 파싱하지 않는 형식`); continue;
+  }
   if (/\.json$/.test(f)) {
     const noComments = src.replace(/^\s*\/\/.*$/gm, '');
     try { JSON.parse(noComments); console.log(`FILE\t${f}`); }
@@ -46,6 +51,10 @@ for (const f of files) {
   if (strips(`class __C {\n${src}\n}`))               { console.log(`FRAG\t${f}\t클래스 본문 조각`); continue; }
   let msg = '';
   try { stripTypeScriptTypes(src, { mode: 'strip' }); } catch (e) { msg = String(e.message).split('\n')[0]; }
+  // strip-only 모드가 **거부하지만 정상 TypeScript**인 문법이 있다 — enum · namespace ·
+  // 파라미터 프로퍼티는 타입 제거만으로 지울 수 없어(코드를 생성한다) Node가 막는다.
+  // 이것을 구문 오류로 세면 정상 팩이 FAIL한다 (aws-serverless 파일럿이 경고).
+  if (/not supported in strip-only mode/.test(msg)) { console.log(`UNSUP\t${f}\t${msg}`); continue; }
   console.log(`SYNTAX\t${f}\t${msg}`);
 }
 CLS
@@ -69,7 +78,7 @@ CLS
   nfrag=$(num "$(grep -c '^FRAG' "$OUT/.classify.tsv" | tr -d ' ')")
   nsyn=$(num "$(grep -c '^SYNTAX' "$OUT/.classify.tsv" | tr -d ' ')")
   nuns=$(num "$(grep -c '^UNSUP' "$OUT/.classify.tsv" | tr -d ' ')")
-  [ "$nuns" -gt 0 ] && skip "JSX/SFC ${nuns}개 미검사" "Node의 타입 스트리핑이 JSX·SFC를 다루지 않는다 — tsc가 있는 환경(감사 A)에서만 검사된다"
+  [ "$nuns" -gt 0 ] && skip "구문 미검사 ${nuns}개" "$(awk -F'\t' '$1=="UNSUP"{printf "%s(%s) ", $2, substr($3,1,40)}' "$OUT/.classify.tsv")— Node의 타입 스트리핑이 다루지 못하는 문법(JSX·SFC·enum·namespace·파라미터 프로퍼티)이다. **정상 TypeScript일 수 있다** — tsc가 있는 환경(감사 A)에서만 판정된다"
   [ "$nfrag" -gt 0 ] && warn "완전 파일이라 주장했으나 조각 ${nfrag}개" "$(awk -F'\t' '$1=="FRAG"{printf "%s(%s) ", $2, $3}' "$OUT/.classify.tsv")— <!-- file: --> 대신 라벨(// 경로)을 쓰거나, 펜스를 완전한 파일로 만든다"
 
   if [ "$nsyn" -gt 0 ]; then
@@ -100,16 +109,37 @@ CLS
     cat "$OUT/units/$u" >> "$OUT/$dst"
   done < "$OUT/.classify.tsv"
 
-  cat > "$OUT/tsconfig.json" <<'TSC'
+  # **`@/*`를 `src/`로 못박지 않는다.** 팩마다 배치가 다르다 — nextjs는 `app/`·`stores/`를
+  # 프로젝트 루트에 두고 `src/`를 쓰지 않는다. 하나만 두면 그 팩의 정상 import가 전부
+  # 미해소가 된다(실측 — 오탐).
+  #
+  # **`baseUrl`을 쓰지 않는다.** TypeScript 7이 그것을 제거해서
+  # `error TS5102: Option 'baseUrl' has been removed`로 **정상 팩이 전부 타입체크 실패**가
+  # 된다 (firebase 파일럿 실측). `paths`는 TS 4.4부터 baseUrl 없이 tsconfig 기준으로
+  # 해석되므로 5와 7 양쪽에서 같은 뜻이다.
+  #
+  # `types: []`는 **암묵 전역까지 지운다** — @types/node가 설치돼 있어도 Buffer·process가
+  # 「없는 이름」이 되어 정상 팩이 FAIL한다 (aws-serverless 실측 — 오탐 2건).
+  # 설치돼 있으면 넣고, 없으면 그때만 비운다.
+  local types='[]'
+  [ -d "$OUT/node_modules/@types/node" ] && types='["node"]'
+  # **`include`를 하드코딩하지 않는다.** 팩마다 최상위 배치가 다르다 — firebase는 전부
+  # `functions/` 아래에 있어서 고정 목록으로는 **tsc가 팩 코드를 한 줄도 보지 않았다**
+  # (`TS18003: No inputs were found`가 나도 판정이 초록이었다). 복원된 유닛의 최상위
+  # 디렉토리에서 도출한다.
+  local inc; inc=$(cut -f2 "$OUT/.units.tsv" 2>/dev/null | grep '/' | cut -d/ -f1 | sort -u \
+    | sed 's#^#"#; s#$#/**/*"#' | tr '\n' ',' | sed 's/,$//')
+  inc="${inc:+$inc,}\"*.ts\""
+  cat > "$OUT/tsconfig.json" <<TSC
 {
   "compilerOptions": {
     "target": "ES2022", "module": "ESNext", "moduleResolution": "bundler",
     "strict": true, "noEmit": true, "skipLibCheck": true,
     "jsx": "preserve", "allowJs": true,
-    "baseUrl": ".", "paths": { "@/*": ["src/*"] },
-    "types": []
+    "paths": { "@/*": ["./src/*", "./*"] },
+    "types": $types
   },
-  "include": ["src/**/*", "*.ts"]
+  "include": [$inc]
 }
 TSC
   local tout

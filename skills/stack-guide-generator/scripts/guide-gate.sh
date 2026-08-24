@@ -11,6 +11,9 @@
 #       --forbid <kw,kw>   교차 누출 금지 키워드 (확정 조합에 없는 스택 이름)
 #       --pm <이름>        프리셋의 packageManager — 다른 매니저 명령을 잡는다
 #       --generated        생성물로 취급 (생성 스탬프 필수)
+#       --claims-out <파일> 버전 주장 인벤토리를 TSV로 내보낸다 (감사 B의 입력 전부).
+#                          40건이 넘으면 `split -n l/2`로 등분해 감사 B를 병렬로 띄운다 —
+#                          항목이 서로 독립이라 갈라도 손실이 0인 유일한 감사다
 #   guide-gate.sh --pack <팩디렉토리>
 #       축 팩을 조립 전에 검사한다. 축 안에서 닫히는 검사만 돌리고, 조합의 함수인
 #       것(requires 충족·--pair)은 건너뛴 것을 명시 보고한다.
@@ -260,6 +263,24 @@ LIMITS
 }
 
 # ── 6. 심볼: 중복 export 상이 정의(FAIL) · 유령 정의/미정의 호출/시그니처 혼재(REVIEW) ──
+# ── 심볼 정의 패턴 (언어 무관) ─────────────────────────────────────
+# TypeScript만 알던 패턴이 **Python 팩에서 정의를 통째로 못 봤다** (fastapi 파일럿 실측:
+# `def to_app_error(...)`·`settings = Settings()`가 전부 「정의 없음」으로 FAIL).
+# 함수는 `def`/`async def`, 모듈 수준 대입은 **열 0에 고정**한다 — 들여쓴 재대입과
+# 속성 대입(`obj.x = 1`)을 정의로 세면 오탐이 된다.
+# 정책 파일에 **표처럼 보이는 행은 있는데 파싱은 0건**이면 조용히 0건 집행이다.
+# firebase 팩에서 `## 기계 검사` 제목이 빠져 정책 8건이 통째로 무시됐고 게이트는
+# WARN만 냈다 — 강제 장치가 아무 일도 안 하면서 초록이었다. 그것이 이 저장소가
+# 없애려는 실패 모드 자체이므로 FAIL로 올린다.
+_policy_rows_look_present() { # $1=정책 파일
+  [ -f "$1" ] || return 1
+  grep -qE '^\|[[:space:]]*`[A-Za-z0-9_-]+`[[:space:]]*\|[[:space:]]*(forbid|require)[[:space:]]*\|' "$1"
+}
+
+_defpat() { # $1=심볼 이름 → grep -E 패턴
+  printf '(export[[:space:]]+)?(async[[:space:]]+)?(function|const|let|class|type|interface|enum)[[:space:]]+%s\\b|(async[[:space:]]+)?def[[:space:]]+%s\\b|^%s[[:space:]]*(:[^=]*)?=[^=]' "$1" "$1" "$1"
+}
+
 check_symbols() {
   local G="$1"
   sec "심볼 (중복 정의 · 유령 정의 · 미정의 호출)"
@@ -335,7 +356,7 @@ check_symbols() {
   : > "$TMP/undef.txt"
   while read -r s; do
     [ -z "$s" ] && continue
-    grep -qE "(export[[:space:]]+)?(async[[:space:]]+)?(function|const|let|class|type|interface|enum)[[:space:]]+$s\b" "$TMP/code.txt" \
+    grep -qE "$(_defpat "$s")" "$TMP/code.txt" \
       || printf '%s\n' "$s" >> "$TMP/undef.txt"
   done < "$TMP/localimports.txt"
   local ud; ud=$(num "$(grep -c . "$TMP/undef.txt" | tr -d ' ')")
@@ -470,7 +491,7 @@ check_ledger() {
     [ -z "$sym" ] && continue
     rf=$(_resolve "$G" "$deff")
     if [ -z "$rf" ]; then bad "원장 '$sym'의 정의 파일이 실재하지 않음: $(printf '%s' "$deff" | tr -d ' `')"; n_def=$((n_def+1)); continue; fi
-    if ! codelines "$rf" | cut -f3 | grep -qE "(export[[:space:]]+)?(async[[:space:]]+)?(function|const|let|class|type|interface|enum)[[:space:]]+$sym\b"; then
+    if ! codelines "$rf" | cut -f3 | grep -qE "$(_defpat "$sym")"; then
       bad "원장 '$sym'의 정의가 $(basename "$rf")에 없음" "원장은 계약이다 — 정의를 넣거나 원장에서 지운다"; n_def=$((n_def+1))
     fi
     for c in $(printf '%s' "$cons" | tr ',' ' '); do
@@ -556,7 +577,14 @@ check_policies() {
   _parse_policies "$pol" "$TMP/pol.tsv"
 
   local n; n=$(num "$(grep -c . "$TMP/pol.tsv" | tr -d ' ')")
-  [ "$n" -eq 0 ] && { warn "팩 정책에서 항목을 읽지 못함: $pol"; return; }
+  if [ "$n" -eq 0 ]; then
+    if _policy_rows_look_present "$pol"; then
+      bad "팩 정책이 조용히 0건 집행: $pol" "정책 행은 있는데 파싱이 0건이다 — 표 위에 \`## 기계 검사\` 제목이 있어야 파서가 읽는다. 이대로면 선언한 불변식이 하나도 강제되지 않는다"
+    else
+      warn "팩 정책에서 항목을 읽지 못함: $pol"
+    fi
+    return
+  fi
 
   # 팩 소유 파일 목록 (대상=seam 판정에 쓴다)
   local packfiles; packfiles=$(grep -oE '"packFiles"[^]]*\]' "$ASSEMBLY" | grep -oE '"[a-z0-9.-]+\.md"' | tr -d '"' | tr '\n' ' ')
@@ -650,7 +678,14 @@ check_policy_proof() {
   [ -f "$pol" ] || { warn "정책 파일 없음: $pol"; return 0; }
   _parse_policies "$pol" "$TMP/polproof.tsv"
   local n; n=$(num "$(grep -c . "$TMP/polproof.tsv" | tr -d ' ')")
-  [ "$n" -eq 0 ] && { warn "정책에서 항목을 읽지 못함: $pol" "형식: | id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |"; return 0; }
+  if [ "$n" -eq 0 ]; then
+    if _policy_rows_look_present "$pol"; then
+      bad "정책이 조용히 0건 집행: $pol" "정책 행은 있는데 파싱이 0건이다 — 표 위에 \`## 기계 검사\` 제목이 있어야 파서가 읽는다"
+    else
+      warn "정책에서 항목을 읽지 못함: $pol" "형식: | id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |"
+    fi
+    return 0
+  fi
 
   local id verdict scope rx except ex has viol=0 pass=0 skip=0 targets
   while IFS=$'\t' read -r id verdict scope rx except ex has; do
@@ -810,6 +845,19 @@ AWKCLAIM
     [ "$shown" -le 40 ] && printf "      ${C_D}[%s] %s${C_0}  %s\n" "$st" "$loc" "$txt"
   done < "$TMP/claims.tsv"
   [ "$shown" -gt 40 ] && printf "      ${C_D}… 그 외 %s건은 %s 에서 읽는다 (생략 아님)${C_0}\n" "$((shown-40))" "$TMP/claims.tsv"
+
+  # $TMP는 EXIT trap이 지운다 — 감사 B에 넘기려면 밖으로 복사해야 한다. 항목이 서로
+  # 독립이라 **줄 단위로 등분하면 손실 없이 병렬**이 된다. 그것이 이 플래그의 존재
+  # 이유다 (node-api 실측에서 감사 B가 임계 경로 15분 46초였다).
+  if [ -n "${CLAIMS_OUT:-}" ]; then
+    if cp "$TMP/claims.tsv" "$CLAIMS_OUT" 2>/dev/null; then
+      ok "버전 주장 인벤토리 내보냄: $CLAIMS_OUT"
+      # `split -n l/2`는 GNU 확장이라 macOS에서 실패한다 — 줄 수로 가르는 형태를 낸다
+      [ "$tot" -gt 40 ] && printf "      ${C_D}%s건 — 감사 B를 등분한다: split -l %s %s <접두>${C_0}\n" "$tot" "$(( (tot + 1) / 2 ))" "$CLAIMS_OUT"
+    else
+      warn "인벤토리를 쓰지 못함: $CLAIMS_OUT" "경로가 쓰기 가능한지 확인한다 — 감사 B의 입력이 사라진다"
+    fi
+  fi
   return 0
 }
 
@@ -1026,7 +1074,7 @@ check_pack_ledger() {
     [ -z "$s" ] && continue
     rf=$(_resolve "$P" "$deff")
     if [ -z "$rf" ]; then bad "팩 원장 '$s'의 정의 파일이 실재하지 않음: $deff"; n_def=$((n_def+1)); continue; fi
-    codelines "$rf" | cut -f3 | grep -qE "(export[[:space:]]+)?(async[[:space:]]+)?(function|const|let|class|type|interface|enum)[[:space:]]+$s\b" \
+    codelines "$rf" | cut -f3 | grep -qE "$(_defpat "$s")" \
       || { bad "팩 원장 '$s'의 정의가 $(basename "$rf")에 없음" "L0가 배정한 소유 파일에 정의가 들어가지 않았다 — 넣거나 원장을 고친다"; n_def=$((n_def+1)); continue; }
 
     # 형태가 호출 시그니처를 선언했으면 실제 정의의 인자 개수와 대조한다.
@@ -1121,7 +1169,16 @@ check_fence_imports() {
   # shellcheck disable=SC2086
   awk '
     FNR==1 { inf=0; claim=0 }
-    /^[[:space:]]*<!--[[:space:]]*file:/ { claim=1; next }
+    /^[[:space:]]*<!--[[:space:]]*file:/ {
+      claim=1
+      p=$0; sub(/.*file:[[:space:]]*/,"",p); sub(/[[:space:]]*-->.*/,"",p)
+      # **데이터 파일에는 import 기구가 없다** — 조달 검사가 성립하지 않는다.
+      # firebase 파일럿에서 firestore.indexes.json의 "queryScope": "COLLECTION" 문자열이
+      # 원장 심볼 COLLECTION의 미조달 사용으로 잡혔다 (오탐). 저자가 그 펜스를 라벨로
+      # 낮춰 회피하면 구문 검사까지 함께 잃는다 — 검사 쪽을 고치는 것이 맞다.
+      if (p ~ /\.(json|ya?ml|toml|rules|env|sql|md|txt|ini|cfg)$/) claim=0
+      next
+    }
     /^[[:space:]]*```/ {
       if (!inf) { inf=1; use=claim; start=FNR; claim=0 } else { inf=0; use=0 }
       next
@@ -1133,6 +1190,12 @@ check_fence_imports() {
     use && $0 !~ /^[[:space:]]*(\/\/|#|\*|\/\*|--)/ {
       line=$0
       sub(/[[:space:]]\/\/.*$/, "", line)   # 꼬리 주석도 뗀다 — `beginDrain(); // readyz가 503을 낸다`
+      # 문자열 리터럴 안의 이름은 모듈 바인딩 사용이 아니다. 차단 장치의 양성 대조군은
+      # 흔히 규칙·SQL·정규식을 문자열로 들고 단언한다 — firebase에서 넓힌 정규식을
+      # 증명하려고 문자열에 담은 isOwner 가 미조달 사용으로 잡혔다 (오탐).
+      # 데이터 파일에는 이미 예외를 뒀는데 코드 안 문자열에는 없었다.
+      gsub(/\047[^\047]*\047/, "", line)
+      gsub(/"[^"]*"/, "", line)
       print FILENAME "\t" start "\t" line
     }
   ' $files > "$TMP/fileunits.tsv"
@@ -1153,8 +1216,10 @@ check_fence_imports() {
       # `process.env` · `env: { ... }` 가 원장 심볼 `env`로 잡히던 오탐 (개발 중 실측).
       printf '%s\n' "$body" | grep -qE "(^|[^.[:alnum:]_$])$sym([^A-Za-z0-9_:]|$)" || continue
       # 이 펜스 안에서 정의되었거나 import되었는가
-      printf '%s\n' "$body" | grep -qE "(export[[:space:]]+)?(async[[:space:]]+)?(function|const|let|class|type|interface|enum)[[:space:]]+$sym\b" && continue
-      printf '%s\n' "$body" | grep -qE "^[[:space:]]*import[^;]*\b$sym\b" && continue
+      printf '%s\n' "$body" | grep -qE "$(_defpat "$sym")" && continue
+      # **`from X import Y`도 조달이다.** `^import`만 보던 규칙이 Python 팩에서
+      # 정상 import 12건을 전부 미조달로 판정했다 (fastapi 팬인 실측 — 오탐).
+      printf '%s\n' "$body" | grep -qE "^[[:space:]]*(import|from)[^;]*\b$sym\b" && continue
       bad "완전 파일이 '$sym'을 조달 없이 사용 (${key%%$'\t'*} 기준)" \
           "$(basename "${key%%$'\t'*}"):${key##*$'\t'} — 그대로 복사하면 ReferenceError다. import를 넣거나 라벨(// 경로)로 낮춘다"
       bad_n=$((bad_n+1))
@@ -1175,7 +1240,14 @@ check_pack_policies() {
   [ -f "$pol" ] || { warn "팩 정책 파일 없음: $pol"; return 0; }
   _parse_policies "$pol" "$TMP/packpol.tsv"
   local n; n=$(num "$(grep -c . "$TMP/packpol.tsv" | tr -d ' ')")
-  [ "$n" -eq 0 ] && { warn "팩 정책에서 항목을 읽지 못함: $pol"; return 0; }
+  if [ "$n" -eq 0 ]; then
+    if _policy_rows_look_present "$pol"; then
+      bad "팩 정책이 조용히 0건 집행: $pol" "정책 행은 있는데 파싱이 0건이다 — 표 위에 \`## 기계 검사\` 제목이 있어야 파서가 읽는다. 이대로면 선언한 불변식이 하나도 강제되지 않는다"
+    else
+      warn "팩 정책에서 항목을 읽지 못함: $pol"
+    fi
+    return 0
+  fi
 
   local packfiles; packfiles=$(_pack_basenames "$P")
   local id verdict scope rx except ex has targets hits viol=0 pass=0 defer=0
@@ -1431,19 +1503,25 @@ run_self_test() {
   # 팩은 이음매 없이 검증할 수 없었다. --pack이 그 자리이고, 병렬 저작의 팬인 지점이다.
   _fx_build_pack "$fx" || { bad "팩 픽스처 생성 실패"; return; }
 
+  _fx_build_pypack "$fx" || { bad "Python 팩 픽스처 생성 실패"; return; }
+
   sec "무해 팩 픽스처 (통과해야 한다)"
   _fx_assert_pack "$fx/pk/clean/fxpack2"     0 "결함 없는 축 팩"
+  _fx_assert_pack "$fx/pk/pyok/fxpypack"     0 "Python 정의(def · 모듈 대입)를 인식한다"
+  _fx_assert_pack "$fx/pk/jsonfence/fxpack2" 0 "데이터 파일의 문자열 리터럴은 심볼 사용이 아니다"
   _fx_assert_pack "$fx/pk/secok/fxpack2"     0 "수리된 복귀 경로 검증이 오탐되지 않음"
   _fx_assert_pack "$fx/pk/dupfence/fxpack2"  0 "파일 간 동일 펜스는 REVIEW이지 FAIL 아님"
 
   sec "양성 팩 픽스처 (차단해야 한다)"
   _fx_assert_pack "$fx/pk/polnoex/fxpack2"   1 "정책 증명 예 열 없음"
+  _fx_assert_pack "$fx/pk/polnohdr/fxpack2"  1 "정책 표는 있는데 제목이 없어 0건 집행"
   _fx_assert_pack "$fx/pk/polbadex/fxpack2"  1 "증명 예가 자기 정규식에 미매치"
   _fx_assert_pack "$fx/pk/polrealex/fxpack2" 1 "forbid 증명 예가 본문에 실재"
   _fx_assert_pack "$fx/pk/secorigin/fxpack2" 1 "복귀 경로를 origin 비교만으로 판정"
   _fx_assert_pack "$fx/pk/secprefix/fxpack2" 1 "복귀 경로를 startsWith('/')만으로 판정"
   _fx_assert_pack "$fx/pk/secrefer/fxpack2"  1 "요청에서 온 값으로 리다이렉트 (산문 지시)"
   _fx_assert_pack "$fx/pk/ledgerbad/fxpack2" 1 "원장 배정 파일에 정의 없음"
+  _fx_assert_pack "$fx/pk/pymissing/fxpypack" 1 "Python 정의가 진짜로 없으면 여전히 잡는다"
   _fx_assert_pack "$fx/pk/reqexport/fxpack2" 1 "requires 심볼을 팩이 스스로 export"
   _fx_assert_pack "$fx/pk/fvbad/fxpack2"     1 "fixesVariants ↔ pkgs 모순"
   _fx_assert_pack "$fx/pk/vocab/fxpack2"     1 "어휘 정책 위반 (L0 발행 forbid)"
@@ -1575,6 +1653,123 @@ _fx_assert_pack() {
 }
 
 # 축 팩 픽스처 — v3.13.0에서 생긴 표면(--pack · 증명 예 · 보안 형태 · 변형 선언)을 고정한다.
+
+# ── Python 팩 픽스처 ────────────────────────────────────────────────
+# 심볼 정의 패턴이 **TypeScript만 알았고 Python 팩에서 정의를 통째로 못 봤다**
+# (fastapi 파일럿 실측: `def to_app_error(...)`·`settings = Settings()`가 전부
+# 「정의 없음」으로 FAIL). 정상 Python 팩이 통과하는지(오탐)와, 정의가 진짜로 없을 때
+# 여전히 잡히는지(미탐)를 둘 다 고정한다.
+_fx_build_pypack() {
+  local fx="$1" b="$1/pk/pyok/fxpypack"
+  mkdir -p "$b/resources" || return 1
+
+  cat > "$b/PACK.md" <<'FXPYM'
+<!-- epcc-pack: backend/fxpypack v0.0.0 verified 2026-01-01 pydantic@2 -->
+
+# fxpypack 축 팩 — 허브 조각
+
+<!-- pack-slot: directory-structure -->
+## Directory Structure
+
+```
+app/
+├── settings.py
+└── errors.py
+```
+<!-- /pack-slot -->
+FXPYM
+
+  cat > "$b/resources/a.md" <<'FXPYA'
+# 환경 검증
+
+```python
+from pydantic_settings import BaseSettings
+
+
+class Settings(BaseSettings):
+    DATABASE_URL: str
+
+
+settings = Settings()
+```
+
+`settings`는 b.md의 정규화 경로가 쓴다.
+FXPYA
+
+  cat > "$b/resources/b.md" <<'FXPYB'
+# 에러 정규화
+
+```python
+ERROR_STATUS: dict[str, int] = {"NOT_FOUND": 404}
+
+
+def to_app_error(exc: BaseException) -> str:
+    return "INTERNAL"
+```
+
+`to_app_error`는 예외 핸들러가 먼저 부른다.
+FXPYB
+
+  cat > "$b/ledger.md" <<'FXPYL'
+## provides — 이 팩이 정의한다
+
+| 심볼 | 정의 파일 | 형태 | 성격 |
+| --- | --- | --- | --- |
+| `Settings` | a.md | `class Settings(BaseSettings)` — DATABASE_URL | env 스키마 |
+| `settings` | a.md | `Settings` 인스턴스 — 모듈 최상위에서 만든다 | 검증된 환경 값 |
+| `ERROR_STATUS` | b.md | `dict[str, int]` — 도메인 코드 → HTTP 상태 | 상태 매핑 |
+| `to_app_error` | b.md | `to_app_error(exc: BaseException) -> str` — 모르는 것은 INTERNAL | 정규화 |
+
+## requires — 이음매가 제공해야 한다
+
+| 심볼 | 종류 | 형태 | 이유 |
+| --- | --- | --- | --- |
+| `logger` | 프로젝트 | 구조적 로거 | 이음매 소유 |
+FXPYL
+
+  cat > "$b/policies.md" <<'FXPYP'
+## 기계 검사
+
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `no-print` | forbid | guide | `\bprint\(` | — | `print(user)` | 구조적 로거만 쓴다 |
+FXPYP
+
+  cat > "$b/pack.json" <<'FXPYJ'
+{
+  "axis": "backend",
+  "name": "fxpypack",
+  "registry": "pypi",
+  "exampleDomain": { "entity": "Task", "collection": "tasks" },
+  "fixesVariants": {},
+  "pkgs": ["pydantic@2"],
+  "resources": [
+    { "file": "a.md", "nav": "환경" },
+    { "file": "b.md", "nav": "에러" }
+  ]
+}
+FXPYJ
+
+  # 완전 파일 펜스가 `from X import Y`로 조달한다 — 오탐이면 안 된다
+  cat >> "$b/resources/b.md" <<'FXPYC'
+
+<!-- file: app/errors.py -->
+```python
+from app.settings import settings
+
+
+def describe() -> str:
+    return settings.DATABASE_URL
+```
+FXPYC
+
+  # 정의가 진짜로 없는 판본 — 미탐 방지
+  mkdir -p "$fx/pk/pymissing" && cp -R "$b" "$fx/pk/pymissing/" || return 1
+  sed -i.bak 's#^def to_app_error.*#def other_name(exc: BaseException) -> str:#' \
+    "$fx/pk/pymissing/fxpypack/resources/b.md" && rm -f "$fx/pk/pymissing/fxpypack/resources/b.md.bak"
+  return 0
+}
+
 _fx_build_pack() {
   local fx="$1" b="$1/pk/clean/fxpack2" m
   mkdir -p "$b/resources" || return 1
@@ -1661,7 +1856,7 @@ FXPP
 }
 FXPJ
 
-  for m in polnoex polbadex polrealex secorigin secprefix secok secrefer ledgerbad reqexport fvbad vocab dupfence noproof noshape badarity noimport reqnosig; do
+  for m in polnoex polbadex polrealex secorigin secprefix secok secrefer ledgerbad reqexport fvbad vocab dupfence noproof noshape badarity noimport reqnosig polnohdr jsonfence; do
     mkdir -p "$fx/pk/$m" && cp -R "$b" "$fx/pk/$m/" || return 1
   done
   # c.md를 더하는 픽스처는 pack.json에도 실어야 의도한 검사에서 차단된다.
@@ -1803,6 +1998,30 @@ FXP13
 
   # ⑧ 선언한 변형과 pkgs가 모순 — 조립 시점 대조가 거짓 통과한다
   sed -i.bak 's#"prisma@6"#"drizzle-orm@0"#' "$fx/pk/fvbad/fxpack2/pack.json" && rm -f "$fx/pk/fvbad/fxpack2/pack.json.bak"
+
+
+  # ⑬ 정책 표는 있는데 `## 기계 검사` 제목이 없다 — **조용히 0건 집행**
+  # firebase 팩에서 실제로 그랬고 게이트는 WARN만 냈다. 강제 장치가 아무 일도
+  # 안 하면서 초록인 것이 이 저장소가 없애려는 실패 모드 자체다.
+  sed -i.bak 's/^## 기계 검사$/## 정책/' "$fx/pk/polnohdr/fxpack2/policies.md" \
+    && rm -f "$fx/pk/polnohdr/fxpack2/policies.md.bak"
+
+  # ⑭ 데이터 파일 펜스에 원장 심볼과 같은 **문자열 리터럴**이 있다 — 오탐이면 안 된다
+  # (firebase 파일럿 실측: firestore.indexes.json의 "queryScope": "COLLECTION")
+  cat > "$fx/pk/jsonfence/fxpack2/resources/c.md" <<'FXP14'
+# 설정
+
+<!-- file: config/index.json -->
+```json
+{
+  "scope": "boot",
+  "schema": "EnvSchema"
+}
+```
+FXP14
+  sed -i.bak 's#{ "file": "b.md", "nav": "부팅" }#{ "file": "b.md", "nav": "부팅" },\
+    { "file": "c.md", "nav": "설정" }#' "$fx/pk/jsonfence/fxpack2/pack.json" \
+    && rm -f "$fx/pk/jsonfence/fxpack2/pack.json.bak"
 
   # ⑨ 어휘 정책 — L0가 발행하는 forbid 행이 병렬 저작의 어휘 분기를 잡는가
   cat > "$fx/pk/vocab/fxpack2/policies.md" <<'FXP9'
@@ -2067,7 +2286,7 @@ FXPOLE
 
 # ════════════════════════════════════════════════════════════════════
 MODE=""; GUIDE=""; LEDGER=""; FORBID=""; PM=""; GENERATED=0
-CONTRACT=""; FE=""; BE=""; ASSEMBLY=""; PACK_LEDGER_NAME="ledger.md"; PACK_POLICIES_NAME="policies.md"
+CONTRACT=""; FE=""; BE=""; ASSEMBLY=""; CLAIMS_OUT=""; PACK_LEDGER_NAME="ledger.md"; PACK_POLICIES_NAME="policies.md"
 REGRESS=0
 PLUGIN_GUIDES="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}/guides"
 
@@ -2086,6 +2305,7 @@ while [ $# -gt 0 ]; do
     --forbid)    FORBID="${2:-}"; shift 2 || exit 2 ;;
     --pm)        PM="${2:-}"; shift 2 || exit 2 ;;
     --assembly)  ASSEMBLY="${2:-}"; shift 2 || exit 2 ;;
+    --claims-out) CLAIMS_OUT="${2:-}"; shift 2 || exit 2 ;;
     --plugin-guides) PLUGIN_GUIDES="${2:-}"; shift 2 || exit 2 ;;
     --pack-ledger-name)   PACK_LEDGER_NAME="${2:-}"; shift 2 || exit 2 ;;   # --self-test 전용
     --pack-policies-name) PACK_POLICIES_NAME="${2:-}"; shift 2 || exit 2 ;; # --self-test 전용
