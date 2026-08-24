@@ -38,6 +38,7 @@ app/
     └── tasks.py             # 도메인 규칙. 리포지토리를 부르고 AppError를 던진다
 
 alembic/
+├── alembic.ini              # sqlalchemy.url 은 **비운다** — 접속 문자열은 env.py 가 settings 에서 받는다
 ├── env.py                   # Base.metadata를 target_metadata로 준다 (자동생성의 전제)
 └── versions/                # 마이그레이션 — 손으로 읽고 고친 뒤 커밋한다
 
@@ -171,6 +172,7 @@ from fastapi.exceptions import RequestValidationError
 ```bash
 uv run alembic revision --autogenerate -m "add tasks"
 uv run alembic upgrade head
+uv run alembic check                  # 모델 ↔ 스키마 드리프트 (0 통과 · 255 드리프트)
 uv run ruff check . && uv run pyright && uv run pytest
 ```
 

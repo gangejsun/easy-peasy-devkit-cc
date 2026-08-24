@@ -41,11 +41,12 @@
 
   "resources": [
     { "file": "project-structure.md", "nav": "계층 경계(routers → services → repo) · create_app 조립 · lifespan · APIRouter 마운트 · 의존성 주입 배선 · 예외 핸들러 등록" },
-    { "file": "data-access.md",       "nav": "AsyncSession 수명 · 소유권 필터 · rowcount 확인 · 트랜잭션 경계 · 키셋 페이지네이션 · N+1과 selectinload · Alembic 실행" },
+    { "file": "data-access.md",       "nav": "AsyncSession 수명 · 소유권 필터 · rowcount 확인 · 트랜잭션 경계 · 키셋 페이지네이션 · N+1과 selectinload" },
+    { "file": "migrations.md",      "nav": "Alembic 배선(async 엔진 위의 동기 마이그레이션) · 자동생성이 보지 못하는 것 · 확장-축소 · 백필과 rowcount · CREATE INDEX CONCURRENTLY · upgrade head를 어디서 돌리는가 · 왕복과 빈 diff" },
     { "file": "input-validation.md",  "nav": "Pydantic v2 스키마 · 부분 수정과 exclude_unset · model_config(extra) · pydantic-settings로 환경 검증 · 부팅 시점 실패" },
     { "file": "error-handling.md",    "nav": "도메인 에러 → 상태 코드 매핑 · IntegrityError의 SQLSTATE 판별(23505·23503) · RequestValidationError 정규화 · 존재 누설 금지" },
     { "file": "testing.md",           "nav": "pytest-asyncio 설정 · httpx ASGITransport로 앱 직접 호출 · 의존성 오버라이드 · 실 DB 통합 테스트 · 테스트 DB 격리와 정리" },
-    { "file": "operations.md",        "nav": "lifespan 종료와 풀 반납 · 헬스체크(live/ready) · 풀 사이징 · 구조적 로깅 · 마이그레이션 배포 순서 · 느린 쿼리 관측" }
+    { "file": "operations.md",        "nav": "lifespan 종료와 풀 반납 · 헬스체크(live/ready) · 풀 사이징 · 구조적 로깅 · 느린 쿼리 관측" }
   ],
 
   "seamSlots": ["api-endpoints", "auth-boundaries", "complete-example"],

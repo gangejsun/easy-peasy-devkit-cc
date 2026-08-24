@@ -13,6 +13,11 @@
 **`증명 예` 열은 의무다** (없으면 게이트 FAIL). 게이트가 ① 예가 자기 정규식에 매치되는가
 ② `forbid`면 그 예가 대상 파일에 실재하지 않는가를 단언한다.
 
+**`require`의 대상은 소유 파일까지 좁힌다.** `대상`은 `guide`·`seam` 말고 **`file:<파일명>`**을
+받는다. `guide`로 두면 「팩 전체에 한 번이라도 있으면 통과」로 퇴화하고 **파일이 늘수록 더
+무력해진다** — 감사 C가 `data-access.md`의 `rowcount` 검사를 통째로 지워도 정책이 통과하는
+것을 실행으로 보였다(다른 파일이 같은 문자열을 나르고 있었다).
+
 **`대상` 값에 마크다운 강조를 쓰지 않는다.** `**seam**`은 scope로 인식되지 않아 정책이
 조용히 전 파일을 겨눈다 — vue 팩에서 실제로 그랬다.
 
@@ -26,7 +31,7 @@
 | `no-sync-session` | forbid | guide | `\bsessionmaker\(` | — | `SessionLocal = sessionmaker(engine)` | 동기 `sessionmaker`는 async 라우터 안에서 이벤트 루프를 막는다. 이 축은 `async_sessionmaker`만 쓴다 — 두 이름이 한 글자 차이라 복사하면 조용히 섞인다 |
 | `no-orm-in-response` | forbid | guide | `response_model\s*=\s*Task\b` | — | `@router.get("/{id}", response_model=Task)` | ORM 모델을 응답 스키마로 쓰면 나중에 추가한 컬럼이 조용히 새어 나간다. `TaskOut`만 응답에 쓴다 |
 | `ownership-in-where` | require | guide | `Task\.owner_id\s*==` | — | `select(Task).where(Task.owner_id == owner_id)` | 이 축에는 행 수준 정책 엔진이 없다. **소유권은 `WHERE`에 있어야 하고**, 파이썬에서 거르는 형태는 남의 행을 이미 읽은 뒤다 |
-| `rowcount-checked` | require | guide | `\.rowcount\b` | — | `if result.rowcount == 0: raise AppError("NOT_FOUND", ...)` | `UPDATE`·`DELETE`는 0행을 변이해도 성공이다. 확인하지 않으면 남의 것을 지우라는 요청도 204가 된다 |
+| `rowcount-checked` | require | file:data-access.md | `\.rowcount\b` | — | `if result.rowcount == 0: raise AppError("NOT_FOUND", ...)` | `UPDATE`·`DELETE`는 0행을 변이해도 성공이다. 확인하지 않으면 남의 것을 지우라는 요청도 204가 된다 |
 | `partial-update-exclude-unset` | require | guide | `exclude_unset\s*=\s*True` | — | `patch = body.model_dump(exclude_unset=True)` | 없으면 보내지 않은 필드가 기본값으로 저장을 덮어쓴다. **실측 최악의 결함이 이 부류였고 문법은 완벽했다** — `pack-smoke.sh`의 스키마 실행이 같은 부류를 FAIL로 막는다 |
 | `no-string-sqlstate` | forbid | guide | `(duplicate key\|unique constraint\|violates)` | — | `if "unique constraint" in str(exc):` | 드라이버 메시지는 로케일·버전에 따라 바뀐다. SQLSTATE(`23505`)로 판정한다. **정규식을 `"duplicate key"` 하나로 두면 팩 자신이 ❌ 예로 시연한 `"unique constraint"`조차 못 잡는다**(감사 C 실측) |
 | `seam-no-http-exception` | forbid | seam | `raise HTTPException\(` | — | `raise HTTPException(status_code=404)` | 이음매가 `HTTPException`을 직접 던지면 `ERROR_STATUS` 매핑표를 우회한다 — 코드표에 없는 상태가 새어 나오고 봉투가 두 형태가 된다. `AppError`를 던지고 `install_error_handlers`가 옮긴다 |
@@ -41,6 +46,8 @@
 - **`selectinload`를 쓸 자리와 쓰지 말 자리를 사람이 가른다.** 목록에서 관계를 안 쓰면
   붙이지 않는다 — 붙이면 쓰지도 않을 행을 매 페이지마다 더 읽는다
 - **Alembic 자동생성본은 읽고 고친 뒤 커밋한다.** 인덱스 이름·타입 변경·데이터 이전을
-  자동생성이 알아서 하지 못한다. 특히 `owner_id` 인덱스가 빠지면 목록이 전체 스캔이 된다
+  자동생성이 알아서 하지 못한다. 특히 `(owner_id, created_at, id)` 복합 인덱스
+  (`ix_tasks_owner_created_id`)가 빠지면 목록이 전체 스캔이 된다 — 선언은 `data-access.md`,
+  적용은 `migrations.md`가 소유한다
 - **`current_user`를 우회하는 라우터를 만들지 않는다.** 하나라도 토큰을 직접 파싱하면
   경계가 둘이 되고, 그 둘은 반드시 갈라진다

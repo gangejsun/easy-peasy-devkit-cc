@@ -25,7 +25,7 @@
 | 심볼 | 정의 파일 | 형태 | 성격 |
 | --- | --- | --- | --- |
 | `Base` | data-access.md | **`app/db/base.py`** — `class Base(DeclarativeBase)` — `MetaData`에 명명 규칙을 건다(제약 이름이 Alembic 자동생성에 필요하다) | 선언 기반 |
-| `Task` | data-access.md | **`app/db/tasks.py`** — `class Task(Base)` — `id: Mapped[UUID]`(PK, 서버 기본값 아님 — 앱이 만든다) · `title: Mapped[str]` · `status: Mapped[TaskStatus]` · `owner_id: Mapped[UUID]`(인덱스) · `created_at: Mapped[datetime]`(tz-aware). **`(owner_id, created_at, id)` 복합 인덱스**가 키셋 페이지네이션의 전제다 | ORM 모델 |
+| `Task` | data-access.md | **`app/db/tasks.py`** — `class Task(Base)` — `id: Mapped[UUID]`(PK, 서버 기본값 아님 — 앱이 만든다) · `title: Mapped[str]` · `status: Mapped[TaskStatus]` · `owner_id: Mapped[UUID]`(**복합 인덱스의 선두 컬럼이다 — 단독 `index=True`를 주지 않는다**) · `created_at: Mapped[datetime]`(tz-aware). **`(owner_id, created_at, id)` 복합 인덱스**가 키셋 페이지네이션의 전제다 | ORM 모델 |
 | `engine` | data-access.md | **`app/db/session.py`** **여기가 유일한 정의다.** 풀 값을 다른 파일이 다시 쓰면 두 벌이 갈린다 — `AsyncEngine` — 모듈 최상위에서 만든다. `pool_size`·`max_overflow`·`pool_pre_ping`을 명시한다 | 엔진 |
 | `session_factory` | data-access.md | **`app/db/session.py`** — `async_sessionmaker[AsyncSession]` — `expire_on_commit=False`. **켜 두면 커밋 후 속성 접근이 다시 쿼리를 날려 응답 직렬화 중 I/O가 난다** | 세션 팩토리 |
 | `get_session` | data-access.md | **`app/db/session.py`** — `async def get_session() -> AsyncIterator[AsyncSession]` — FastAPI 의존성. **요청당 세션 하나**를 열고 성공이면 커밋, 예외면 롤백한 뒤 닫는다. 라우터는 `Depends(get_session)`로만 받는다 | 세션 의존성 |
@@ -79,6 +79,11 @@
 
 `provides`도 `requires`도 아니다. 예제에서 이름만 등장하므로 조립 후에도 정의가 없는 것이 정상이다.
 
+**함수·클래스만이 아니라 컬럼·필드도 등재한다.** 예제가 도입한 컬럼이 어디에도 선언되지
+않으면 독자가 그것을 모델에 있는 컬럼으로 읽고, 그 상태로 `alembic check`를 돌리면
+드리프트가 난다(감사 C 실측).
+
 | 이름 | 등장 | 성격 |
 | --- | --- | --- |
 | `TaskService` | project-structure.md (계층 예시) | 서비스 계층 예시 |
+| `priority` | migrations.md (확장-축소 예시) | **예제 전용 컬럼.** 모델(`Task`)에 없다 — §4가 확장 단계로 더하는 컬럼을 §5의 백필이 채우는 흐름을 보이기 위한 것이다 |

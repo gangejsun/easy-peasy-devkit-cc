@@ -1,10 +1,10 @@
 <!-- epcc-pack: backend/fastapi v3.14.0 -->
 # 운영 — 프로세스가 어떻게 뜨고, 어떻게 죽고, 무엇을 남기는가
 
-이 파일은 **로깅 설정 · 헬스체크 · 풀 사이징 · 종료와 풀 반납 · 느린 쿼리 관측 ·
-마이그레이션 배포 순서**를 소유한다. `engine`·`session_factory`·`get_session`의 정의는
-`resources/data-access.md`가, `create_app`과 `lifespan`은 `resources/project-structure.md`가
-소유한다 — 여기서는 그것들을 **부르고 관측할** 뿐이다.
+이 파일은 **로깅 설정 · 헬스체크 · 풀 사이징 · 종료와 풀 반납 · 느린 쿼리 관측**을
+소유한다. `engine`·`session_factory`·`get_session`의 정의는 `resources/data-access.md`가,
+`create_app`과 `lifespan`은 `resources/project-structure.md`가, **마이그레이션은
+`resources/migrations.md`가** 소유한다 — 여기서는 그것들을 **부르고 관측할** 뿐이다.
 
 ## 1. 판단 — 무엇을 어디에 연결하는가
 
@@ -231,39 +231,7 @@ stmt = (
 )
 ```
 
-## 7. 마이그레이션 배포 순서
-
-**스키마와 코드는 동시에 바뀌지 않는다.** 롤링 배포 중에는 옛 코드와 새 코드가 같은 DB를
-동시에 본다. 그래서 한 번에 하나씩, **되돌릴 수 있는 방향으로만** 움직인다.
-
-| 단계 | 무엇을 한다 | 이때 도는 코드 |
-| --- | --- | --- |
-| 1 확장 | 컬럼·인덱스를 **추가**한다. `NOT NULL`은 아직 걸지 않는다 | 옛 코드 (새 컬럼을 모른다) |
-| 2 배포 | 새 컬럼을 읽고 **쓰는** 코드를 내보낸다 | 옛/새 혼재 |
-| 3 채움 | 남은 행을 배치로 채운다 | 새 코드 |
-| 4 조임 | `NOT NULL`·유니크 제약을 건다 | 새 코드 |
-| 5 축소 | 옛 컬럼을 **다음 배포에서** 지운다 | 새 코드만 |
-
-- **`alembic upgrade head`는 앱 기동 훅이 아니라 배포 단계로 돌린다.** 기동 시 돌리면
-  파드 N개가 동시에 같은 마이그레이션을 잡는다 <!-- unverified -->
-- **자동생성본은 읽고 고친 뒤 커밋한다.** 인덱스 이름·타입 변경·데이터 이전을 자동생성이
-  알아서 하지 못한다. `owner_id` 복합 인덱스가 빠지면 §6의 목록이 전체 스캔이 된다
-- 큰 테이블의 인덱스는 **`CREATE INDEX CONCURRENTLY`**로 만든다. 일반 `CREATE INDEX`는
-  쓰기를 막고, Alembic 자동생성은 그것을 골라 주지 않는다. 다만 **트랜잭션 블록 안에서는
-  돌지 않는다** — Alembic은 마이그레이션을 트랜잭션으로 감싸므로
-  `with op.get_context().autocommit_block():` 안에서
-  `op.create_index(..., postgresql_concurrently=True)`를 부른다 <!-- unverified: PostgreSQL 서버 없음 -->
-
-채우는 마이그레이션은 **몇 행을 건드렸는지 확인한다.** 0행은 성공이 아니라 대개 조건이 틀린 것이다.
-
-```python
-# alembic/versions/xxxx_backfill_status.py — 발췌
-result = op.get_bind().execute(
-    sa.text("UPDATE tasks SET status = 'open' WHERE status IS NULL")
-)
-if result.rowcount == 0:
-    print("backfill matched 0 rows — 조건을 확인한다")
-```
+마이그레이션(배포 순서 · 확장-축소 · 백필 · `upgrade head` 를 어디서 돌리는가)은 `resources/migrations.md` 가 소유한다.
 
 ## 오용 목록 ① — 단일 프로세스 관용구 → 다중 워커 형태 대조표
 
@@ -272,7 +240,6 @@ if result.rowcount == 0:
 | `/health` 하나로 생존·준비를 겸한다 | `/healthz`(DB 안 봄) · `/readyz`(`SELECT 1`)로 가른다 |
 | `print()`로 관측한다 | 루트 핸들러 + `JsonFormatter`, uvicorn 로거는 전파시킨다 |
 | `create_app()` 뒤에 로깅을 설정한다 | 부팅 모듈 임포트 시점, `create_app`보다 먼저 |
-| 기동 훅에서 `alembic upgrade head` | 배포 파이프라인의 별도 단계로 뺀다 |
 | 풀 크기를 파드 기준으로 잡는다 | 프로세스마다 풀이 하나다. 워커 수를 곱한다 |
 | `AsyncEngine`에 커서 이벤트를 건다 | `engine.sync_engine`에 건다 |
 | 종료 시 그냥 프로세스를 죽인다 | `lifespan` 종료에서 `await engine.dispose()` |
@@ -286,4 +253,3 @@ if result.rowcount == 0:
 | `pool_pre_ping` vs `pool_recycle` | 죽은 커넥션 탐지는 앞, 유휴 만료 예방은 뒤. 함께 쓴다 |
 | `engine.dispose()` vs 커넥션 `close()` | 풀 전체 정리는 앞, 요청 단위 반납은 뒤 |
 | `before_cursor_execute` vs 미들웨어 계측 | 쿼리 소요는 앞, 요청 소요는 뒤. 둘은 다른 값이다 |
-| 확장 후 즉시 축소 vs 다음 배포에서 축소 | 롤링 중 옛 코드가 살아 있으면 축소는 다음 배포다 |

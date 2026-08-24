@@ -129,7 +129,7 @@ from app.http.auth import AuthUser, auth_for, current_user     # noqa: E402
 @pytest_asyncio.fixture(scope="session")
 async def db_schema() -> AsyncIterator[None]:
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(Base.metadata.create_all)   # 마이그레이션은 돌지 않는다 — 검증은 migrations.md §8의 별도 CI 단계다
     yield
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)

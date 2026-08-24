@@ -254,24 +254,7 @@ rows = list((await session.scalars(
 관계를 **선언한 경우에만** `selectinload` 를 쓴다. 이 팩의 `Task` 에는 관계가 없어 기본형에 없고,
 추가했다면 `.options(selectinload(Task.<관계>))` 로 1+N 을 2회로 줄인다. <!-- verified: 관계 하나를 붙인 실험 모델에서 작업 5건 조회가 SELECT 6회 → 2회 -->
 
-## 7. Alembic — 자동생성은 초안이지 결과물이 아니다
-
-```python
-# alembic/env.py
-import app.db.tasks  # noqa: F401  — 모델 모듈을 import 해야 Base.metadata 가 채워진다
-from app.db.base import Base
-from app.settings import settings
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
-target_metadata = Base.metadata
-```
-
-`import app.db.tasks` 가 없으면 `Base.metadata.tables` 가 **빈 리스트**라 자동생성이 "변경 없음"을 낸다. <!-- verified: import 전 [] → import 후 ['tasks'] -->
-초안은 읽고 고친 뒤 커밋한다: `uv run alembic revision --autogenerate -m "init tasks"` → `uv run alembic upgrade head`.
-
-| 자동생성이 하는 것 | 자동생성이 **못 하는** 것 |
-| --- | --- |
-| 테이블·컬럼·인덱스 추가, 제약 추가/삭제(이름이 있을 때), 컬럼 타입 변경, 인덱스 이름 변경(drop+create) | 컬럼 이름 변경 — `add_column`+`drop_column` 으로 나와 **데이터가 사라진다**. 기존 행 백필 같은 데이터 이전 |
-| `server_default` 변경은 **기본 설정에서 감지하지 않는다.** `compare_server_default=True` 를 주면 `alter_column` 을 만들지만 방언별 신뢰도가 낮아 이 팩은 켜지 않는다 | <!-- verified: alembic 1.19.1 · 드리프트 4종을 심고 생성물 대조. 플래그 없이 0건(본문 pass) → 켜면 alter_column. PG 16+asyncpg 0.31 은 감사 B1 재확인 --> |
+마이그레이션(Alembic 배선 · 자동생성의 한계 · 확장-축소 · 배포 순서)은 `resources/migrations.md` 가 소유한다.
 
 ## 오용 목록 ① — SQLAlchemy 1.4 동기 → 2.0 async 관용구 대조표
 

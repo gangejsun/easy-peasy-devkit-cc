@@ -2,7 +2,8 @@
 # 프로젝트 구조 — 계층 경계와 앱 조립
 
 `create_app`과 `lifespan`, 그리고 **무엇이 무엇을 부르는가**를 소유한다. 데이터 계층은
-`data-access.md`, 스키마는 `input-validation.md`, 에러 표는 `error-handling.md` 가 소유한다.
+`data-access.md`, 스키마는 `input-validation.md`, 에러 표는 `error-handling.md`,
+마이그레이션은 `migrations.md` 가 소유한다.
 
 에러 모듈은 **계층에 따라 셋으로 갈라져 있다.** `AppError` 가 `app/http/` 에 있으면
 `import app.db.tasks` 한 줄이 fastapi 를 전이로 끌어와 계층이 무너진다(§1).
@@ -101,9 +102,8 @@ def create_app() -> FastAPI:
 | `FastAPI(lifespan=lifespan)` | startup · shutdown 둘 다 실행 | `lifespan.startup.complete` |
 | `FastAPI()` (부착 누락) | **아무것도 실행되지 않음** | `lifespan.startup.complete` — 똑같다 <!-- verified: 두 앱에 ASGI lifespan 이벤트를 직접 넣어 훅 실행 여부와 send 메시지를 대조 --> |
 
-`lifespan` 안에서 실패하면 서버는 기동하지 않는다. **DB 가 있어야만 뜰 수 있는 서버로
-만들지 마라** — 예열은 `connect()` 한 번으로 충분하고, 마이그레이션을 여기서 돌리면
-여러 인스턴스가 동시에 같은 마이그레이션을 잡는다(배포 순서는 `operations.md`).
+`lifespan` 안에서 실패하면 서버는 기동하지 않는다. **DB 가 있어야만 뜰 수 있는 서버로 만들지
+마라** — 예열은 `connect()` 한 번이면 된다. **마이그레이션은 여기서 돌리지 않는다** — 이유와 배포 순서는 `resources/migrations.md` §7 이 소유한다.
 
 `httpx`의 `ASGITransport`는 lifespan 을 **돌리지 않는다.** 테스트에서 기동 코드가 필요하면
 `async with lifespan(app):`로 감싸야 하고, 테스트 하네스 전체는 `testing.md` 가 소유한다.
