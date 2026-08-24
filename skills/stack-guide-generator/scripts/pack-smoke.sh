@@ -649,6 +649,33 @@ class TaskUpdate(BaseModel):
 ```
 FXPBAD
 
+  # ── 마크업·스타일 시트를 구문 오류로 판정하지 않는다 (오탐) ──
+  # 프론트엔드 축 팩은 `index.html`·`styles.css`를 완전 파일로 주장한다. Node의 타입
+  # 스트리핑은 그것들을 파싱하지 못하는데 분류기가 **구문 오류**로 셌다 — 실측에서
+  # 정상 팩이 FAIL 2를 받았다. 오탐 하나가 검사를 죽인다.
+  mkdir -p "$fx/js-markup/resources" || { bad "마크업 픽스처 생성 실패"; return; }
+  printf '<!-- epcc-pack: frontend/fx v0 -->\n# fx 팩\n' > "$fx/js-markup/PACK.md"
+  printf '{ "axis": "frontend", "name": "fx", "pkgs": ["typescript@7"] }\n' > "$fx/js-markup/pack.json"
+  cat > "$fx/js-markup/resources/entry.md" <<'FXJSM'
+# 진입점
+
+<!-- file: index.html -->
+```html
+<!doctype html>
+<html lang="ko"><body><div id="app"></div></body></html>
+```
+
+<!-- file: src/styles.css -->
+```css
+:root { --gap: 8px; }
+```
+
+<!-- file: src/main.js -->
+```js
+export function mount(id) { document.getElementById(id).textContent = 'ok' }
+```
+FXJSM
+
   local out code
   sec "양성 픽스처 (차단해야 한다)"
   out=$(bash "$0" --pack "$fx/broken" --no-vectors 2>&1); code=$?
@@ -684,6 +711,15 @@ FXPBAD
   code=0; out=$(bash "$0" --pack "$fx/py-ok" --no-vectors 2>&1) || code=$?
   [ "$code" -eq 0 ] && ok "선택 필드가 전부 None 기본값 → exit 0 (오탐 없음)" \
     || bad "정상 Pydantic 스키마를 FAIL시킨다 → exit $code" "$(printf '%s' "$out" | grep '✗' | head -2 | tr '\n' ';')"
+
+  code=0; out=$(bash "$0" --pack "$fx/js-markup" --no-vectors 2>&1) || code=$?
+  if [ "$code" -eq 0 ] && printf '%s' "$out" | grep -q '파싱하지 않는'; then
+    ok "html·css 완전 파일 주장 → exit 0 (구문 오류가 아니라 미검사로 보고)"
+  elif [ "$code" -eq 0 ]; then
+    bad "exit 0이지만 **조용히 통과**했다" "미검사는 명시 보고여야 한다 — 보고 문구가 출력에 없다"
+  else
+    bad "마크업·스타일 시트를 FAIL시킨다 → exit $code" "$(printf '%s' "$out" | grep '✗' | head -2 | tr '\n' ';')"
+  fi
 
   code=0; out=$(bash "$0" --pack "$fx/fixed" 2>&1) || code=$?
   if [ "$code" -eq 0 ]; then ok "수리 후 safeReturnTo → exit 0 (오탐 없음)"

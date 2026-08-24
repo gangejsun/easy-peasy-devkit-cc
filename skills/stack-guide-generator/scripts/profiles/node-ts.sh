@@ -36,7 +36,7 @@ for (const f of files) {
   if (/\.(tsx|jsx|vue|svelte)$/.test(f))              { console.log(`UNSUP\t${f}\tJSX/SFC는 스트리핑 대상이 아니다`); continue; }
   // 이 툴체인이 파싱하지 않는 형식 — `check_fence_imports`는 이미 데이터 파일로 예외
   // 처리하는데 분류기만 짝이 안 맞아 `firestore.rules`가 구문 오류로 잡혔다 (C1 실측).
-  if (/\.(rules|ya?ml|toml|sql|env|ini|cfg|txt|md|graphql|prisma)$/.test(f)) {
+  if (/\.(rules|ya?ml|toml|sql|env|ini|cfg|txt|md|graphql|prisma|html?|css|scss|sass|less|svg)$/.test(f)) {
     console.log(`UNSUP\t${f}\t이 툴체인이 파싱하지 않는 형식`); continue;
   }
   if (/\.json$/.test(f)) {

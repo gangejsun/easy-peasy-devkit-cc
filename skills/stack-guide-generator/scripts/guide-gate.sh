@@ -1176,7 +1176,9 @@ check_fence_imports() {
       # firebase 파일럿에서 firestore.indexes.json의 "queryScope": "COLLECTION" 문자열이
       # 원장 심볼 COLLECTION의 미조달 사용으로 잡혔다 (오탐). 저자가 그 펜스를 라벨로
       # 낮춰 회피하면 구문 검사까지 함께 잃는다 — 검사 쪽을 고치는 것이 맞다.
-      if (p ~ /\.(json|ya?ml|toml|rules|env|sql|md|txt|ini|cfg)$/) claim=0
+      # **이 목록은 profiles/node-ts.sh의 분류기와 짝이어야 한다.** 같은 개념이 두 곳에
+      # 있어 갈라져 있었다 — 게이트는 graphql·prisma를 몰랐고 분류기는 json을 따로 다뤘다.
+      if (p ~ /\.(json|ya?ml|toml|rules|env|sql|md|txt|ini|cfg|graphql|prisma|html?|css|scss|sass|less|svg)$/) claim=0
       next
     }
     /^[[:space:]]*```/ {
