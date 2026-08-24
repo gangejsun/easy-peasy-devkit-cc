@@ -91,13 +91,14 @@ CLS
     ok "구문 검사 통과 — 주장한 완전 파일 ${nfile}개"
   fi
   # ── 타입체크: 의존성이 필요하다 ──
+  # **복원과 tsconfig 생성은 tsc 유무와 무관하게 한다.** 예전에는 tsc가 없으면 여기서
+  # 곧바로 반환해 실파일 트리도 tsconfig도 남지 않았다 — 그러면 ⓐ 감사 A가 넘겨받는
+  # 작업 디렉토리가 「거의 다 된 스크래치 프로젝트」가 아니게 되고(그것이 --keep의 존재
+  # 이유다) ⓑ **판정의 전제를 검사할 수 없다**: 검사가 도는 것과 검사가 대상을 보는 것은
+  # 다른데, 후자는 tsconfig에 적혀 있고 그 파일이 없으면 확인할 방법이 없다.
   local tsc=""
   command -v tsc >/dev/null 2>&1 && tsc="tsc"
   [ -z "$tsc" ] && [ -x "$OUT/node_modules/.bin/tsc" ] && tsc="$OUT/node_modules/.bin/tsc"
-  if [ -z "$tsc" ]; then
-    skip "tsc 없음 — 타입체크 생략" "오프라인이면 정상이다. 감사 A가 스크래치에서 'npm i -D typescript' 후 다시 돌린다 — 이 항목은 **미검사**이지 통과가 아니다"
-    return 0
-  fi
 
   # 완전 파일만 실제 트리로 옮긴다 (조각은 타입체크 대상이 아니다)
   local dst
@@ -129,19 +130,36 @@ CLS
   # 디렉토리에서 도출한다.
   local inc; inc=$(cut -f2 "$OUT/.units.tsv" 2>/dev/null | grep '/' | cut -d/ -f1 | sort -u \
     | sed 's#^#"#; s#$#/**/*"#' | tr '\n' ',' | sed 's/,$//')
-  inc="${inc:+$inc,}\"*.ts\""
+  # **루트에 둔 파일의 확장자를 하나로 못박지 않는다.** `"*.ts"`만 두면 JS 축 팩이 루트에
+  # 두는 `main.js`가 tsc 시야 밖이라 **의도한 타입 오류를 심어도 「타입체크 통과」가 난다**
+  # (실측 — 미탐). `include`에 있는 것과 검사되는 것은 다르다.
+  inc="${inc:+$inc,}\"*.ts\",\"*.js\",\"*.mjs\",\"*.cjs\""
+  # **`checkJs`는 팩의 언어로 가른다.** `allowJs`만으로는 `.js`가 파싱되기만 하고 JSDoc
+  # 타입은 **하나도 검사되지 않는다** — JS 축 팩의 타입 표준 슬롯(JSDoc + 런타임 스키마
+  # 검증)에 검증자가 0이 된다. 그렇다고 전역으로 켜면 TS 팩이 배송하는 설정 조각
+  # (`vite.config.js` 류)이 새로 검사 대상이 되어 오탐이 난다. 그래서 **복원 유닛에 TS가
+  # 하나도 없을 때만** 켠다 — 그때 이 팩은 JS 팩이다.
+  local hasts checkjs='false'
+  hasts=$(num "$(cut -f2 "$OUT/.units.tsv" 2>/dev/null | grep -cE '\.(ts|tsx|mts|cts)$' | tr -d ' ')")
+  [ "$hasts" -eq 0 ] && checkjs='true'
   cat > "$OUT/tsconfig.json" <<TSC
 {
   "compilerOptions": {
     "target": "ES2022", "module": "ESNext", "moduleResolution": "bundler",
     "strict": true, "noEmit": true, "skipLibCheck": true,
-    "jsx": "preserve", "allowJs": true,
+    "jsx": "preserve", "allowJs": true, "checkJs": $checkjs,
     "paths": { "@/*": ["./src/*", "./*"] },
     "types": $types
   },
   "include": [$inc]
 }
 TSC
+  [ "$checkjs" = "true" ] && ok "JS 팩으로 판정 — checkJs 를 켠다 (JSDoc 타입이 검사된다)"
+  if [ -z "$tsc" ]; then
+    skip "tsc 없음 — 타입체크 생략" "오프라인이면 정상이다. 감사 A가 이 작업 디렉토리에서 'npm i -D typescript' 후 tsconfig.json 그대로 돌린다 — 이 항목은 **미검사**이지 통과가 아니다"
+    return 0
+  fi
+
   local tout
   if tout=$("$tsc" -p "$OUT/tsconfig.json" 2>&1); then
     ok "타입체크 통과 ($tsc)"

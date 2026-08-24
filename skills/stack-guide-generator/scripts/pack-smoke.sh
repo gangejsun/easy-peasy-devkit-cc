@@ -672,7 +672,17 @@ FXPBAD
 
 <!-- file: src/main.js -->
 ```js
-export function mount(id) { document.getElementById(id).textContent = 'ok' }
+/**
+ * @param {string} id
+ * @returns {number}
+ */
+export function mount(id) { return id }
+```
+
+<!-- file: entry.js -->
+```js
+/** @type {number} */
+export const answer = 'not a number'
 ```
 FXJSM
 
@@ -712,13 +722,36 @@ FXJSM
   [ "$code" -eq 0 ] && ok "선택 필드가 전부 None 기본값 → exit 0 (오탐 없음)" \
     || bad "정상 Pydantic 스키마를 FAIL시킨다 → exit $code" "$(printf '%s' "$out" | grep '✗' | head -2 | tr '\n' ';')"
 
-  code=0; out=$(bash "$0" --pack "$fx/js-markup" --no-vectors 2>&1) || code=$?
-  if [ "$code" -eq 0 ] && printf '%s' "$out" | grep -q '파싱하지 않는'; then
-    ok "html·css 완전 파일 주장 → exit 0 (구문 오류가 아니라 미검사로 보고)"
-  elif [ "$code" -eq 0 ]; then
-    bad "exit 0이지만 **조용히 통과**했다" "미검사는 명시 보고여야 한다 — 보고 문구가 출력에 없다"
+  code=0; out=$(bash "$0" --pack "$fx/js-markup" --no-vectors --keep --out "$fx/out-js" 2>&1) || code=$?
+  if printf '%s' "$out" | grep -q '파싱하지 않는'; then
+    ok "html·css 완전 파일 주장 → 구문 오류가 아니라 미검사로 보고"
   else
-    bad "마크업·스타일 시트를 FAIL시킨다 → exit $code" "$(printf '%s' "$out" | grep '✗' | head -2 | tr '\n' ';')"
+    bad "마크업·스타일 시트를 구문 오류로 판정한다" "$(printf '%s' "$out" | grep '✗' | head -2 | tr '\n' ';')"
+  fi
+
+  # **검사가 도는 것과 검사가 대상을 보는 것은 다르다.** tsc 는 오프라인에서 없을 수 있으므로
+  # 판정 자체가 아니라 **판정의 전제**(생성된 tsconfig)를 단언한다 — 이 둘이 틀리면 JSDoc
+  # 타입 오류를 심어도 「타입체크 통과」가 난다(실측 — 미탐).
+  if [ -f "$fx/out-js/tsconfig.json" ]; then
+    if grep -q '"checkJs": true' "$fx/out-js/tsconfig.json"; then
+      ok "JS 팩 → checkJs 켜짐 (allowJs 만으로는 JSDoc 타입이 하나도 검사되지 않는다)"
+    else
+      bad "JS 팩인데 checkJs 가 꺼져 있다" "$(grep -o 'checkJs[^,]*' "$fx/out-js/tsconfig.json")"
+    fi
+    if grep -q '"\*\.js"' "$fx/out-js/tsconfig.json"; then
+      ok "루트 JS 가 include 에 있다 (\"*.ts\"만 두면 main.js 가 tsc 시야 밖이다)"
+    else
+      bad "루트 JS 가 include 에 없다" "$(grep -o '"include".*' "$fx/out-js/tsconfig.json")"
+    fi
+  else
+    bad "tsconfig 가 생성되지 않았다" "$fx/out-js/tsconfig.json 없음 — 판정의 전제를 확인할 수 없다"
+  fi
+
+  code=0; out=$(bash "$0" --pack "$fx/fixed" --no-vectors --keep --out "$fx/out-ts" 2>&1) || code=$?
+  if [ -f "$fx/out-ts/tsconfig.json" ] && grep -q '"checkJs": false' "$fx/out-ts/tsconfig.json"; then
+    ok "TS 팩 → checkJs 꺼짐 (전역으로 켜면 TS 팩이 배송하는 설정 조각이 오탐된다)"
+  else
+    bad "TS 팩에서 checkJs 가 켜졌다" "설정 조각(vite.config.js 류)이 새로 검사 대상이 되어 오탐이 난다"
   fi
 
   code=0; out=$(bash "$0" --pack "$fx/fixed" 2>&1) || code=$?
