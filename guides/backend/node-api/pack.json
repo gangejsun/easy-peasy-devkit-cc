@@ -64,6 +64,11 @@
 
   "knownGaps": [
     {
+      "what": "타입체크가 통과하지 않는다 — Prisma 생성 클라이언트가 없다",
+      "where": "resources/data-access.md (`@prisma/client`를 import하는 전 펜스)",
+      "detail": "`pack-smoke.sh --pack --online`이 **FAIL 1**을 낸다: `Module '@prisma/client' has no exported member 'Task'`·`'TaskStatus'`·`Namespace 'Prisma' has no exported member 'TaskSelect'`(TS2305·TS2694). 이 이름들은 **`prisma generate`가 스키마에서 만들어 내는 것**이라 스키마 없이 설치만 해서는 존재하지 않는다 — 팩의 코드가 틀린 것이 아니라 검증 환경이 코드 생성을 돌리지 않는다. **`--regress`는 pack-smoke를 돌리지 않으므로 이 실패는 여태 보이지 않았다**(2026-08-24에 처음 관측). 수리는 두 갈래다: pack-smoke가 prisma 팩에서 스키마 펜스를 복원해 `prisma generate`를 돌리게 하거나, 이 팩의 타입체크를 명시적 미검사로 선언하는 것. 전자는 검사를 늘리는 일이므로 이 부류가 두 번째 팩에서도 문제가 되면 그때 판단한다"
+    },
+    {
       "what": "느린 쿼리 관측",
       "where": "resources/operations.md (pack.json의 nav가 약속한다)",
       "detail": "Prisma 실물 없이 `$on('query')`·`log` 옵션의 형태를 단정할 수 없어 비웠다. '빈 슬롯이 틀린 내용보다 낫다'를 따랐다 (C3 보고). nav 문구는 후속으로 채울 대상으로 남긴다"
