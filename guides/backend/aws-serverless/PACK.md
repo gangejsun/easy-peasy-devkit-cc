@@ -1,4 +1,4 @@
-<!-- epcc-pack: backend/aws-serverless v3.13.0 verified 2026-08-23 @aws-sdk/client-dynamodb@3 @aws-sdk/lib-dynamodb@3 @aws-lambda-powertools/logger@2 aws-cdk-lib@2 constructs@10 zod@4 typescript@5 vitest@2 esbuild@0 @types/aws-lambda@8 @types/node@22 aws-jwt-verify@5 -->
+<!-- epcc-pack: backend/aws-serverless v3.13.0 verified 2026-08-23 @aws-sdk/client-dynamodb@3 @aws-sdk/lib-dynamodb@3 @aws-lambda-powertools/logger@2 aws-cdk-lib@2 constructs@10 zod@4 typescript@5 vitest@2 esbuild@0.28 @types/aws-lambda@8 @types/node@22 aws-jwt-verify@5 -->
 
 # aws-serverless 축 팩 — 허브 조각
 

@@ -1,4 +1,4 @@
-<!-- epcc-pack: backend/supabase v3.12.0 verified 2026-08-21 @supabase/ssr@0 @supabase/supabase-js@2 zod@4 vitest@4 -->
+<!-- epcc-pack: backend/supabase v3.12.0 verified 2026-08-21 @supabase/ssr@0.12 @supabase/supabase-js@2 zod@4 vitest@4 -->
 
 # supabase 축 팩 — 허브 조각
 

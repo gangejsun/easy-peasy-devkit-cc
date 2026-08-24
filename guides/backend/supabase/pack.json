@@ -23,7 +23,7 @@
   "fixesVariants": {},
   "fixesVariantsNote": "못박은 변형이 없다. 이 팩은 패턴 지식형(export 0개)이고 클라이언트·인증·정책은 Supabase 제품이 정한다 — 프로젝트가 고를 수 있는 축 내부 분기가 없다",
 
-  "pkgs": ["@supabase/ssr@0", "@supabase/supabase-js@2", "zod@4", "vitest@4"],
+  "pkgs": ["@supabase/ssr@0.12", "@supabase/supabase-js@2", "zod@4", "vitest@4"],
 
   "hubFragments": "PACK.md",
   "ledger": "ledger.md",

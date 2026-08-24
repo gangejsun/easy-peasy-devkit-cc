@@ -1,4 +1,4 @@
-<!-- epcc-pack: frontend/nextjs v3.12.0 verified 2026-08-21 next@15 react@19 typescript@5 tailwindcss@4 zod@4 zustand@5 react-hook-form@7 @hookform/resolvers@5 class-variance-authority@0 clsx@2 tailwind-merge@3 lucide-react@1 -->
+<!-- epcc-pack: frontend/nextjs v3.12.0 verified 2026-08-21 next@15 react@19 typescript@5 tailwindcss@4 zod@4 zustand@5 react-hook-form@7 @hookform/resolvers@5 class-variance-authority@0.7 clsx@2 tailwind-merge@3 lucide-react@1 -->
 
 # nextjs 축 팩 — 허브 조각
 
