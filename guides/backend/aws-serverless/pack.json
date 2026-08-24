@@ -1,0 +1,84 @@
+{
+  "axis": "backend",
+  "name": "aws-serverless",
+  "displayName": "AWS 서버리스 (Lambda + API Gateway + DynamoDB)",
+  "packVersion": "3.13.0",
+  "verified": "2026-08-23",
+  "extractedFrom": "신규 생성 — 실증 원본 없음. 다른 팩을 형식 참조로도 열지 않았다 (assets/pack-resource-template.md만 사용)",
+
+  "backendType": "serverless",
+  "dataLayerPolicyEngine": false,
+  "policyEngineNote": "DynamoDB에는 RLS 같은 행 수준 강제가 없다. IAM 조건 키로 일부 제한은 가능하나 범용 대체가 아니다 — 애플리케이션 층이 실질적 유일 경계이고 소유권을 키 조건에 넣지 않으면 곧 데이터 유출이다. BaaS 축의 '이중 방어' 서술을 옮기면 정확히 반대 지침이 된다",
+
+  "symbolSurface": true,
+
+  "exampleDomain": {
+    "entity": "Task",
+    "collection": "tasks",
+    "route": "/api/tasks",
+    "korean": "작업",
+    "note": "다른 팩과 같은 예제 도메인을 쓴다. L0가 이 값에서 어휘 정책(vocab-task)을 발행해 게이트가 분기를 차단한다"
+  },
+
+  "fixesVariants": { "iac": "aws-cdk-lib", "sdk": "@aws-sdk/lib-dynamodb" },
+  "fixesVariantsNote": "IaC는 CDK로, DynamoDB 접근은 SDK v3의 DocumentClient로 못박는다. SAM(YAML 템플릿)을 고른 프로젝트는 배포·권한 절이 통째로 다르므로 이 팩을 조립하면 틀린 지침을 받는다. 관계형 DB로 가는 변형은 backendType이 cloud-server가 되므로 backend/node-api 또는 aws-container가 소유한다",
+
+  "runtime": { "nodejs": "22", "lambdaArch": "arm64" },
+  "runtimeNote": "Lambda 런타임 버전이지 npm 의존성이 아니다",
+
+  "pkgs": [
+    "@aws-sdk/client-dynamodb@3", "@aws-sdk/lib-dynamodb@3",
+    "@aws-lambda-powertools/logger@2", "aws-cdk-lib@2", "constructs@10",
+    "zod@4", "typescript@5", "vitest@2", "esbuild@0",
+    "@types/aws-lambda@8", "@types/node@22", "aws-jwt-verify@5"
+  ],
+
+  "hubFragments": "PACK.md",
+  "ledger": "ledger.md",
+  "policies": "policies.md",
+
+  "resources": [
+    { "file": "handler-patterns.md",   "nav": "Lambda 핸들러 형태 · API Gateway 이벤트/응답 · 콜드 스타트 밖 초기화 · 미들웨어 합성 · 타임아웃과 재시도 · 구조적 로깅" },
+    { "file": "data-modeling.md",      "nav": "접근 패턴 먼저 · 단일 테이블 설계 · PK/SK 조합 · GSI 선택 · 아이템 형태와 버전 · 관계형 습관과의 대조" },
+    { "file": "data-access.md",        "nav": "DocumentClient 싱글턴 · Query vs Scan · 소유권을 키 조건에 · 조건부 쓰기 · 페이지네이션(LastEvaluatedKey) · 배치와 트랜잭션" },
+    { "file": "input-validation.md",   "nav": "Zod 스키마 · 이벤트 본문/경로/쿼리 파싱 · 환경변수 스키마 · 콜드 스타트 시점 실패" },
+    { "file": "error-handling.md",     "nav": "도메인 에러 → 상태 코드 · DynamoDB 에러 판별(ConditionalCheckFailed 등) · ZodError 정규화 · 존재 누설 금지" },
+    { "file": "deploy-and-iam.md",     "nav": "CDK 스택 구성 · 함수별 최소 권한 IAM(read/write/batch) · 번들링과 번들 크기 · 배포 순서와 되돌릴 수 없는 변경" },
+    { "file": "testing.md",            "nav": "테스트 하네스(invokeHandler) · 핸들러 테스트의 arrange · 긍정·부정 짝 · 배선 층과 데이터 층의 분리" }
+  ],
+
+  "seamSlots": ["api-endpoints", "auth-boundaries", "complete-example"],
+
+  "seamSlotNotes": {
+    "api-endpoints": "라우트↔함수 매핑과 응답 봉투 방출. 봉투는 와이어 계약의 함수다",
+    "auth-boundaries": "Cognito 토큰 검증·클레임에서 주체 추출·역할/스코프. **인증 방식은 축이 아니라 조합의 함수다** — 프론트 축이 SPA면 베어러, 서버 런타임이 있으면 다른 형태가 된다",
+    "complete-example": "IaC → 테이블 → 접근 패턴 → 쿼리 → 핸들러 → 테스트 관통"
+  },
+
+  "clusters": [
+    { "id": "C1", "pilot": true, "files": ["input-validation.md", "error-handling.md"],
+      "why": "환경변수 스키마와 에러 코드표가 서로의 함수다. ZodError → 필드 오류 봉투, DynamoDB ConditionalCheckFailed → 409가 한 표에서 나온다. requires의 AppError 형태가 가장 많이 얽히는 자리다" },
+    { "id": "C2", "files": ["data-modeling.md", "data-access.md"],
+      "why": "키 설계가 곧 쿼리 형태다. PK/SK를 정하지 않으면 Query를 쓸 수 없고, GSI 선택이 소유권 필터의 가능 여부를 결정한다 — 한 저자가 함께 결정해야 한다" },
+    { "id": "C3", "files": ["handler-patterns.md", "deploy-and-iam.md", "testing.md"],
+      "why": "핸들러 수명(콜드 스타트·초기화 위치·타임아웃)과 배포·권한이 같은 결정이다. 함수별 IAM은 핸들러가 무엇을 부르는지의 함수다" }
+  ],
+
+  "knownGaps": [
+    {
+      "what": "테스트 예시가 그대로는 실행되지 않는다",
+      "where": "resources/testing.md §1·§2",
+      "detail": "핸들러 테스트가 실제 `handler`를 부르고 그 체인이 모듈 로드 시점에 `EnvSchema.safeParse(process.env)`를 돌린다 — vitest 프로세스에 `TABLE_NAME`·`AWS_REGION`이 없어 import 단계에서 throw한다. 통과해도 `getTask`가 실제 `ddb.send`를 부른다. 대역(`vi.mock`·시드·DynamoDB Local 기동) 방법이 팩에 없다 (감사 A가 실행으로 확인: `Test Files 1 failed`)"
+    },
+    {
+      "what": "grantTaskAccess가 배치·트랜잭션 권한을 주지 않는다",
+      "where": "resources/deploy-and-iam.md §3 ↔ resources/data-access.md §6",
+      "detail": "팩이 `TransactWriteCommand`·`BatchWriteCommand`·`BatchGetCommand`를 정상 패턴으로 가르치는데 IAM 헬퍼의 read 2 / write 3 액션에 `TransactWriteItems`·`BatchWriteItem`·`BatchGetItem`·`ConditionCheckItem`이 없다. 팩대로 따르면 배포는 성공하고 런타임 AccessDenied → 500이 된다 (감사 A·C)"
+    },
+    {
+      "what": "ValidationException이 500으로 나간다",
+      "where": "resources/error-handling.md의 ERROR_STATUS ↔ toAppError",
+      "detail": "커서를 다른 인덱스 질의에 재사용하는 평범한 UI 경로가 DynamoDB `ValidationException`을 받고 `INTERNAL` 500이 된다. `data-access.md`가 위험을 산문으로 인정하지만 매핑이 없다 (감사 A 실측)"
+    }
+  ]
+}

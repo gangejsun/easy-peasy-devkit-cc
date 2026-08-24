@@ -2,7 +2,7 @@
 name: backend-guide
 description: "[Preset: react-vite × aws-container] Hono + TypeScript container backend for React SPA clients: HTTP routes, Drizzle ORM with drizzle-kit migrations on RDS PostgreSQL, Zod validation, Cognito OIDC/JWKS verification, ownership checks, Vitest, ECS/Fargate portability. Use when creating or modifying Hono routes, Drizzle schemas or migrations, Zod schemas, JWT auth guards, REST endpoints, or backend tests. Use ONLY when the active preset matches."
 ---
-<!-- epcc-guide-baseline: verified 2026-08-22 hono@4 @hono/node-server@1 typescript@5 drizzle-orm@0 drizzle-kit@0 pg@8 jose@5 zod@4 vitest@2 postgres@16 aws-cdk-lib@2 @aws-sdk/client-s3@3 @aws-sdk/s3-request-presigner@3 -->
+<!-- epcc-guide-baseline: verified 2026-08-22 hono@4 @hono/node-server@1 typescript@5 drizzle-orm@0 drizzle-kit@0 pg@8 jose@5 zod@4 vitest@2 aws-cdk-lib@2 @aws-sdk/client-s3@3 @aws-sdk/s3-request-presigner@3 -->
 
 React + Vite SPA를 클라이언트로 두는 컨테이너 백엔드 가이드다. 프론트엔드에 서버 런타임이
 없으므로 **서버 로직 전부를 이 백엔드가 소유**하고, 브라우저가 이 REST API를 직접 호출한다.
