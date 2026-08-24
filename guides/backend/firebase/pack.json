@@ -1,0 +1,68 @@
+{
+  "axis": "backend",
+  "name": "firebase",
+  "displayName": "Firebase (BaaS · Firestore + Auth + Cloud Functions 2nd gen)",
+  "packVersion": "3.14.0",
+  "verified": "2026-08-24",
+  "extractedFrom": "신규 생성 — 실증 원본 없음. 다른 팩을 형식 참조로도 열지 않았다 (assets/pack-resource-template.md만 사용)",
+
+  "backendType": "baas",
+  "registry": "npm",
+  "dataLayerPolicyEngine": true,
+  "policyEngineNote": "Firestore Security Rules가 행(문서) 수준 정책 엔진이다 — 그러나 **그것이 막는 것은 클라이언트 SDK의 직접 접근뿐이다.** Cloud Functions가 쓰는 `firebase-admin`은 규칙을 **완전히 우회한다**(관리자 자격). 그래서 이 축은 이중 방어가 성립하되 **두 경계가 서로 다른 코드 경로를 막는다**: 규칙은 브라우저를, 애플리케이션 검사는 함수를. 어느 한쪽만 쓰고 「정책 엔진이 있으니 안전하다」고 쓰면 함수 경로가 통째로 무방비가 된다 — 이음매 생성 시 반드시 전달할 값",
+
+  "symbolSurface": true,
+
+  "exampleDomain": {
+    "entity": "Task",
+    "collection": "tasks",
+    "route": "/api/tasks",
+    "korean": "작업",
+    "note": "모든 팩과 이음매가 같은 예제 도메인을 쓴다. L0가 이 값에서 어휘 정책(`vocab-task`)을 발행해 게이트가 분기를 차단한다"
+  },
+
+  "fixesVariants": { "database": "firestore", "runtime": "cloud-functions-v2" },
+  "fixesVariantsNote": "문서 모델(컬렉션·하위 컬렉션·복합 인덱스)과 함수 형태(2세대 `onCall`·`onRequest`, `defineSecret`/`defineString` 파라미터)가 팩 본문 전체의 전제다. Realtime Database를 고른 프로젝트는 질의 모델이 Firestore의 변형이 아니라 다른 시스템이고, 1세대 함수는 구성·리전·동시성 모델이 다르다",
+
+  "pkgs": [
+    "firebase-admin@14", "firebase-functions@7", "firebase@12",
+    "firebase-tools@15", "zod@4", "typescript@7", "vitest@4",
+    "@types/node@26", "@firebase/rules-unit-testing@5"
+  ],
+  "pkgsNote": "**오늘자 최신 메이저로 고정한다** — 팩이 태어나자마자 부패를 달고 나오지 않게. `typescript@7`은 이 저장소에서 처음 쓰는 메이저이므로 저작 에이전트가 `pack-smoke.sh --online`의 타입체크로 **실제 통과를 증명해야 한다**(선언이 아니라 실행). `@firebase/rules-unit-testing`은 규칙을 에뮬레이터에 걸어 단위 테스트하는 유일한 경로이고, 그것이 **클라이언트 SDK(`firebase`)를 필요로 하므로** 함께 고정한다 — 없으면 규칙 테스트가 TS2307이 된다(파일럿 실측). `firebase-functions-test`는 **일부러 뺐다**: 3.5.0의 peer가 `firebase-admin@^8…^13`이라 admin 14와 ERESOLVE 충돌을 일으켜 `pack-smoke --online`의 툴체인 설치를 통째로 실패시킨다(파일럿 실측). 함수 테스트는 에뮬레이터 + 핸들러 직접 호출로 한다",
+
+  "runtime": { "nodejs": "22", "firestore-emulator": "필수 (테스트·규칙 검증)" },
+  "runtimeNote": "함수 런타임과 에뮬레이터는 npm 의존성이 아니다. `firebase-tools`가 에뮬레이터를 내려받아 띄우지만 에뮬레이터 자체의 버전은 여기 적는다",
+
+  "hubFragments": "PACK.md",
+  "ledger": "ledger.md",
+  "policies": "policies.md",
+
+  "resources": [
+    { "file": "data-modeling.md",     "nav": "컬렉션 설계 · 소유자 필드 · 하위 컬렉션 vs 최상위 · 복합 인덱스와 firestore.indexes.json · 비정규화의 대가 · 문서 크기·쓰기 한도" },
+    { "file": "security-rules.md",    "nav": "규칙 문법과 소유권 · 필드 검증 · **규칙이 admin SDK를 막지 않는다** · 규칙 단위 테스트(에뮬레이터) · 규칙과 쿼리의 결합" },
+    { "file": "data-access.md",       "nav": "admin Firestore 클라이언트 · 소유권 쿼리 · 트랜잭션과 재시도 · 배치 한도 · startAfter 페이지네이션 · 서버 타임스탬프" },
+    { "file": "functions-patterns.md","nav": "2세대 onCall·onRequest · 인증 컨텍스트 · 전역 초기화와 콜드 스타트 · 리전·동시성·최소 인스턴스 · 재시도 의미" },
+    { "file": "input-validation.md",  "nav": "Zod 스키마 · onCall data 검증 · defineString/defineSecret 파라미터 · 부팅 시점 실패 · 미지 필드 거부" },
+    { "file": "testing-and-deploy.md","nav": "에뮬레이터 스위트 · 규칙 단위 테스트 · 함수 테스트 · 인덱스 배포 순서 · 되돌릴 수 없는 변경" }
+  ],
+
+  "seamSlots": ["api-endpoints", "auth-boundaries", "complete-example"],
+
+  "seamSlotNotes": {
+    "api-endpoints": "함수 노출 형태(onCall vs onRequest) + 요청/응답 봉투 + 에러 봉투. 봉투는 와이어 계약의 함수이므로 축이 아니라 조합이 정한다. **프론트가 SDK로 직접 Firestore를 읽는 조합이면 엔드포인트 자체가 줄어든다** — 그 판단이 이음매의 몫이다",
+    "auth-boundaries": "Firebase Auth 토큰이 함수 컨텍스트로 오는 경로 · 커스텀 클레임 · 역할 · **클라이언트 직접 접근을 허용할지**의 결정. 그 결정이 규칙과 함수 중 어느 쪽이 주 경계인지를 바꾼다",
+    "complete-example": "규칙 → 인덱스 → 문서 쓰기 → 쿼리 → 함수 → 테스트 관통"
+  },
+
+  "clusters": [
+    { "id": "C1", "pilot": true, "files": ["data-modeling.md", "security-rules.md"],
+      "why": "규칙이 문서의 **필드 이름을 직접 참조한다.** 문서 형태가 흔들리면 규칙이 통째로 틀리고, 반대로 규칙이 요구하는 불변식이 문서 설계를 되돌린다. 계약이 가장 무거운 자리이므로 파일럿이다" },
+    { "id": "C2", "files": ["data-access.md", "functions-patterns.md"],
+      "why": "admin 클라이언트의 소유(전역 초기화)와 함수의 콜드 스타트가 같은 결정이다. 트랜잭션 재시도와 함수 재시도 의미가 겹치는 자리이기도 하다" },
+    { "id": "C3", "files": ["input-validation.md", "testing-and-deploy.md"],
+      "why": "파라미터(`defineSecret`)의 부팅 시점 실패와 에뮬레이터 구동이 같은 구성 표면을 쓴다. 스키마 검증의 증명이 곧 테스트다" }
+  ],
+
+  "knownGaps": []
+}

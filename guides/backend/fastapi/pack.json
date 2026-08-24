@@ -1,0 +1,80 @@
+{
+  "axis": "backend",
+  "name": "fastapi",
+  "displayName": "FastAPI (자체 서버 · SQLAlchemy 2.0 + Pydantic v2 + PostgreSQL)",
+  "packVersion": "3.14.0",
+  "verified": "2026-08-24",
+  "extractedFrom": "신규 생성 — 실증 원본 없음. 다른 팩을 형식 참조로도 열지 않았다 (assets/pack-resource-template.md만 사용)",
+
+  "backendType": "cloud-server",
+  "registry": "pypi",
+  "dataLayerPolicyEngine": false,
+  "policyEngineNote": "행 수준 정책 엔진이 없다. 애플리케이션이 신뢰된 연결로 DB에 붙으므로 **소유권 필터 누락이 곧 데이터 유출**이다. BaaS 축(supabase·firebase)의 'RLS가 백업이니 애플리케이션 검사는 이중 방어' 서술을 이 축에 옮기면 정확히 반대 지침이 된다 — 이음매 생성 시 반드시 전달할 값",
+
+  "symbolSurface": true,
+
+  "exampleDomain": {
+    "entity": "Task",
+    "collection": "tasks",
+    "route": "/api/tasks",
+    "korean": "작업",
+    "note": "모든 팩과 이음매가 같은 예제 도메인을 쓴다. L0가 이 값에서 어휘 정책(`vocab-task`)을 발행해 게이트가 분기를 차단한다 — 실측에서 프론트가 /tasks를, 백엔드가 /notes를 써서 완전 예제가 서로 실행 불가였다"
+  },
+
+  "fixesVariants": { "framework": "fastapi", "orm": "sqlalchemy" },
+  "fixesVariantsNote": "라우터 형태(APIRouter + Depends 주입)와 쿼리 형태(SQLAlchemy 2.0 async ORM + Alembic)가 팩 본문 전체의 전제다. Django REST Framework를 고른 프로젝트는 ORM·라우팅·직렬화가 FastAPI의 변형이 아니라 다른 시스템이므로 별도 축 팩이 필요하다. Flask + SQLAlchemy도 마찬가지로 의존성 주입과 async 경계가 다르다",
+
+  "pkgs": [
+    "fastapi@0.141", "pydantic@2", "pydantic-settings@2",
+    "sqlalchemy@2", "greenlet@3", "alembic@1", "asyncpg@0.31",
+    "uvicorn@0.52", "pytest@9", "pytest-asyncio@1", "httpx@0.28",
+    "ruff@0.16", "pyright@1"
+  ],
+  "pkgsNote": "**0.x는 마이너까지 적는다.** semver의 0.y.z에서 y가 파괴적 변경 축이므로 `fastapi@0`으로 선언하면 부패가 영영 보이지 않는다 (guide-freshness.sh가 그 형태를 WARN으로 잡는다). `greenlet`은 SQLAlchemy 2.0 async가 **없으면 한 줄도 못 도는** 암묵 의존인데 `sqlalchemy`만 설치하면 딸려오지 않는 환경이 있다 — 감사 B가 넘겨받은 venv에 없어서 data-access 주장을 하나도 실행할 수 없었다(실측). `pyright`를 pkgs에 넣은 이유는 `pack-smoke.sh --online`이 pkgs만 설치하기 때문이다 — 없으면 타입체크가 skip으로 남고 그 skip은 통과가 아니라 미검사다",
+
+  "runtime": { "python": "3.11", "postgresql": "16" },
+  "runtimeNote": "인터프리터·서버 런타임 버전이지 PyPI 의존성이 아니다. pkgs에 넣으면 설치기가 엉뚱한 패키지를 받는다 — node-api·aws-container에서 `postgres@16`이 정확히 그 실수였다 (Porsager의 npm 드라이버이고 16 버전이 없다)",
+
+  "hubFragments": "PACK.md",
+  "ledger": "ledger.md",
+  "policies": "policies.md",
+
+  "resources": [
+    { "file": "project-structure.md", "nav": "계층 경계(routers → services → repo) · create_app 조립 · lifespan · APIRouter 마운트 · 의존성 주입 배선 · 예외 핸들러 등록" },
+    { "file": "data-access.md",       "nav": "AsyncSession 수명 · 소유권 필터 · rowcount 확인 · 트랜잭션 경계 · 키셋 페이지네이션 · N+1과 selectinload · Alembic 실행" },
+    { "file": "input-validation.md",  "nav": "Pydantic v2 스키마 · 부분 수정과 exclude_unset · model_config(extra) · pydantic-settings로 환경 검증 · 부팅 시점 실패" },
+    { "file": "error-handling.md",    "nav": "도메인 에러 → 상태 코드 매핑 · IntegrityError의 SQLSTATE 판별(23505·23503) · RequestValidationError 정규화 · 존재 누설 금지" },
+    { "file": "testing.md",           "nav": "pytest-asyncio 설정 · httpx ASGITransport로 앱 직접 호출 · 의존성 오버라이드 · 실 DB 통합 테스트 · 테스트 DB 격리와 정리" },
+    { "file": "operations.md",        "nav": "lifespan 종료와 풀 반납 · 헬스체크(live/ready) · 풀 사이징 · 구조적 로깅 · 마이그레이션 배포 순서 · 느린 쿼리 관측" }
+  ],
+
+  "seamSlots": ["api-endpoints", "auth-boundaries", "complete-example"],
+
+  "seamSlotNotes": {
+    "api-endpoints": "APIRouter 형태 + 요청/응답 봉투 + 에러 봉투 방출. 봉투는 와이어 계약의 함수이므로 축이 아니라 조합이 정한다. **축이 못박는 것 둘**: ⓐ 목록 쿼리는 `Annotated[TaskQuery, Query()]`로 받는다(`Depends()`는 `extra='forbid'`를 무시해 미지 파라미터가 조용히 통과한다 — 실행 확인) ⓑ 생성 성공은 **201**이다(테스트 가드가 이 값을 단언한다. 이음매가 200을 고르려면 팩의 테스트도 함께 고쳐야 한다)",
+    "auth-boundaries": "토큰 검증 방식(JWT 자체 발급 · 세션 쿠키 · 외부 IdP) · `current_user` 의존성 배선 · 역할/스코프 · 로그인·로그아웃 흐름. **인증 방식은 축의 함수가 아니다** — 프론트 축에 서버 런타임이 있는지에 따라 세션 쿠키냐 베어러 토큰이냐가 갈린다",
+    "complete-example": "마이그레이션 → 모델 → 스키마 → 리포지토리 → 서비스 → 라우터 → 테스트 관통"
+  },
+
+  "clusters": [
+    { "id": "C1", "pilot": true, "files": ["input-validation.md", "error-handling.md"],
+      "why": "Settings·요청 스키마와 에러 코드표가 서로의 함수다. RequestValidationError → 필드 오류 봉투, IntegrityError 23505 → 409가 한 표에서 나온다. requires의 AppError 형태가 가장 많이 얽히는 자리이므로 파일럿이다" },
+    { "id": "C2", "files": ["data-access.md", "project-structure.md"],
+      "why": "AsyncSession의 소유(engine·sessionmaker·get_session 의존성)와 create_app의 배선이 같은 결정이다. '데이터 계층은 HTTP를 모른다'는 계층 규율도 두 파일에 걸친다" },
+    { "id": "C3", "files": ["testing.md", "operations.md"],
+      "why": "프로세스 수명(lifespan·풀·헬스체크)을 공유한다. 테스트 DB 격리와 커넥션 풀 사이징이 같은 자원을 다루고, 의존성 오버라이드가 create_app의 배선을 되짚는다" }
+  ],
+
+  "knownGaps": [
+    {
+      "what": "실 PostgreSQL 16 왕복 미검증",
+      "where": "resources/data-access.md · resources/testing.md · resources/operations.md",
+      "detail": "저작·검증 환경에 PostgreSQL 서버가 없어 SQLite(aiosqlite)로 대리 검증했다. 프레임워크·ORM 층 결과는 엔진 무관이지만 **SQLSTATE 판별(23505·23503) · Alembic 자동생성의 PG 고유 거동 · 키셋 페이지네이션의 행 값 비교**는 실물로 돌리지 못했다. 각 태그에 대리 범위를 적었다"
+    },
+    {
+      "what": "이음매를 겨눈 기계 정책은 조립 후에만 판정된다",
+      "where": "policies.md의 대상=seam 3건",
+      "detail": "`seam-no-http-exception` · `seam-status-lookup` · `seam-depends-current-user`는 이음매가 있어야 대상 파일이 생긴다. `--pack`은 이 셋을 「조립 후로 미룸」으로 명시 보고하고, `install-guide.sh` 조립 뒤 `--guide --assembly`가 판정한다"
+    }
+  ]
+}
