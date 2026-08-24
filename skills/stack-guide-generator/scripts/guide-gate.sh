@@ -1254,7 +1254,19 @@ check_pack_policies() {
   while IFS=$'\t' read -r id verdict scope rx except ex has; do
     [ -z "$id" ] && continue
     targets=$(_policy_targets "$P" "$scope" "$except" "$packfiles")
-    if [ -z "$targets" ]; then defer=$((defer+1)); continue; fi
+    if [ -z "$targets" ]; then
+      # **대상 0개를 한 덩어리로 미루지 않는다.** scope=seam은 이음매가 없어서 0개인 것이
+      # 정상이지만, scope=file:은 소유 파일을 지목한 것이므로 0개면 **파일명이 틀렸거나
+      # 파일이 사라진 것**이다. 뭉뚱그리면 오타 하나가 「조립 후로 미룸」으로 위장돼
+      # 그 정책이 영영 0건 집행된다 — firebase에서 정책 8건이 통째로 무시된 것과 같은 부류다.
+      case "$scope" in
+        file:*) bad "정책 '$id'의 대상 파일이 없음: ${scope#file:}" \
+                    "scope=file:은 소유 파일을 지목한다 — 파일명 오타이거나 파일이 사라졌다. 이 정책은 0건 집행된다"
+                viol=$((viol+1)) ;;
+        *)      defer=$((defer+1)) ;;
+      esac
+      continue
+    fi
     # shellcheck disable=SC2086
     hits=$(num "$(codelines $targets | cut -f3 | grep -cE "$rx" 2>/dev/null || true)")
     if [ "$verdict" = "forbid" ]; then
@@ -1515,6 +1527,7 @@ run_self_test() {
   sec "양성 팩 픽스처 (차단해야 한다)"
   _fx_assert_pack "$fx/pk/polnoex/fxpack2"   1 "정책 증명 예 열 없음"
   _fx_assert_pack "$fx/pk/polnohdr/fxpack2"  1 "정책 표는 있는데 제목이 없어 0건 집행"
+  _fx_assert_pack "$fx/pk/polbadfile/fxpack2" 1 "file: 대상이 없는 파일을 지목해 0건 집행"
   _fx_assert_pack "$fx/pk/polbadex/fxpack2"  1 "증명 예가 자기 정규식에 미매치"
   _fx_assert_pack "$fx/pk/polrealex/fxpack2" 1 "forbid 증명 예가 본문에 실재"
   _fx_assert_pack "$fx/pk/secorigin/fxpack2" 1 "복귀 경로를 origin 비교만으로 판정"
@@ -1856,7 +1869,7 @@ FXPP
 }
 FXPJ
 
-  for m in polnoex polbadex polrealex secorigin secprefix secok secrefer ledgerbad reqexport fvbad vocab dupfence noproof noshape badarity noimport reqnosig polnohdr jsonfence; do
+  for m in polnoex polbadex polrealex secorigin secprefix secok secrefer ledgerbad reqexport fvbad vocab dupfence noproof noshape badarity noimport reqnosig polnohdr jsonfence polbadfile; do
     mkdir -p "$fx/pk/$m" && cp -R "$b" "$fx/pk/$m/" || return 1
   done
   # c.md를 더하는 픽스처는 pack.json에도 실어야 의도한 검사에서 차단된다.
@@ -2022,6 +2035,17 @@ FXP14
   sed -i.bak 's#{ "file": "b.md", "nav": "부팅" }#{ "file": "b.md", "nav": "부팅" },\
     { "file": "c.md", "nav": "설정" }#' "$fx/pk/jsonfence/fxpack2/pack.json" \
     && rm -f "$fx/pk/jsonfence/fxpack2/pack.json.bak"
+
+  # ⑮ require 정책의 file: 대상이 실재하지 않는 파일을 지목한다 — **조용히 0건 집행**
+  # `guide`로 두면 「팩 전체에 한 번이라도」로 퇴화하므로 소유 파일로 좁히게 했는데,
+  # 그 파일명을 틀리면 정책이 아무 일도 안 하면서 「조립 후로 미룸」으로 보고됐다.
+  cat > "$fx/pk/polbadfile/fxpack2/policies.md" <<'FXP15'
+## 기계 검사
+
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `rowcount-checked` | require | file:nosuch.md | `\.rowcount\b` | — | `if result.rowcount == 0:` | 소유 파일을 지목했는데 그 파일이 없다 |
+FXP15
 
   # ⑨ 어휘 정책 — L0가 발행하는 forbid 행이 병렬 저작의 어휘 분기를 잡는가
   cat > "$fx/pk/vocab/fxpack2/policies.md" <<'FXP9'
