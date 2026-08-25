@@ -7,7 +7,7 @@ paths:
   - "**/migrations/**"
   - "dev/active/**"
 ---
-<!-- epcc-rule-version: 3.4.3 -->
+<!-- epcc-rule-version: 3.14.0 -->
 
 # 작업 축 — 되돌림 가능성
 
@@ -16,11 +16,17 @@ paths:
 
 ## 클래스 판정 (경로 기반, 모델 판단 불필요)
 
-| 클래스 | 경로/조건 | 요구 |
-| --- | --- | --- |
-| **Irreversible** | `**/migrations/**` · `supabase/` 스키마·RLS · auth · 결제·정산 · 운영 데이터 삭제/변환 | 리뷰 + **다관점 교차검증** + 사용자 확인 + 롤백 절차 |
-| **Costly** | 공유 패키지 · public API · 생성 파일 · 타입 계약 · `**/api/**` · `**/actions.ts` · `**/middleware.*` | 리뷰 필수 + 영향 범위(호출처) 제시 |
-| **Reversible** | 그 외 전부 | 바로 진행. 리뷰 선택 |
+**판정 경로의 정본은 세션마다 주입되는 T0 운영 계약의 「되돌림 분류」 표다.**
+여기에 옮겨 적지 않는다 — 사본은 드리프트 원천이다. 이 카드는 판정 *이후*를 담는다.
+
+| 클래스 | 요구 — 누가 하는가 |
+| --- | --- |
+| **Irreversible** | `epcc-reviewer` 다관점 팬아웃(correctness·security·reversibility) + 사용자 확인 + 롤백 절차 |
+| **Costly** | `epcc-reviewer` 필수 — **자기 리뷰로 대체하지 않는다**. 영향 범위(호출처) 제시 |
+| **Reversible** | 바로 진행. 마무리 문서화는 `/completion-review` |
+
+이 표의 `supabase/` 스키마·RLS · 운영 데이터 삭제/변환은 T0의 「auth/RLS · 운영 데이터」에
+해당한다 — T0가 더 넓게 쓰였을 뿐 같은 것이다.
 
 **둘 이상에 해당하면 높은 쪽을 따른다.** 애매하면 Costly로 본다.
 

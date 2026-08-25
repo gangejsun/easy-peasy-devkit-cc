@@ -272,7 +272,7 @@ frontend-guide를 만드는 에이전트에게도 **백엔드 축을 알려준�
 대상=seam 정책)은 건너뛴 것을 명시 보고한다.
 
 ```bash
-bash <skill-dir>/scripts/guide-gate.sh --pack <팩경로> --claims-out <TSV경로>
+bash ${CLAUDE_SKILL_DIR}/scripts/guide-gate.sh --pack <팩경로> --claims-out <TSV경로>
 ```
 
 `--claims-out`은 버전 주장 인벤토리를 파일로 내보낸다. **감사 B의 입력 전부**이고, 게이트의
@@ -281,11 +281,11 @@ bash <skill-dir>/scripts/guide-gate.sh --pack <팩경로> --claims-out <TSV경�
 조립본에는 아래를 돌린다.
 
 ```bash
-bash <skill-dir>/scripts/guide-gate.sh --guide <가이드경로> --generated \
+bash ${CLAUDE_SKILL_DIR}/scripts/guide-gate.sh --guide <가이드경로> --generated \
   --pm <패키지매니저> --ledger <생성자가 반환한 원장> --forbid <확정 조합에 없는 스택 키워드> \
   --assembly <가이드경로>/assembly.json      # 팩을 조립한 축에서만 — 아래 참조
 # 두 가이드를 만들었으면 계약 정합도 — 한쪽만 읽는 감사는 이 어긋남을 못 잡는다
-bash <skill-dir>/scripts/guide-gate.sh --pair --contract <Step 3-0의 계약 파일> \
+bash ${CLAUDE_SKILL_DIR}/scripts/guide-gate.sh --pair --contract <Step 3-0의 계약 파일> \
   --frontend <프론트 경로> --backend <백엔드 경로>
 ```
 
@@ -327,7 +327,7 @@ bash <skill-dir>/scripts/guide-gate.sh --pair --contract <Step 3-0의 계약 파
 `defineConfig`의 `test` 키. 그 자발적 행위를 파이프라인의 단계로 올린다.
 
 ```bash
-bash <skill-dir>/scripts/pack-smoke.sh --pack <팩경로> --keep --online
+bash ${CLAUDE_SKILL_DIR}/scripts/pack-smoke.sh --pack <팩경로> --keep --online
 ```
 
 **`--online`이 타입체크를 감사 A에서 이 단계로 옮긴다.** 없으면 `tsc`가 skip으로 남고

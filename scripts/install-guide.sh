@@ -216,7 +216,7 @@ except Exception: print('')" 2>/dev/null)
 
   # 설치 검증 — "복사했다"는 "존재한다"가 아니다 (install-rules.sh L79-85 관례)
   if [ "$DRY" -eq 0 ]; then
-    local n; n=$(ls -1 "$dst/resources"/*.md 2>/dev/null | wc -l | tr -d ' ')
+    local n; n=$({ ls -1 "$dst/resources"/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')
     if [ "${n:-0}" -eq 0 ]; then
       printf '\nFATAL: 설치 후에도 %s/resources 가 비어 있습니다.\n' "$dst" >&2; exit 1
     fi

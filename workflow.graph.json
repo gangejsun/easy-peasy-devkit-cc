@@ -1,6 +1,6 @@
 {
   "$comment": "하네스를 기계 판독 가능한 그래프로 선언한다. v2에서 이 그래프는 마크다운 표와 산문에 흩어져 있어 검증도 계측도 불가능했고, 그 결과 '선언됐지만 도달 불가능한 자산'(rules/ 697줄)이 4개월간 아무에게도 발견되지 않았다. doctor --graph가 이 파일로 dangling 엣지·도달 불가 노드·에러 엣지 누락을 검사한다. edges의 instrumented:true 는 훅이 실제로 방출하는 엣지다. stage 간 엣지는 모델 행동이라 코드가 방출할 수 없으므로 '죽은 엣지' 판정에서 제외한다.",
-  "version": "3.12.0",
+  "version": "3.17.0",
   "nodes": [
     {
       "id": "session-start",
@@ -171,7 +171,7 @@
       ]
     },
     {
-      "id": "receiving-review",
+      "id": "receiving-code-review",
       "kind": "skill",
       "path": "skills/receiving-code-review/SKILL.md",
       "note": "받은 피드백의 비판적 검증. 네이티브 대응물 없음",
@@ -193,15 +193,6 @@
       "kind": "skill",
       "path": "skills/council-review/SKILL.md",
       "note": "Irreversible 기획 결정의 3관점 팬아웃 합의(기술/비즈니스/UX). 재질의 최대 1회, 미해결은 사용자 tie-break",
-      "on_error": [
-        "user-report"
-      ]
-    },
-    {
-      "id": "ai-review-loop",
-      "kind": "skill",
-      "path": "skills/gemini-claude-loop/SKILL.md",
-      "note": "외부 모델 교차검증 (codex-claude-loop·gemini-claude-loop 대표). 재검증 최대 2회, 미해결 Critical은 사용자 tie-break. cross-check에서 모델 다양성이 필요할 때만 — 렌즈 다양성이 본질이고 모델 다양성은 부수적",
       "on_error": [
         "user-report"
       ]
@@ -238,6 +229,168 @@
       "on_error": [
         "user-report"
       ]
+    },
+    {
+      "id": "brainstorming",
+      "kind": "skill",
+      "path": "skills/brainstorming/SKILL.md",
+      "when": "P0-A — 아이디어 단계, 요구사항이 한 문장으로 안 나옴"
+    },
+    {
+      "id": "research",
+      "kind": "skill",
+      "path": "skills/research/SKILL.md",
+      "when": "P0-B — 외부 사실 확인이 필요함"
+    },
+    {
+      "id": "business-planner",
+      "kind": "skill",
+      "path": "skills/business-planner/SKILL.md",
+      "when": "P0-C — 수익 모델·시장 진입 판단이 필요함"
+    },
+    {
+      "id": "service-planner",
+      "kind": "skill",
+      "path": "skills/service-planner/SKILL.md",
+      "when": "P0-D — 화면·사용자 플로우가 미확정"
+    },
+    {
+      "id": "prompt-enhancer",
+      "kind": "skill",
+      "path": "skills/prompt-enhancer/SKILL.md",
+      "when": "P1 — 요청이 한 문장이고 의도가 모호함"
+    },
+    {
+      "id": "prd-generator",
+      "kind": "skill",
+      "path": "skills/prd-generator/SKILL.md",
+      "when": "P2 — dev/docs/prd/에 해당 PRD가 없음"
+    },
+    {
+      "id": "dev-docs-generator",
+      "kind": "skill",
+      "path": "skills/dev-docs-generator/SKILL.md",
+      "when": "P3 — 작업이 세션을 넘어감 (다중 태스크)"
+    },
+    {
+      "id": "completion-review",
+      "kind": "skill",
+      "path": "skills/completion-review/SKILL.md",
+      "when": "P5 — Reversible 변경을 마친 직후 (Costly 이상은 epcc-reviewer)"
+    },
+    {
+      "id": "prd-reviewer",
+      "kind": "skill",
+      "path": "skills/prd-reviewer/SKILL.md",
+      "when": "dev/docs/prd/** 수정 후 — rules/doc-dependency.md가 트리거"
+    },
+    {
+      "id": "test-driven-development",
+      "kind": "skill",
+      "path": "skills/test-driven-development/SKILL.md",
+      "when": "P4 구현 — 기능·버그픽스 구현 전 테스트 작성"
+    },
+    {
+      "id": "codex-claude-loop",
+      "kind": "skill",
+      "path": "skills/codex-claude-loop/SKILL.md",
+      "when": "Irreversible 교차검증 — 외부 모델(Codex) 렌즈 추가"
+    },
+    {
+      "id": "gemini-claude-loop",
+      "kind": "skill",
+      "path": "skills/gemini-claude-loop/SKILL.md",
+      "when": "Irreversible 교차검증 — 외부 모델(Gemini) 렌즈 추가"
+    },
+    {
+      "id": "epcc-init",
+      "kind": "skill",
+      "path": "skills/epcc-init/SKILL.md",
+      "when": "프로젝트 최초 설정 — epcc.config.json 부재 시 세션 브리핑이 넛지"
+    },
+    {
+      "id": "epcc-migrate",
+      "kind": "skill",
+      "path": "skills/epcc-migrate/SKILL.md",
+      "when": "사용자 수동 호출 전용",
+      "manual": true
+    },
+    {
+      "id": "execution-dashboard",
+      "kind": "skill",
+      "path": "skills/execution-dashboard/SKILL.md",
+      "when": "사용자 수동 호출 전용",
+      "manual": true
+    },
+    {
+      "id": "fix-issue",
+      "kind": "skill",
+      "path": "skills/fix-issue/SKILL.md",
+      "when": "사용자 수동 호출 전용",
+      "manual": true
+    },
+    {
+      "id": "health-check",
+      "kind": "skill",
+      "path": "skills/health-check/SKILL.md",
+      "when": "사용자 수동 호출 전용",
+      "manual": true
+    },
+    {
+      "id": "insight-saver",
+      "kind": "skill",
+      "path": "skills/insight-saver/SKILL.md",
+      "when": "사용자 수동 호출 전용",
+      "manual": true
+    },
+    {
+      "id": "marketing-workflow",
+      "kind": "skill",
+      "path": "skills/marketing-workflow/SKILL.md",
+      "when": "사용자 수동 호출 전용",
+      "manual": true
+    },
+    {
+      "id": "profile-update",
+      "kind": "skill",
+      "path": "skills/profile-update/SKILL.md",
+      "when": "사용자 수동 호출 전용",
+      "manual": true
+    },
+    {
+      "id": "scroll-stop-builder",
+      "kind": "skill",
+      "path": "skills/scroll-stop-builder/SKILL.md",
+      "when": "사용자 수동 호출 전용",
+      "manual": true
+    },
+    {
+      "id": "scroll-stop-prompter",
+      "kind": "skill",
+      "path": "skills/scroll-stop-prompter/SKILL.md",
+      "when": "사용자 수동 호출 전용",
+      "manual": true
+    },
+    {
+      "id": "seo-strategy",
+      "kind": "skill",
+      "path": "skills/seo-strategy/SKILL.md",
+      "when": "사용자 수동 호출 전용",
+      "manual": true
+    },
+    {
+      "id": "ui-ux-design",
+      "kind": "skill",
+      "path": "skills/ui-ux-design/SKILL.md",
+      "when": "사용자 수동 호출 전용",
+      "manual": true
+    },
+    {
+      "id": "web-asset-generator",
+      "kind": "skill",
+      "path": "skills/web-asset-generator/SKILL.md",
+      "when": "사용자 수동 호출 전용",
+      "manual": true
     }
   ],
   "edges": [
@@ -389,16 +542,16 @@
     },
     {
       "from": "verify",
-      "to": "receiving-review",
+      "to": "receiving-code-review",
       "cond": "리뷰 피드백 수신"
     },
     {
       "from": "cross-check",
-      "to": "receiving-review",
+      "to": "receiving-code-review",
       "cond": "외부 AI 교차검증 결과 수신"
     },
     {
-      "from": "receiving-review",
+      "from": "receiving-code-review",
       "to": "build",
       "cond": "검증 후 채택된 Critical/Important"
     },
@@ -424,12 +577,22 @@
     },
     {
       "from": "cross-check",
-      "to": "ai-review-loop",
+      "to": "codex-claude-loop",
       "cond": "외부 모델 검증 선택 시"
     },
     {
-      "from": "ai-review-loop",
-      "to": "receiving-review",
+      "from": "cross-check",
+      "to": "gemini-claude-loop",
+      "cond": "외부 모델 검증 선택 시"
+    },
+    {
+      "from": "codex-claude-loop",
+      "to": "receiving-code-review",
+      "cond": "외부 리뷰 판정 반환"
+    },
+    {
+      "from": "gemini-claude-loop",
+      "to": "receiving-code-review",
       "cond": "외부 리뷰 판정 반환"
     },
     {
@@ -466,6 +629,90 @@
       "from": "install-guide",
       "to": "stack-guide-generator",
       "cond": "조립으로 못 채운 이음매·축이 남으면"
+    },
+    {
+      "from": "plan",
+      "to": "brainstorming"
+    },
+    {
+      "from": "brainstorming",
+      "to": "plan"
+    },
+    {
+      "from": "plan",
+      "to": "research"
+    },
+    {
+      "from": "research",
+      "to": "plan"
+    },
+    {
+      "from": "plan",
+      "to": "business-planner"
+    },
+    {
+      "from": "business-planner",
+      "to": "plan"
+    },
+    {
+      "from": "plan",
+      "to": "service-planner"
+    },
+    {
+      "from": "service-planner",
+      "to": "plan"
+    },
+    {
+      "from": "understand",
+      "to": "prompt-enhancer"
+    },
+    {
+      "from": "prompt-enhancer",
+      "to": "plan"
+    },
+    {
+      "from": "plan",
+      "to": "prd-generator"
+    },
+    {
+      "from": "prd-generator",
+      "to": "plan"
+    },
+    {
+      "from": "plan",
+      "to": "dev-docs-generator"
+    },
+    {
+      "from": "dev-docs-generator",
+      "to": "build"
+    },
+    {
+      "from": "build",
+      "to": "completion-review"
+    },
+    {
+      "from": "completion-review",
+      "to": "user-report"
+    },
+    {
+      "from": "build",
+      "to": "prd-reviewer"
+    },
+    {
+      "from": "prd-reviewer",
+      "to": "build"
+    },
+    {
+      "from": "build",
+      "to": "test-driven-development"
+    },
+    {
+      "from": "test-driven-development",
+      "to": "build"
+    },
+    {
+      "from": "session-start",
+      "to": "epcc-init"
     }
   ]
 }

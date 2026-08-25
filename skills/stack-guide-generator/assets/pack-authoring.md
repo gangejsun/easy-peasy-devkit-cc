@@ -153,8 +153,8 @@ L1 에이전트에게 그대로 지시한다:
 0. **수리는 `SendMessage`로 같은 L1 에이전트를 이어 쓴다.** 새 `Agent` 호출은 컨텍스트를
    버려 파일을 처음부터 읽게 만든다 — 실측이 "벽시계를 지배한 것은 분량이 아니라 **검증
    왕복 횟수**"라고 판정했으므로 이 한 줄이 병렬 이득의 상당 부분을 지킨다
-1. `bash <skill-dir>/scripts/guide-gate.sh --pack <팩경로> --claims-out <TSV>` → FAIL 0까지 수리
-2. `bash <skill-dir>/scripts/pack-smoke.sh --pack <팩경로> --keep --online` → 실행 검증.
+1. `bash ${CLAUDE_SKILL_DIR}/scripts/guide-gate.sh --pack <팩경로> --claims-out <TSV>` → FAIL 0까지 수리
+2. `bash ${CLAUDE_SKILL_DIR}/scripts/pack-smoke.sh --pack <팩경로> --keep --online` → 실행 검증.
    `--online`이 타입체크를 감사 A에서 여기로 옮긴다 (팩이 못박은 메이저로 설치한다)
 3. `policies.md` 완성: L1 산출을 보고 내용 파생 정책을 추가하고 **각 행의 `증명 예`를 채운다**
 4. 감사 3개 병렬 (Step 5). **주장이 40건을 넘으면 B만 등분해 4~5개로 띄운다**(`split -l $(( (n+1)/2 ))` — `-n l/2`는 GNU 전용) —

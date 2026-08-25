@@ -23,7 +23,7 @@ B에 온전히 들어간다 — 갈라도 손실이 없다.
 손실이 0이다 — node-api 실측에서 B가 15분 46초로 임계 경로였고 aws-serverless는 76건이었다.
 
 ```bash
-bash <skill-dir>/scripts/guide-gate.sh --pack <팩> --claims-out /tmp/claims.tsv
+bash ${CLAUDE_SKILL_DIR}/scripts/guide-gate.sh --pack <팩> --claims-out /tmp/claims.tsv
 # 40건 초과면 2등분, 100건 초과면 3등분. `split -n l/2`는 **macOS에서 동작하지 않는다**
 # (GNU 확장이다) — 줄 수를 세어 `-l`로 가른다
 n=$(wc -l < /tmp/claims.tsv); split -l $(( (n + 1) / 2 )) /tmp/claims.tsv /tmp/claims-

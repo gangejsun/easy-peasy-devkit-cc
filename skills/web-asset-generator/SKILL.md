@@ -25,10 +25,10 @@ description: 로고, 텍스트, 이모지로부터 웹 에셋(favicon, OG 이미
 
 ### Step 3: 의존성 확인
 
-이 스킬 로드 시 표시되는 Base directory를 `<skill-dir>`로 치환해 실행한다:
+`${CLAUDE_SKILL_DIR}`는 Claude Code가 치환한다 — 개인·프로젝트·플러그인 어디에 설치되어도 해석된다:
 
 ```bash
-python3 <skill-dir>/scripts/check_dependencies.py
+python3 ${CLAUDE_SKILL_DIR}/scripts/check_dependencies.py
 ```
 
 Pillow 부재(exit 2) 시 안내된 설치 명령을 사용자 확인 후 실행한다.
@@ -36,7 +36,7 @@ Pillow 부재(exit 2) 시 안내된 설치 명령을 사용자 확인 후 실행
 ### Step 4: 파비콘 생성
 
 ```bash
-python3 <skill-dir>/scripts/generate_favicons.py <logo_path> public/ all --validate
+python3 ${CLAUDE_SKILL_DIR}/scripts/generate_favicons.py <logo_path> public/ all --validate
 ```
 
 ### Step 5: OG/소셜 이미지 생성
@@ -44,7 +44,7 @@ python3 <skill-dir>/scripts/generate_favicons.py <logo_path> public/ all --valid
 **Pillow 모드** (오프라인 기본):
 
 ```bash
-python3 <skill-dir>/scripts/generate_og_images.py --title "<제목>" --out public/ \
+python3 ${CLAUDE_SKILL_DIR}/scripts/generate_og_images.py --title "<제목>" --out public/ \
   [--subtitle "<부제>"] [--logo <path>] [--bg "#0F172A"] [--fg "#FFFFFF"]
 ```
 

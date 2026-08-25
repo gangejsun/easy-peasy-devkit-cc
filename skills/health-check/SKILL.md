@@ -19,10 +19,10 @@ description: 프로젝트 상태 일괄 점검 (빌드, 린트, 타입체크, �
 
 ### Step 2: 빌드 및 타입체크
 
-이 스킬 로드 시 표시되는 Base directory를 `<skill-dir>`로 치환해 실행한다:
+`${CLAUDE_SKILL_DIR}`는 Claude Code가 치환한다 — 개인·프로젝트·플러그인 어디에 설치되어도 해석된다:
 
 ```bash
-bash <skill-dir>/scripts/build-parser.sh build
+bash ${CLAUDE_SKILL_DIR}/scripts/build-parser.sh build
 ```
 
 - 명령은 `epcc.config.json`의 `techStack.commands.build` → 없으면 `package.json` scripts에서 자동 해석
@@ -32,7 +32,7 @@ bash <skill-dir>/scripts/build-parser.sh build
 ### Step 3: 린트 검사
 
 ```bash
-bash <skill-dir>/scripts/build-parser.sh lint
+bash ${CLAUDE_SKILL_DIR}/scripts/build-parser.sh lint
 ```
 
 - ESLint 에러/경고를 JSON 구조화
@@ -41,7 +41,7 @@ bash <skill-dir>/scripts/build-parser.sh lint
 ### Step 4: 테스트 실행
 
 ```bash
-bash <skill-dir>/scripts/build-parser.sh test
+bash ${CLAUDE_SKILL_DIR}/scripts/build-parser.sh test
 ```
 
 - 테스트 결과 요약 (통과/실패/스킵 수)

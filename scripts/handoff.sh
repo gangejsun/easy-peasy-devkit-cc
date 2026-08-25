@@ -25,8 +25,16 @@ add() { OUT="${OUT}$1"$'\n'; }
 
 # ── git 상태 ─────────────────────────────────────────────────────────
 if git rev-parse --git-dir >/dev/null 2>&1; then
-  BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-  HEADL=$(git log -1 --format='%h %s' 2>/dev/null | cut -c1-64)
+  # 커밋 0개(git init 직후) 저장소: git log·rev-parse HEAD가 exit 128 →
+  # pipefail+ERR 트랩이 훅을 통째로 죽여 인계가 **전부** 사라진다.
+  # 신규 프로젝트의 첫 세션이 정확히 이 상태다 (session-brief가 이미 같은 함정을 막아두었다).
+  if git rev-parse -q --verify HEAD >/dev/null 2>&1; then
+    BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+    HEADL=$(git log -1 --format='%h %s' 2>/dev/null | cut -c1-64)
+  else
+    BRANCH=$(git branch --show-current 2>/dev/null)
+    HEADL="없음 (첫 커밋 전)"
+  fi
   add "## 작업 상태 보존"
   add ""
   add "- 브랜치 \`${BRANCH:-?}\` · HEAD \`${HEADL:-없음}\`"
@@ -73,7 +81,7 @@ if [ "$EVENT" = "SessionEnd" ]; then
     TS=$(date -u '+%Y%m%d-%H%M%S')
     printf '%s\n' "$OUT" > "$HD/${TS}.md" 2>/dev/null || true
     # 최근 10개만 유지 (무한 축적 방지)
-    ls -1t "$HD"/*.md 2>/dev/null | tail -n +11 | while IFS= read -r old; do rm -f "$old"; done
+    { ls -1t "$HD"/*.md 2>/dev/null || true; } | tail -n +11 | while IFS= read -r old; do rm -f "$old"; done
   fi
 fi
 

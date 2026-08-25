@@ -7,7 +7,7 @@ description: [Preset: nextjs-supabase] UI/UX 디자인 인텔리전스. 67가지
 
 BM25 기반 검색 엔진을 활용한 디자인 인텔리전스 스킬. 산업별 추론 규칙과 CSV 데이터베이스에서 최적 디자인 시스템을 생성한다.
 
-> 아래 명령의 `<skill-dir>`은 이 스킬 로드 시 표시되는 **Base directory**로 치환한다.
+> 아래 명령의 `${CLAUDE_SKILL_DIR}`는 **Claude Code가 치환한다** — 손으로 경로를 채우지 않는다.
 > (프로젝트 오버라이드 경로를 하드코딩하면 플러그인 전용 설치에서 실패한다)
 
 **출처**: [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) v2.2.1
@@ -53,19 +53,19 @@ BM25 기반 검색 엔진을 활용한 디자인 인텔리전스 스킬. 산업�
 전체 디자인 시스템:
 
 ```bash
-python3 <skill-dir>/scripts/search.py "<제품유형> <산업> <키워드>" --design-system -p "<프로젝트명>" -f markdown
+python3 ${CLAUDE_SKILL_DIR}/scripts/search.py "<제품유형> <산업> <키워드>" --design-system -p "<프로젝트명>" -f markdown
 ```
 
 persist 모드 (지속적 참조용):
 
 ```bash
-python3 <skill-dir>/scripts/search.py "<쿼리>" --design-system --persist -p "<프로젝트명>" -o dev/docs/design
+python3 ${CLAUDE_SKILL_DIR}/scripts/search.py "<쿼리>" --design-system --persist -p "<프로젝트명>" -o dev/docs/design
 ```
 
 페이지별 오버라이드:
 
 ```bash
-python3 <skill-dir>/scripts/search.py "<쿼리>" --design-system --persist -p "<프로젝트명>" -o dev/docs/design --page "<페이지명>"
+python3 ${CLAUDE_SKILL_DIR}/scripts/search.py "<쿼리>" --design-system --persist -p "<프로젝트명>" -o dev/docs/design --page "<페이지명>"
 ```
 
 출력 구조:
@@ -82,32 +82,32 @@ dev/docs/design/<project-slug>/
 
 ```bash
 # 스타일 검색
-python3 <skill-dir>/scripts/search.py "modern e-commerce card" --domain style
+python3 ${CLAUDE_SKILL_DIR}/scripts/search.py "modern e-commerce card" --domain style
 
 # 색상 팔레트
-python3 <skill-dir>/scripts/search.py "trust marketplace" --domain color
+python3 ${CLAUDE_SKILL_DIR}/scripts/search.py "trust marketplace" --domain color
 
 # UX 가이드라인
-python3 <skill-dir>/scripts/search.py "group buying flow" --domain ux
+python3 ${CLAUDE_SKILL_DIR}/scripts/search.py "group buying flow" --domain ux
 
 # 차트 추천
-python3 <skill-dir>/scripts/search.py "progress tracker" --domain chart
+python3 ${CLAUDE_SKILL_DIR}/scripts/search.py "progress tracker" --domain chart
 
 # 폰트 페어링
-python3 <skill-dir>/scripts/search.py "modern clean korean" --domain typography
+python3 ${CLAUDE_SKILL_DIR}/scripts/search.py "modern clean korean" --domain typography
 ```
 
 ### Step 4: 스택 가이드라인 적용
 
 ```bash
 # Next.js 특화 가이드라인
-python3 <skill-dir>/scripts/search.py "<쿼리>" --stack nextjs
+python3 ${CLAUDE_SKILL_DIR}/scripts/search.py "<쿼리>" --stack nextjs
 
 # shadcn/ui 특화 가이드라인
-python3 <skill-dir>/scripts/search.py "<쿼리>" --stack shadcn
+python3 ${CLAUDE_SKILL_DIR}/scripts/search.py "<쿼리>" --stack shadcn
 
 # Tailwind CSS 가이드라인
-python3 <skill-dir>/scripts/search.py "<쿼리>" --stack html-tailwind
+python3 ${CLAUDE_SKILL_DIR}/scripts/search.py "<쿼리>" --stack html-tailwind
 ```
 
 ### Step 5: 프론트엔드 가이드라인 연계

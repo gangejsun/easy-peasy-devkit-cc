@@ -18,10 +18,9 @@
 
 ## 이 저장소 고유 사실
 
-**버전은 4곳을 동시에 올린다** — `.claude-plugin/plugin.json` · `package.json` ·
-`README.md` 배지 · `.claude-plugin/marketplace.json`(2군데). doctor가 4곳 전부 대조한다.
+**버전은 4곳을 동시에 올린다** — `plugin.json` · `package.json` · `README.md` 배지 · `marketplace.json`(2군데). doctor가 대조한다.
 
-**스크립트 배치** — 스킬 전용이면 `skills/<스킬>/scripts/`에 두고 `<skill-dir>`로 호출한다.
+**스크립트 배치** — 스킬 전용이면 `skills/<스킬>/scripts/`에 두고 **`${CLAUDE_SKILL_DIR}`**로 호출한다 (자작 표기는 치환되지 않아 소비자에서 실패 — doctor가 검출).
 루트 `scripts/`는 훅·doctor·**설치기**(`install-rules.sh`·`install-guide.sh`) 전용이다. 여기
 두면 ⓐ doctor 자기 lint가 검사 스크립트의 정규식 문자열을 오탐하고 ⓑ 이중 루트 전제와 어긋난다.
 
@@ -43,6 +42,7 @@
 
 ```bash
 bash scripts/doctor.sh --fast && bash scripts/doctor.sh --self-test
+bash scripts/doctor.sh --consumer   # 훅·설치기를 건드렸으면 — 소비자 레이아웃 실증
 # 가이드 하네스를 건드렸으면. 버전 올릴 때는 --self-test 대신 --regress (출하 자산 회귀)
 bash skills/stack-guide-generator/scripts/guide-gate.sh --self-test
 bash skills/stack-guide-generator/scripts/pack-smoke.sh --self-test

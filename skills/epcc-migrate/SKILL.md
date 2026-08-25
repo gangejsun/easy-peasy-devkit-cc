@@ -61,7 +61,7 @@ v3의 4개 훅이 플러그인에서 자동 제공되므로 프로젝트 사본�
 
 | 파일 | 처리 |
 | --- | --- |
-| `task-workflow.md` · `task-workflow-detail.md` | → `reversibility.md`로 대체 (P0~P6 번호 폐기) |
+| `task-workflow.md` · `task-workflow-detail.md` | → 검증 강도는 `reversibility.md`로, **Phase 라우팅(P0~P6)은 생성 CLAUDE.md의 「작업 라우팅」 표로** 이관. S/M/L 규모 판단만 폐기 |
 | `modification-guardrails.md` | → `code-change.md` + `harness-change.md`로 분할 |
 | `self-improvement.md` | → `lessons.md` (Act 루프는 `doctor --lessons`가 수행) |
 | `agent-governance.md` | → 삭제. 규범이 에이전트 프롬프트로 이관됨 |
@@ -103,8 +103,11 @@ ls -1 .claude/rules/
 v2 CLAUDE.md는 삭제된 파일을 참조하고 있을 가능성이 높습니다.
 
 1. `.claude/rules/task-workflow.md` 참조 → 제거 (운영 계약이 세션 시작 시 자동 주입됨)
-2. P0~P6 Phase 테이블 → 제거 (되돌림 축으로 대체됨)
-3. 존재하지 않는 파일을 가리키는 링크 전부 제거
+2. **P0~P6 Phase 테이블은 유지**하되, `templates/CLAUDE.md.hbs`의 「작업 라우팅」 섹션과
+   대조해 갱신한다 — 호출 대상이 `planning-agent`/`review-agent`에서
+   `epcc-planner`/`epcc-reviewer`로 바뀌었고, P5의 강도는 되돌림 클래스가 정한다
+3. S/M/L 규모 판단 표 → 제거 (되돌림 클래스가 대체)
+4. 존재하지 않는 파일을 가리키는 링크 전부 제거
 
 ## Step 6: 검증 (필수)
 

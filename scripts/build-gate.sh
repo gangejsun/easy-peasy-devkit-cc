@@ -49,14 +49,30 @@ SRC_COUNT=$(epcc_num "$(printf '%s\n' "$SRC_CHANGED" | grep -c . || printf '0')"
 
 # ── 2. 빌드/테스트가 실제로 실행되었는가 ─────────────────────────────
 # transcript JSONL에서 Bash 도구 호출의 command만 추출해서 판정한다.
+#
+# **판정은 3상태다. "판정 불가"를 "미실행"으로 접으면 안 된다.**
+# jq는 macOS 기본 설치에 없다. 접어버리면 빌드를 돌린 세션도 매번 차단되고,
+# 그러면 사용자가 훅을 꺼서 차단력이 0이 된다 (security-check.sh가 적어둔 원칙).
+# guide-freshness.sh --offline 과 같은 규율: 미판정은 명시 보고하지 단정하지 않는다.
+UNDECIDABLE=""
+if ! command -v jq >/dev/null 2>&1; then
+  UNDECIDABLE="jq 미설치"
+elif [ -z "$TRANSCRIPT" ] || [ ! -r "$TRANSCRIPT" ]; then
+  UNDECIDABLE="transcript를 읽을 수 없음"
+fi
+
+if [ -n "$UNDECIDABLE" ]; then
+  epcc_emit_notice "Stop" "$(printf '소스 %s개 파일이 변경되었으나 빌드/테스트 실행 여부를 **판정할 수 없습니다** (%s).\n\n차단하지 않습니다 — 직접 확인하세요. jq를 설치하면 이 게이트가 다시 작동합니다.' \
+    "$SRC_COUNT" "$UNDECIDABLE")" 2>/dev/null || true
+  exit 0
+fi
+
 BUILD_RAN=0
-if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ] && command -v jq >/dev/null 2>&1; then
-  if jq -r 'select(.type=="assistant") | .message.content[]?
-            | select(.type=="tool_use" and .name=="Bash") | .input.command // empty' \
-       "$TRANSCRIPT" 2>/dev/null \
-     | grep -qE '(pnpm|npm|npx|yarn|bun|make|cargo|go|uv|poetry|python|pytest|ruff|tsc)([[:space:]]+run)?[[:space:]]+[a-z:]*(build|test|typecheck|check|lint)'; then
-    BUILD_RAN=1
-  fi
+if jq -r 'select(.type=="assistant") | .message.content[]?
+          | select(.type=="tool_use" and .name=="Bash") | .input.command // empty' \
+     "$TRANSCRIPT" 2>/dev/null \
+   | grep -qE '(pnpm|npm|npx|yarn|bun|make|cargo|go|uv|poetry|python|pytest|ruff|tsc)([[:space:]]+run)?[[:space:]]+[a-z:]*(build|test|typecheck|check|lint)'; then
+  BUILD_RAN=1
 fi
 
 [ "$BUILD_RAN" -eq 1 ] && exit 0

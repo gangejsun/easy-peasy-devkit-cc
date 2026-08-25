@@ -84,6 +84,12 @@ if [ -f "$HOOKS_JSON" ] && command -v jq >/dev/null 2>&1; then
   fi
 fi
 
+# jq 부재 — 조용히 기능이 준다. 빌드 게이트는 판정 불가로 떨어지고(차단하지 않음)
+# doctor --graph는 검증을 생략한다. 사용자가 그 사실을 알아야 설치 여부를 결정할 수 있다.
+if ! command -v jq >/dev/null 2>&1; then
+  printf -- '- ⚠️ `jq` 미설치 — 빌드 게이트가 판정 불가 상태이고 `doctor --graph`가 생략됩니다 (`brew install jq`)\n'
+fi
+
 # ── 3.3 플러그인 갱신 도달 — 단, 스택 전제는 프로젝트가 고정한다 ────
 # 프로젝트는 시작 시점의 스택 전제 위에 코드를 쌓는다. 플러그인 팩이 next@16 패턴으로
 # 옮겼는데 이 프로젝트가 15라면 갱신본은 낡은 것이 아니라 **이 프로젝트에 대해 틀린**
@@ -125,15 +131,46 @@ if [ -n "${PLUG_VER:-}" ]; then
     "$(printf '%s' "$PINNED" | sed 's/^ //')"
 
   # T1 규칙 카드는 스택 전제가 없다 (코드 변경 규율·되돌림·교훈) — 항상 최신이 옳다
-  RDRIFT=0
-  for RC in "$EPCC_ROOT"/.claude/rules/*.md; do
-    [ -f "$RC" ] || continue
-    SRC="$PLUGIN_ROOT/rules/$(basename "$RC")"; [ -f "$SRC" ] || continue
-    SV=$({ grep -m1 -oE 'epcc-rule-version: [0-9.]+' "$SRC" 2>/dev/null || true; } | awk '{print $2}')
-    TV=$({ grep -m1 -oE 'epcc-rule-version: [0-9.]+' "$RC"  2>/dev/null || true; } | awk '{print $2}')
-    [ -n "${SV:-}" ] && [ -n "${TV:-}" ] && [ "$SV" != "$TV" ] && RDRIFT=$((RDRIFT+1))
-  done
-  [ "$RDRIFT" -gt 0 ] && printf -- '- T1 규칙 카드 %s개가 구버전 — `bash "%s/scripts/install-rules.sh"` 재실행\n' "$RDRIFT" "$PLUGIN_ROOT"
+  #
+  # **미설치를 먼저 본다.** 아래 드리프트 루프는 .claude/rules/ 를 순회하므로 디렉토리가
+  # 비어 있으면 본문이 한 번도 돌지 않고, 그러면 "한 번도 설치되지 않았다"가 조용히
+  # 통과한다. install-rules 실행은 epcc-init 스킬의 지시일 뿐 훅이 아니다 — 모델이
+  # Step 7을 건너뛰면 규칙은 영영 도달하지 않는다. 그 사실을 아는 것은 여기뿐이다.
+  # glob 무매칭 시 ls는 exit 1 — pipefail+ERR 트랩이 훅을 통째로 죽인다.
+  # 하필 "규칙이 0장"일 때 죽으므로, 알리려던 바로 그 상황에서 침묵한다. || true 가드 필수.
+  RCOUNT=$(epcc_num "$({ ls -1 "$EPCC_ROOT"/.claude/rules/*.md 2>/dev/null || true; } | wc -l)")
+  PCOUNT=$(epcc_num "$({ ls -1 "$PLUGIN_ROOT"/rules/*.md 2>/dev/null || true; } | wc -l)")
+
+  # 누락분 자동 설치 — 두 경계를 지킨다:
+  #   ⓐ epcc.config.json이 있을 때만. 플러그인은 전역 설치라 이 관문이 없으면 사용자가 여는
+  #     모든 저장소에 .claude/rules/ 를 쓰게 된다. config 존재 = 이 프로젝트가 epcc를 쓴다는 표시
+  #   ⓑ --missing-only. 있는 파일은 버전도 보지 않는다 — 자동 실행이 사용자 수정본을
+  #     조용히 덮어쓰면 안 된다. 갱신은 아래에서 **보고**만 하고 사람이 실행한다
+  # 설치를 스킬 지시로만 두면 모델이 Step 7을 건너뛸 때 규범이 영영 도달하지 않는다.
+  if [ -f "$EPCC_ROOT/epcc.config.json" ] && [ "$RCOUNT" -lt "$PCOUNT" ]; then
+    CLAUDE_PROJECT_DIR="$EPCC_ROOT" bash "$PLUGIN_ROOT/scripts/install-rules.sh" --missing-only --quiet 2>/dev/null || true
+    RCOUNT=$(epcc_num "$({ ls -1 "$EPCC_ROOT"/.claude/rules/*.md 2>/dev/null || true; } | wc -l)")
+  fi
+
+  # 미설치 경고도 config 관문을 쓴다. 미설정 프로젝트는 §3.5의 /epcc-init 넛지가 이미
+  # 담당하므로, 여기서 또 말하면 epcc를 안 쓰는 저장소에 경고가 두 줄 뜬다.
+  if [ "$RCOUNT" -eq 0 ] && [ "$PCOUNT" -gt 0 ] && [ -f "$EPCC_ROOT/epcc.config.json" ]; then
+    printf -- '- ⚠️ T1 규칙 카드 미설치 (자동 설치도 실패) — `bash "%s/scripts/install-rules.sh"` 직접 실행하세요. 작업 라우팅·되돌림·보안 규범이 세션에 도달하지 않는 상태입니다\n' "$PLUGIN_ROOT"
+  else
+    RDRIFT=0
+    for RC in "$EPCC_ROOT"/.claude/rules/*.md; do
+      [ -f "$RC" ] || continue
+      SRC="$PLUGIN_ROOT/rules/$(basename "$RC")"; [ -f "$SRC" ] || continue
+      SV=$({ grep -m1 -oE 'epcc-rule-version: [0-9.]+' "$SRC" 2>/dev/null || true; } | awk '{print $2}')
+      TV=$({ grep -m1 -oE 'epcc-rule-version: [0-9.]+' "$RC"  2>/dev/null || true; } | awk '{print $2}')
+      [ -n "${SV:-}" ] && [ -n "${TV:-}" ] && [ "$SV" != "$TV" ] && RDRIFT=$((RDRIFT+1))
+    done
+    [ "$RDRIFT" -gt 0 ] && printf -- '- T1 규칙 카드 %s개가 구버전 — `bash "%s/scripts/install-rules.sh"` 재실행\n' "$RDRIFT" "$PLUGIN_ROOT"
+    # 플러그인에 새 카드가 생겼는데 프로젝트에 없는 경우 (드리프트 루프는 못 잡는다).
+    # config 관문 필수 — 없으면 epcc를 쓰지 않는 저장소에 "0/8장" 경고가 뜬다.
+    [ "$RCOUNT" -lt "$PCOUNT" ] && [ -f "$EPCC_ROOT/epcc.config.json" ] \
+      && printf -- '- T1 규칙 카드 %s/%s장만 설치됨 — `bash "%s/scripts/install-rules.sh"` 재실행\n' "$RCOUNT" "$PCOUNT" "$PLUGIN_ROOT"
+  fi
 fi
 
 # ── 3.4 미완 가이드 작업 (세션이 죽어도 20분이 사라지지 않게) ────────

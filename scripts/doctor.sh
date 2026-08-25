@@ -9,7 +9,10 @@
 #   doctor.sh --graph      workflow.graph.json 검증 (도달 불가 노드/엣지)
 #   doctor.sh --usage      훅 하트비트 · 스킬 호출 · 엣지 traversal
 #   doctor.sh --lessons    lessons.md 카테고리 집계 + 승격 후보
+#   doctor.sh --consumer   소비자 레이아웃 실증 (캐시 경로 + 빈/첫커밋전 프로젝트에서 훅 실행)
 #   doctor.sh              = --fast --graph
+#
+#   --root <dir>           검사 대상 플러그인 루트 교체 (자기시험 전용)
 #
 # 종료 코드: 0 = 통과, 1 = 실패 항목 존재
 
@@ -18,7 +21,21 @@ set -uo pipefail   # -e 없음: 모든 검사를 끝까지 돌려 전체 보고�
 # 루트가 둘이다 — 하나로 합치면 소비자 프로젝트에서 플러그인 구조 검사가 깨진다:
 #   PLUGIN_ROOT: 플러그인 자산 검사(fast/graph/self-test) — 스크립트 위치가 곧 진실
 #   PROJ:        프로젝트 상태 검사(usage/lessons) — 훅 로그·교훈은 소비자 쪽에 산다
+# --root <dir> : 자기시험 전용. 합성 플러그인 트리를 대상으로 정적 검사를 돌린다.
+# 이것이 없으면 정적 검사의 차단 능력을 재현 가능하게 증명할 수 없다 (손으로 심고
+# 지운 증명은 다음 사람에게 남지 않는다).
+DOCTOR_ROOT_OVERRIDE=""
+_args=(); while [ $# -gt 0 ]; do
+  case "$1" in
+    --root) DOCTOR_ROOT_OVERRIDE="${2:-}"; shift 2 ;;
+    *) _args+=("$1"); shift ;;
+  esac
+done
+set -- ${_args+"${_args[@]}"}
+
 PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+[ -n "$DOCTOR_ROOT_OVERRIDE" ] && PLUGIN_ROOT="$(cd "$DOCTOR_ROOT_OVERRIDE" 2>/dev/null && pwd)"
+[ -n "$DOCTOR_ROOT_OVERRIDE" ] && [ -z "$PLUGIN_ROOT" ] && { printf '--root 경로 없음: %s\n' "$DOCTOR_ROOT_OVERRIDE" >&2; exit 2; }
 PROJ="${CLAUDE_PROJECT_DIR:-$PWD}"
 ROOT="$PLUGIN_ROOT"
 cd "$ROOT" || exit 2
@@ -40,6 +57,73 @@ num() { local v; v=$(printf '%s' "${1:-}" | tr -d '[:space:]'); case "$v" in ''|
 code_lines() {
   sed -E -e 's/^[[:space:]]*#.*$//' \
          -e '/^[[:space:]]*(bad|ok|warn|sec|printf|echo)[[:space:]]/d' "$1" 2>/dev/null
+}
+
+# ════════════════════════════════════════════════════════════════════
+# 정적 검사 픽스처 헬퍼 (--self-test 전용)
+# ════════════════════════════════════════════════════════════════════
+
+# 정적 검사가 통과하는 최소 합성 플러그인 트리. 다른 검사(매니페스트·훅 등)는
+# 여기서 실패해도 무방하다 — 판정은 **특정 메시지의 유무**로만 한다.
+_fx_static_tree() {
+  local T="$1"
+  mkdir -p "$T/rules" "$T/templates" "$T/skills/sample" "$T/skills/epcc-init" "$T/scripts" || return 1
+
+  printf -- '<!-- epcc-rule-version: 0.0.1 -->\n# 라우팅\n\n| Phase | 조건 |\n| --- | --- |\n' \
+    > "$T/rules/workflow-routing.md"
+  printf -- '---\npaths:\n  - "src/**"\n---\n<!-- epcc-rule-version: 0.0.1 -->\n# 코드\n' \
+    > "$T/rules/code-change.md"
+
+  printf -- '# CLAUDE.md\n\n## 하네스\n\n라우팅은 `.claude/rules/workflow-routing.md`가 로드합니다.\n' \
+    > "$T/templates/CLAUDE.md.hbs"
+
+  printf -- '---\nname: sample\ndescription: x\n---\nbash ${CLAUDE_SKILL_DIR}/scripts/x.sh\n' \
+    > "$T/skills/sample/SKILL.md"
+
+  # 카드 표는 rules/ 실물 수(2)와 맞춘다
+  printf -- '---\nname: epcc-init\ndescription: x\n---\ninstall-rules\n\n| 파일 | 로드 조건 |\n| --- | --- |\n| `workflow-routing.md` | 상시 |\n| `code-change.md` | src |\n' \
+    > "$T/skills/epcc-init/SKILL.md"
+
+  # 그래프: 스킬 2개를 노드로 선언 (manual로 인바운드 면제)
+  cat > "$T/workflow.graph.json" <<'FXG'
+{
+  "version": "0.0.1",
+  "nodes": [
+    { "id": "sample", "kind": "skill", "path": "skills/sample/SKILL.md", "manual": true },
+    { "id": "epcc-init", "kind": "skill", "path": "skills/epcc-init/SKILL.md", "manual": true }
+  ],
+  "edges": []
+}
+FXG
+  return 0
+}
+
+# 결함 하나를 심고 판정한다. **유효성 확인이 먼저다.**
+#   $1 임시루트  $2 이름  $3 결함이 들어갈 파일(트리 상대)  $4 결함 표식(grep -E)
+#   $5 기대 메시지  $6 심는 명령 ($T = 트리 경로)
+_fx_static_case() {
+  local sfx="$1" name="$2" file="$3" mark="$4" want="$5" plant="$6" mode="${7:---fast}"
+  local T="$sfx/$name"
+  rm -rf "$T"; cp -R "$sfx/base" "$T" 2>/dev/null || { bad "픽스처 복사 실패: $name"; return; }
+
+  # 심기 실패를 감추지 않는다 — 감추면 "픽스처 무효"의 원인을 알 수 없다.
+  local perr; perr=$(eval "$plant" 2>&1 >/dev/null)
+
+  # ① 유효성 — 심으려던 것이 실제로 들어갔는가. 이 단계가 없어서 no-op 증명이 통과로 보였다.
+  if ! grep -qE "$mark" "$T/$file" 2>/dev/null; then
+    bad "픽스처 무효: $name" "결함 표식 '$mark'가 $file 에 없다 — 아래 판정은 무의미하다${perr:+ · 심기 오류: $perr}"
+    return
+  fi
+
+  # ② 검출 — 그 상태에서 검사가 기대 메시지를 내는가
+  local out; out=$(bash "$0" "$mode" --root "$T" 2>&1)
+  if printf '%s' "$out" | grep -q "$want"; then
+    ok "$name → '$want' 검출"
+    [ -n "${EPCC_FX_WHY:-}" ] && printf "      ${C_D}%s${C_0}\n" \
+      "$(printf '%s' "$out" | grep '✗' | head -2 | sed 's/^  *//' | tr '\n' ';')"
+  else
+    bad "$name → '$want' 미검출" "결함을 심었는데 검사가 통과시켰다 — 미탐"
+  fi
 }
 
 # ════════════════════════════════════════════════════════════════════
@@ -74,6 +158,59 @@ run_fast() {
     bad "'|| echo 0' 폴백: ${n}개 파일" "$hits — 1줄 자리에 2줄이 들어가 정수 비교를 붕괴시킴. epcc_num() 사용 필요"
   else
     ok "'|| echo 0' 폴백 없음"
+  fi
+
+  # 무가드 glob 파이프 — `ls dir/*.md | wc -l`은 무매칭 시 ls가 exit 1을 내고,
+  # 훅의 pipefail+ERR 트랩이 스크립트를 통째로 죽인다. 하필 "0개일 때" 죽으므로
+  # 0개를 알리려던 코드가 정확히 그 상황에서 침묵한다. `{ ... || true; }` 필요.
+  # 대상은 **ERR trap이 걸린 스크립트만**이다: common.sh를 source하는 훅, 또는
+  # 스스로 `set -e`/`-Eeuo`를 켠 설치기. 검사 스크립트(doctor 자신)는 `-e`가 없어
+  # 파이프 실패가 죽이지 않으므로 제외한다 — 넣으면 오탐이고, 오탐은 lint를 무력화한다.
+  local gl="" n=0
+  for f in scripts/*.sh; do
+    [ -f "$f" ] || continue
+    case "$f" in */lib/*) continue;; esac
+    grep -qE '^set -[A-Za-z]*e|lib/common\.sh' "$f" 2>/dev/null || continue
+    while IFS= read -r line; do
+      case "$line" in *'|| true'*|*'||true'*) continue;; esac
+      gl="$gl $(basename "$f")"; n=$((n+1)); break
+    done < <(code_lines "$f" | grep -E 'ls[[:space:]][^|]*\*[^|]*\|')
+  done
+  if [ "$n" -gt 0 ]; then
+    bad "무가드 glob 파이프: ${n}개 파일" "$gl — 무매칭 시 ls exit 1 → pipefail+ERR 트랩이 훅을 죽인다. { ... || true; } 필요"
+  else
+    ok "무가드 glob 파이프 없음"
+  fi
+
+  # HEAD 미검증 git 호출 — 커밋 0개(git init 직후) 저장소에서 exit 128.
+  # 신규 프로젝트의 첫 세션이 정확히 그 상태다. rev-parse -q --verify HEAD 로 먼저 확인한다.
+  local gh="" n=0
+  for f in scripts/*.sh; do
+    [ -f "$f" ] || continue
+    case "$f" in */lib/*) continue;; esac
+    code_lines "$f" | grep -qE 'git (log|describe)[[:space:]]|git rev-parse[[:space:]]+(--abbrev-ref[[:space:]]+)?HEAD' || continue
+    grep -q 'rev-parse -q --verify HEAD' "$f" 2>/dev/null && continue
+    gh="$gh $(basename "$f")"; n=$((n+1))
+  done
+  if [ "$n" -gt 0 ]; then
+    bad "HEAD 미검증 git 호출: ${n}개 파일" "$gh — 커밋 0개 저장소에서 exit 128 → 훅 사망. git rev-parse -q --verify HEAD 로 먼저 확인"
+  else
+    ok "HEAD 미검증 git 호출 없음"
+  fi
+
+  # BSD BRE 교대 — macOS의 grep/sed는 BRE에서 \| 를 지원하지 않는다.
+  # **실패하지 않고 조용히 무매칭**이 되므로 검사가 아무것도 안 잡는 채로 통과한다.
+  # -E(ERE)를 쓰고 | 로 적어야 한다.
+  local bre="" n=0
+  for f in scripts/*.sh skills/*/scripts/*.sh; do
+    [ -f "$f" ] || continue
+    code_lines "$f" 2>/dev/null | grep -qE "(grep|sed)([[:space:]]+-[a-df-zA-Z]+)*[[:space:]]+'[^']*\\\\\\|" || continue
+    bre="$bre $(basename "$f")"; n=$((n+1))
+  done
+  if [ "$n" -gt 0 ]; then
+    bad "BSD 미지원 BRE 교대(\\|): ${n}개 파일" "$bre — macOS에서 조용히 무매칭된다. grep -E / sed -E 와 | 를 쓸 것"
+  else
+    ok "BSD 미지원 BRE 교대 없음"
   fi
 
   # ── 2. 훅 출력 규격 (§1.2 검출) ──
@@ -183,6 +320,42 @@ run_fast() {
     ok "\.claude/rules 참조 ${checked}건 모두 실재"
   fi
 
+  # 상시 로드 축 (§R1) — Claude Code는 `paths:` 없는 .claude/rules/*.md 를 매 세션
+  # 무조건 로드한다. 작업 라우팅과 참조 신선도는 "아직 아무 파일도 열지 않은 시점"에
+  # 필요하므로 조건부여서는 안 된다. paths가 붙는 순간 조용히 안 뜬다.
+  local always=""
+  for rc in rules/*.md; do
+    [ -f "$rc" ] || continue
+    grep -q '^paths:' "$rc" 2>/dev/null || always="$always $(basename "$rc")"
+  done
+  if [ -z "$always" ]; then
+    bad "상시 로드 규칙 카드 없음" "rules/ 전부가 paths 조건부 — 작업 라우팅이 세션 시작 시 도달하지 못한다"
+  elif [ ! -f rules/workflow-routing.md ] || grep -q '^paths:' rules/workflow-routing.md 2>/dev/null; then
+    bad "workflow-routing.md가 상시가 아님" "paths를 지우세요 — 붙는 순간 세션 시작 시 안 뜹니다"
+  else
+    ok "상시 로드 카드:$always"
+  fi
+
+  # epcc-init Step 7의 카드 표가 rules/ 실물과 어긋나면, 사용자는 설치가 끝났는지
+  # 판단할 근거를 잃는다. 표는 사본이므로 수가 갈라지는 순간 알린다.
+  if [ -f skills/epcc-init/SKILL.md ]; then
+    local nrules ntable
+    nrules=$(num "$(ls -1 rules/*.md 2>/dev/null | wc -l | tr -d ' ')")
+    ntable=$(num "$(grep -cE '^\| `[a-z-]+\.md` \|' skills/epcc-init/SKILL.md 2>/dev/null)")
+    if [ "$nrules" -ne "$ntable" ]; then
+      bad "epcc-init 카드 표 ${ntable}장 ≠ rules/ ${nrules}장" "설치 안내가 실물과 어긋난다"
+    else
+      ok "epcc-init 카드 표 ${ntable}장 = rules/ 실물"
+    fi
+  fi
+
+  # 정본 이원화 방지 — Phase 표가 .hbs로 되돌아오면 카드와 갈라진다
+  if [ -f templates/CLAUDE.md.hbs ] && grep -qE '^\| *P0|^\| *Phase *\|' templates/CLAUDE.md.hbs 2>/dev/null; then
+    bad "CLAUDE.md.hbs에 Phase 표 재출현" "정본은 rules/workflow-routing.md — 사본은 드리프트 원천이다"
+  else
+    ok "Phase 표 정본 단일 (rules/workflow-routing.md)"
+  fi
+
   # T0 예산 — operating-contract.md 주석이 약속한 40줄 상한을 기계가 지킨다
   local t0="templates/operating-contract.md"
   if [ -f "$t0" ]; then
@@ -263,14 +436,27 @@ run_fast() {
 
   # .claude/skills/ 하드코딩 — 플러그인 스킬이 프로젝트 오버라이드 경로를 지시하면
   # 오버라이드가 없는 프로젝트(플러그인 전용 설치)에서 그 명령은 실패한다.
-  # 스킬 로드 시 주어지는 Base directory(<skill-dir>) 기준이어야 한다.
   local hc=0
   while IFS= read -r hit; do
     [ -z "$hit" ] && continue
-    warn ".claude/skills/ 경로 하드코딩: $hit" "<skill-dir>(Base directory) 기준으로 변경"
+    warn ".claude/skills/ 경로 하드코딩: $hit" "\${CLAUDE_SKILL_DIR} 기준으로 변경"
     hc=$((hc+1))
   done < <(grep -rln 'python3 \.claude/skills/\|bash \.claude/skills/' skills/*/SKILL.md 2>/dev/null)
   [ "$hc" -eq 0 ] && ok "스크립트 호출의 .claude/skills/ 하드코딩 없음"
+
+  # 번들 스크립트 경로 표기 — Claude Code가 치환하는 것은 \${CLAUDE_SKILL_DIR}와
+  # \${CLAUDE_PLUGIN_ROOT} 둘뿐이다. <skill-dir> 같은 자작 표기는 **아무것도 치환하지
+  # 않는다**. 이 저장소에서는 상대 경로가 우연히 맞아 드러나지 않지만, 소비자에서 스킬은
+  # 플러그인 캐시에 있으므로 모델이 경로를 추측해야 하고 호출이 실패한다.
+  local bogus=0
+  while IFS= read -r hit; do
+    [ -z "$hit" ] && continue
+    bad "치환되지 않는 스크립트 경로 표기: $hit" "\${CLAUDE_SKILL_DIR} 또는 \${CLAUDE_PLUGIN_ROOT}만 치환된다"
+    bogus=$((bogus+1))
+  # BSD grep은 BRE에서 \| 교대를 지원하지 않는다 → -E(ERE) 필수.
+  # (이 파일 상단 code_lines()가 sed에 대해 같은 함정을 이미 적어두었다)
+  done < <(grep -rnE '<skill[-_]dir>|\{skill[-_]dir\}|<Base directory>' skills/ 2>/dev/null | cut -c1-120)
+  [ "$bogus" -eq 0 ] && ok "번들 스크립트 경로 표기 정상 (\${CLAUDE_SKILL_DIR})"
 
   # 공유 사본 쌍의 내용 drift (사본 공유 구조의 알려진 실패 모드)
   # 동명 ≠ 사본 (complete-examples.md는 스킬마다 독립 내용). 파일명 추측 대신
@@ -368,6 +554,69 @@ run_fast() {
     bad "매니페스트 hooks가 기본 경로 hooks/hooks.json을 중복 참조" "자동 발견되는 파일이라 플러그인 로드 거부됨 — 해당 줄 삭제"
   else
     ok "매니페스트 hooks 기본 경로 중복 없음"
+  fi
+
+  # ── 7.5 선언↔실물 대조 (RC5) ──
+  #
+  # 문서에 손으로 적은 수는 반드시 낡는다. README가 "노드 24 · 엣지 41"이라고
+  # 적어둔 사이 실물은 49/67이 되어 있었고, 스킬 수는 34·35·31 세 값이 공존했다.
+  # 사람이 대조하기를 기대하지 않고 기계가 맞춘다.
+  sec "선언↔실물"
+
+  local claims=0 wrong=0
+  _claim() {  # $1 라벨  $2 문서에서 뽑은 값  $3 실물  $4 파일
+    [ -z "$2" ] && return 0
+    claims=$((claims+1))
+    [ "$2" = "$3" ] && return 0
+    bad "$4: $1 주장 $2 ≠ 실물 $3"; wrong=$((wrong+1))
+  }
+
+  if [ -f README.md ]; then
+    local real_sk real_ru real_nd real_ed
+    real_sk=$(num "$(find skills -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')")
+    real_ru=$(num "$({ ls -1 rules/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')")
+    if command -v jq >/dev/null 2>&1 && [ -f workflow.graph.json ]; then
+      real_nd=$(num "$(jq -r '.nodes|length' workflow.graph.json 2>/dev/null)")
+      real_ed=$(num "$(jq -r '.edges|length' workflow.graph.json 2>/dev/null)")
+      _claim "그래프 노드" "$(grep -oE '노드 [0-9]+' README.md | head -1 | sed -E 's/[^0-9]*([0-9]+)/\1/')" "$real_nd" "README.md"
+      _claim "그래프 엣지" "$(grep -oE '엣지 [0-9]+' README.md | head -1 | sed -E 's/[^0-9]*([0-9]+)/\1/')" "$real_ed" "README.md"
+    fi
+    _claim "스킬 수" "$(grep -oE '\| \*\*스킬\*\* \| [0-9]+' README.md | grep -oE '[0-9]+$')" "$real_sk" "README.md"
+    _claim "T1 카드 수" "$(grep -oE 'T1 [0-9]+개' README.md | head -1 | sed -E 's/T1 ([0-9]+)개/\1/')" "$real_ru" "README.md"
+  fi
+  [ "$wrong" -eq 0 ] && [ "$claims" -gt 0 ] && ok "문서 수치 주장 ${claims}건 실물과 일치"
+
+  # 고아 자산 — templates/ 중 아무도 참조하지 않는 파일.
+  # CLAUDE.md.hbs가 그 상태였다 (epcc-init이 인라인 사본을 쓰고 있어 아무도 안 읽었다).
+  local orph=0 ochk=0 ob
+  while IFS= read -r tf; do
+    [ -f "$tf" ] || continue
+    ochk=$((ochk+1)); ob=$(basename "$tf")
+    grep -rlF "$ob" --include='*.md' --include='*.sh' --include='*.json' \
+      rules skills scripts agents templates docs CLAUDE.md README.md 2>/dev/null \
+      | grep -vxF "$tf" | grep -q . && continue
+    bad "고아 자산: $tf" "아무도 참조하지 않는다 — 죽은 자산이거나 배선 누락이다"; orph=$((orph+1))
+  done < <(find templates -type f 2>/dev/null)
+  [ "$orph" -eq 0 ] && [ "$ochk" -gt 0 ] && ok "templates/ ${ochk}건 모두 참조됨"
+
+  # 플랫폼 계약 신선도 (RC1) — 플랫폼은 움직인다. 낡은 계약은 없는 계약보다 위험하다.
+  local pc="docs/platform-contract.md"
+  if [ ! -f "$pc" ]; then
+    bad "$pc 없음" "플랫폼 동작의 정본이 없으면 기억으로 단정하게 된다"
+  else
+    local oldest="" d dd now age
+    now=$(date +%s)
+    while IFS= read -r d; do
+      dd=$(date -j -f '%Y-%m-%d' "$d" +%s 2>/dev/null || date -d "$d" +%s 2>/dev/null || printf '')
+      [ -z "$dd" ] && continue
+      age=$(( (now - dd) / 86400 ))
+      [ "$age" -gt 180 ] && oldest="$oldest $d(${age}일)"
+    done < <(grep -oE '확인: [0-9]{4}-[0-9]{2}-[0-9]{2}' "$pc" | awk '{print $2}')
+    if [ -n "$oldest" ]; then
+      warn "플랫폼 계약 항목이 180일 초과:$oldest" "공식 문서로 재확인하고 날짜를 갱신하세요"
+    else
+      ok "플랫폼 계약 확인 날짜 최신 (180일 이내)"
+    fi
   fi
 
   # ── 8. 저장소 작업 규범 (§도달 경로 검증을 이 저장소 자신에게) ──
@@ -481,6 +730,47 @@ run_self_test() {
     warn "양성 픽스처 없음 ($blockfx)" "차단 능력이 증명되지 않은 상태"
   fi
 
+  # ── 정적 검사 양성 픽스처 (RC4) ──────────────────────────────────
+  # 정적 검사(상시 카드·치환자 표기·Phase 이원화·카드 표 수·그래프 미선언)는
+  # 손으로 결함을 심어 증명했었다. 그 증명은 재현되지 않고, 실제로 한 번은
+  # **픽스처가 심어지지도 않은 채 "통과"로 보였다** (없는 파일명을 노렸다).
+  #
+  # 그래서 두 단계로 나눈다:
+  #   1) 픽스처 유효성 — 심으려던 문자열이 그 파일에 **실제로 있는가**
+  #   2) 검출 — 그 상태에서 검사가 해당 메시지를 내는가 (+ 심기 전엔 안 내는가)
+  # 1이 실패하면 2의 결과는 아무 의미가 없다.
+  sec "정적 검사 양성 픽스처"
+
+  local sfx; sfx=$(mktemp -d 2>/dev/null) || { warn "임시 디렉토리 생성 실패" "정적 픽스처 생략"; sfx=""; }
+  if [ -n "$sfx" ]; then
+    trap 'rm -rf "$sfx"' RETURN
+    _fx_static_tree "$sfx/base" || bad "정적 픽스처 트리 생성 실패"
+
+    if [ -d "$sfx/base" ]; then
+      # 기준선: 아래 메시지들이 **나오지 않아야** 한다 (오탐 방지)
+      local base_out; base_out=$(bash "$0" --fast --root "$sfx/base" 2>&1; bash "$0" --graph --root "$sfx/base" 2>&1)
+      local msg
+      for msg in "상시 로드 규칙 카드 없음" "치환되지 않는 스크립트 경로 표기" \
+                 "Phase 표 재출현" "카드 표 .* ≠" "그래프 미선언 스킬"; do
+        printf '%s' "$base_out" | grep -q "$msg" \
+          && bad "기준선 오탐: '$msg'" "결함이 없는데 검출됐다 — 검사가 못 쓰게 된다"
+      done
+      ok "기준선 픽스처 오탐 없음"
+
+      _fx_static_case "$sfx" always-rule   'rules/workflow-routing.md' '^paths:' \
+        "상시 로드 규칙 카드 없음" 'printf -- "---\npaths:\n  - \"src/**\"\n---\n" | cat - "$T/rules/workflow-routing.md" > "$T/r.tmp" && mv "$T/r.tmp" "$T/rules/workflow-routing.md"'
+
+      _fx_static_case "$sfx" skill-dir     'skills/sample/SKILL.md' '<skill-dir>' \
+        "치환되지 않는 스크립트 경로 표기" 'printf "bash <skill-dir>/scripts/x.sh\n" >> "$T/skills/sample/SKILL.md"'
+
+      _fx_static_case "$sfx" phase-dup     'templates/CLAUDE.md.hbs' '^| P0' \
+        "Phase 표 재출현" 'printf "\n| Phase | 조건 |\n| --- | --- |\n| P0 | x |\n" >> "$T/templates/CLAUDE.md.hbs"'
+
+      _fx_static_case "$sfx" graph-missing 'skills/orphan-skill/SKILL.md' 'orphan-skill' \
+        "그래프 미선언 스킬" 'mkdir -p "$T/skills/orphan-skill" && printf -- "---\nname: orphan-skill\ndescription: x\n---\n" > "$T/skills/orphan-skill/SKILL.md"' --graph
+    fi
+  fi
+
   # 루트 해석 확인
   sec "루트 해석"
   local resolved
@@ -528,11 +818,28 @@ run_graph() {
   local unreach=0
   while IFS= read -r id; do
     [ -z "$id" ] && continue
-    jq -e --arg n "$id" '.nodes[] | select(.id==$n) | .entry == true' "$g" >/dev/null 2>&1 && continue
+    jq -e --arg n "$id" '.nodes[] | select(.id==$n) | (.entry == true) or (.manual == true)' "$g" >/dev/null 2>&1 && continue
     jq -e --arg n "$id" '[.edges[]? | select(.to==$n)] | length > 0' "$g" >/dev/null 2>&1 \
-      || { bad "인바운드 엣지 없는 노드: $id" "도달 불가 자산 (§1.3과 같은 병)"; unreach=$((unreach+1)); }
+      || { bad "인바운드 엣지 없는 노드: $id" "도달 불가 자산 (§1.3과 같은 병). 수동 전용이 의도면 노드에 \"manual\": true"; unreach=$((unreach+1)); }
   done < <(printf '%s\n' "$ids")
   [ "$unreach" -eq 0 ] && ok "도달 불가 노드 없음"
+
+  # 미선언 스킬 (G5) — 기존 검사는 *선언된* 노드만 봐서, 노드로 선언조차 되지 않은
+  # 자산은 사각지대였다. v3에서 기획 스킬 8개가 호출자 없이 떠 있던 것을 아무도 못 잡은
+  # 이유가 이것이다. 자산 목록(skills/)과 선언(graph)을 대조한다.
+  local undecl=0 ulist="" sname
+  for sname in skills/*/; do
+    [ -d "$sname" ] || continue
+    sname=$(basename "$sname")
+    [ -f "skills/$sname/SKILL.md" ] || continue
+    printf '%s\n' "$ids" | grep -qx "$sname" && continue
+    undecl=$((undecl+1)); ulist="$ulist $sname"
+  done
+  if [ "$undecl" -gt 0 ]; then
+    bad "그래프 미선언 스킬 ${undecl}개" "선언이 없으면 호출 근거도 없다 —$ulist"
+  else
+    ok "스킬 전부 그래프에 선언됨"
+  fi
 
   # 에러 엣지 선언 여부 (G4)
   local noerr=0
@@ -543,6 +850,110 @@ run_graph() {
   done < <(jq -r '.nodes[]? | select(.kind=="agent" or .kind=="stage") | .id' "$g" 2>/dev/null)
   [ "$noerr" -gt 0 ] && warn "에러 엣지 미선언 노드 ${noerr}개" "실패 경로가 그래프에 없으면 실패는 조용히 사라진다 (G4)" \
                      || ok "모든 실행 노드가 에러 엣지 선언"
+}
+
+# ════════════════════════════════════════════════════════════════════
+# --consumer : 소비자 레이아웃 실증 (RC2)
+#
+# 이 저장소에는 소비자가 없다. 그래서 개발 머신 조건이 검증 조건이 되어 있었고,
+# 그 결과 (ⓐ) handoff가 커밋 0개 저장소에서 죽고 (ⓑ) build-gate가 jq 없으면
+# 오탐 차단하고 (ⓒ) 스킬 스크립트 경로가 여기서만 우연히 맞는 것을 넉 달간 못 봤다.
+#
+# 플러그인을 캐시 유사 경로로 복사하고, **가장 취약한 프로젝트 상태**에서 훅을 돌린다.
+# ════════════════════════════════════════════════════════════════════
+run_consumer() {
+  printf "\n${C_D}epcc doctor --consumer${C_0}  (소비자 레이아웃 실증)\n"
+
+  local tmp; tmp=$(mktemp -d 2>/dev/null) || { bad "임시 디렉토리 생성 실패"; return; }
+  trap 'rm -rf "$tmp"' RETURN
+  local cache="$tmp/cache/epcc-devkit/x"
+  mkdir -p "$cache" || { bad "캐시 경로 생성 실패"; return; }
+
+  sec "플러그인 캐시 복사"
+  # guides/ 는 크고 이 검증과 무관하다 (install-guide는 별도 자기시험이 있다)
+  if ! (cd "$ROOT" && tar cf - --exclude=.git --exclude=guides --exclude=dev . ) | (cd "$cache" && tar xf -) 2>/dev/null; then
+    bad "캐시 복사 실패"; return
+  fi
+  [ -f "$cache/scripts/session-brief.sh" ] && ok "캐시 경로에 플러그인 자산 복사됨" \
+    || { bad "캐시 복사 검증 실패"; return; }
+
+  # 프로젝트 3종 — ⓐ가 handoff exit 128을 잡는 조건이다
+  local ok_all=1
+  _consumer_project() {   # $1 라벨  $2 경로  $3 커밋할까  $4 config 만들까
+    mkdir -p "$2" && (cd "$2" && git init -q .) || return 1
+    printf 'export const a = 1\n' > "$2/src_a.ts"
+    [ "$3" = "commit" ] && (cd "$2" && git add -A && git -c user.email=t@t -c user.name=t commit -q -m init)
+    [ "$4" = "config" ] && printf '{"techStack":{"commands":{"build":"echo build"}}}\n' > "$2/epcc.config.json"
+    return 0
+  }
+
+  local label path fixture hook code err out
+  for label in "첫-커밋-전:none:none" "커밋-있음:commit:none" "설정-있음:commit:config"; do
+    local nm; nm=${label%%:*}
+    local rest=${label#*:}; local docommit=${rest%%:*}; local docfg=${rest#*:}
+    path="$tmp/proj-$nm"
+    _consumer_project "$nm" "$path" "$docommit" "$docfg" || { bad "$nm: 프로젝트 생성 실패"; continue; }
+
+    sec "훅 실행 — $nm"
+    local fails=0
+    while IFS=$'\t' read -r event cmd; do
+      [ -z "$cmd" ] && continue
+      hook=$(printf '%s' "$cmd" | grep -oE 'scripts/[a-z0-9./-]+\.sh' | head -1)
+      [ -n "$hook" ] && [ -f "$cache/$hook" ] || continue
+      fixture="$ROOT/scripts/fixtures/${event}.json"
+      [ -f "$fixture" ] || fixture="$ROOT/scripts/fixtures/default.json"
+      [ -f "$fixture" ] || continue
+      code=0
+      out=$(CLAUDE_PLUGIN_ROOT="$cache" CLAUDE_PROJECT_DIR="$path" \
+            bash "$cache/$hook" < "$fixture" 2>"$tmp/err") || code=$?
+      err=$(cat "$tmp/err" 2>/dev/null)
+      if [ "$code" -ne 0 ] && [ "$code" -ne 2 ]; then
+        bad "$nm · $(basename "$hook") [$event]: exit $code" "${err:0:140}"; fails=$((fails+1)); ok_all=0
+      elif [ -n "$err" ]; then
+        bad "$nm · $(basename "$hook") [$event]: stderr 출력" "${err:0:140}"; fails=$((fails+1)); ok_all=0
+      fi
+    done < <(command -v jq >/dev/null 2>&1 && jq -r '.hooks | to_entries[] | .key as $e | .value[]?.hooks[]? | "\($e)\t\(.command)"' "$ROOT/hooks/hooks.json" 2>/dev/null)
+    [ "$fails" -eq 0 ] && ok "$nm: 훅 전부 정상 (exit 0/2 · stderr 없음)"
+  done
+
+  # 설정 있는 프로젝트에 규칙이 자동 설치되었는가
+  sec "T1 규칙 자동 설치"
+  local rp="$tmp/proj-설정-있음/.claude/rules"
+  local rn; rn=$(num "$({ ls -1 "$rp"/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')")
+  local pn; pn=$(num "$({ ls -1 "$ROOT"/rules/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')")
+  if [ "$rn" -eq "$pn" ] && [ "$rn" -gt 0 ]; then
+    ok "규칙 ${rn}/${pn}장 자동 설치"
+  else
+    bad "규칙 자동 설치 ${rn}/${pn}장" "session-brief의 누락분 자동 설치가 동작하지 않았다"
+  fi
+  local always; always=$({ grep -L '^paths:' "$rp"/*.md 2>/dev/null || true; } | head -1)
+  [ -n "$always" ] && ok "상시 로드 카드 설치됨: $(basename "$always")" \
+                   || bad "상시 로드 카드 없음" "작업 라우팅이 세션에 도달하지 않는다"
+
+  # 설정 없는 프로젝트에는 쓰지 않았는가 (동의 관문)
+  [ -d "$tmp/proj-첫-커밋-전/.claude/rules" ] \
+    && bad "미설정 프로젝트에 규칙을 썼다" "epcc.config.json 관문이 새고 있다" \
+    || ok "미설정 프로젝트에 쓰지 않음 (동의 관문 유효)"
+
+  # build-gate 판정 불가 분기 — 차단하면 안 된다
+  sec "판정 불가 분기"
+  local bp="$tmp/proj-설정-있음"
+  code=0
+  out=$(printf '{"stop_hook_active":false}' | CLAUDE_PLUGIN_ROOT="$cache" CLAUDE_PROJECT_DIR="$bp" \
+        bash "$cache/scripts/build-gate.sh" 2>/dev/null) || code=$?
+  if [ "$code" -ne 0 ]; then
+    bad "build-gate: transcript 없음에 exit $code" "판정 불가를 차단으로 접었다 — 오탐은 훅을 꺼지게 만든다"
+  elif printf '%s' "$out" | grep -q '"continue"[[:space:]]*:[[:space:]]*false'; then
+    bad "build-gate: 판정 불가인데 continue:false" "차단하면 안 된다"
+  else
+    ok "build-gate: 판정 불가 → 차단 없음"
+  fi
+
+  # 플러그인 밖에서 doctor 자신이 도는가
+  sec "플러그인 밖 실행"
+  (cd "$tmp/proj-커밋-있음" && bash "$cache/scripts/doctor.sh" --fast >/dev/null 2>&1) \
+    && ok "캐시 경로의 doctor --fast → exit 0" \
+    || bad "캐시 경로의 doctor --fast 실패" "소비자가 자기검증을 못 한다"
 }
 
 # ════════════════════════════════════════════════════════════════════
@@ -702,10 +1113,11 @@ case "$MODE" in
   --graph)     run_graph ;;
   --usage)     run_usage ;;
   --lessons)   run_lessons ;;
-  --all)       run_fast; run_self_test; run_graph; run_usage; run_lessons ;;
+  --consumer)  run_consumer ;;
+  --all)       run_fast; run_self_test; run_graph; run_consumer; run_usage; run_lessons ;;
   --default)   run_fast; run_graph ;;
   -h|--help)
-    sed -n '2,20p' "$0" | sed 's/^# \?//'
+    sed -n '2,24p' "$0" | sed 's/^# \?//'
     exit 0 ;;
   *) printf "알 수 없는 옵션: %s (--help 참조)\n" "$MODE" >&2; exit 2 ;;
 esac

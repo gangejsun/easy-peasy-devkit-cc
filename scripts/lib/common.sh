@@ -132,6 +132,27 @@ epcc_emit_block() {
   esac
 }
 
+# Stop 계열 **비차단** 알림. 판정 불가·참고 사항을 사용자에게 보이되 진행은 막지 않는다.
+# 차단(epcc_emit_block)과 분리한 이유: 판정 불가를 차단으로 접으면 오탐이 되고,
+# 오탐은 훅을 끄게 만들어 차단력을 0으로 만든다.
+epcc_emit_notice() {
+  local event="${1:-}" msg="${2:-}"
+  [ -z "$msg" ] && return 0
+  case "$event" in
+    Stop|SubagentStop|PostToolUse|PostToolBatch|PreCompact|SessionEnd)
+      if command -v jq >/dev/null 2>&1; then
+        jq -n --arg m "$msg" '{systemMessage:$m}'
+      else
+        printf '{"systemMessage":%s}\n' "$(epcc_json_escape "$msg")"
+      fi
+      ;;
+    *)
+      printf '[epcc] %s 이벤트는 epcc_emit_notice를 지원하지 않습니다\n' "$event" >&2
+      return 1
+      ;;
+  esac
+}
+
 epcc_json_escape() {
   printf '%s' "${1:-}" | sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g' | awk 'BEGIN{printf "\""} {printf "%s%s", sep, $0; sep="\\n"} END{printf "\""}'
 }

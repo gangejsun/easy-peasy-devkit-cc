@@ -1,9 +1,18 @@
 ---
 paths:
+  - "src/**"
+  - "app/**"
+  - "packages/**"
+  - "lib/**"
+  - ".claude/**"
+  - "scripts/**"
+  - "dev/docs/**"
   - "docs/lessons.md"
   - "docs/lessons-archive.md"
 ---
-<!-- epcc-rule-version: 3.4.0 -->
+<!-- epcc-rule-version: 3.15.0 -->
+<!-- paths는 "교훈 파일을 편집할 때"가 아니라 "지적이 나올 만한 작업을 할 때" 걸려야 한다.
+     lessons.md만 걸어두면 이미 기록하러 간 뒤에야 로드된다 — 트리거가 뒤집힌다. -->
 
 # 교훈 기록 카드
 

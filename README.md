@@ -2,7 +2,7 @@
 
 AI Native Dev Harness for Claude Code — 되돌림 가능성 축 워크플로우, 자기검증 훅, 그래프 계측.
 
-![version](https://img.shields.io/badge/version-3.13.0-blue)
+![version](https://img.shields.io/badge/version-3.17.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 ## 무엇인가
@@ -31,7 +31,7 @@ claude plugin install epcc-devkit
 ```
 
 대화형으로 진행됩니다:
-- 프리셋 선택 — 프론트엔드 축(nextjs·react-vite·vanilla·none) + 백엔드 축(supabase·firebase·aws-serverless·aws-container·gcp-serverless·fastapi·node-api·none)
+- 프리셋 선택 — 프론트엔드 축(nextjs·react-vite·vanilla·none) + 백엔드 축(supabase·firebase·aws-serverless·aws-container·gcp-serverless·fastapi·node-api·node-nest·none)
 - 프로젝트 정보 수집
 - `epcc.config.json` + `CLAUDE.md` 생성
 - **`.claude/rules/`에 규칙 카드 설치** ← v3 신규
@@ -53,33 +53,38 @@ bash "<플러그인-루트>/scripts/doctor.sh"
 규모(줄 수·파일 수)로 분류하지 않습니다. 규모는 사람 판단을 요구해 드리프트하고,
 **틀린 변수를 봅니다** — 5줄 마이그레이션이 400줄 리팩토링보다 위험합니다.
 
-| 클래스 | 판정 (경로 기반) | 요구 |
+> 아래는 `templates/operating-contract.md`의 **인용**입니다. 정본은 그 파일이며,
+> 값이 갈리면 그쪽이 옳습니다.
+
+| 클래스 | 판정 (경로 기반) | 요구 — 누가 하는가 |
 |--------|------------------|------|
-| **Irreversible** | `**/migrations/**` · auth/RLS · 결제·정산 · 운영 데이터 | 리뷰 + 다관점 교차검증 + 사용자 확인 + 롤백 절차 |
-| **Costly** | 공유 패키지 · public API · 타입 계약 · `**/api/**` | 리뷰 필수 + 영향 범위 제시 |
-| **Reversible** | 그 외 전부 (기본값) | 바로 진행. 리뷰 선택 |
+| **Irreversible** | `**/migrations/**` · auth/RLS · 결제·정산 · 운영 데이터 | `epcc-reviewer` 다관점 팬아웃 + 사용자 확인 + 롤백 절차 |
+| **Costly** | 공유 패키지 · public API · 타입 계약 · `**/api/**` · `**/actions.ts` · `**/middleware.ts` · 생성 파일 | `epcc-reviewer` 필수 (자기 리뷰 불가) |
+| **Reversible** | 그 외 전부, 테스트 코드 포함 (기본값) | 바로 진행. 마무리는 `/completion-review` |
 
 **진입 조건 4상태** — 의도 명확 · 컨텍스트 최신 · 영향 반경 파악 · 검증 경로 존재.
 넷 다 충족이면 준비 작업 없이 곧바로 구현합니다. 충족된 항목을 위한 문서를 만들지 않습니다.
 
-**단계**: `understand` / `plan` / `build` / `verify` / `cross-check` — 각각 독립 호출.
-번호를 붙이지 않습니다. 번호는 의무를 만들고, 의무는 서류를 만듭니다.
+**두 축은 직교합니다.** 되돌림 클래스가 *얼마나 검증할지*를 정하고,
+`.claude/rules/workflow-routing.md`의 **작업 라우팅 표(P0~P6)** 가 *무엇을 어떤 순서로
+만들지*를 정합니다. 이 카드는 `paths:`가 없어 **매 세션 무조건 로드**됩니다.
+Phase 번호는 순서 표시일 뿐 의무가 아닙니다 — 진입 조건 4상태가 충족되면 P0~P3을 건너뜁니다.
 
 ## 구성 요소
 
 | 계층 | 수 | 내용 |
 |------|-----|------|
 | **훅** | 5 스크립트 / 6 등록 | SessionStart · PreToolUse · Stop · PreCompact · SessionEnd · PostToolUse |
-| **규칙** | T0 26줄 + T1 6개 830줄 | T0는 훅이 상시 주입(플러그인 소유), T1은 경로 매칭 시 조건부 로드 |
+| **규칙** | T0 26줄 + T1 8개 959줄 | T0는 훅이 상시 주입(플러그인 소유). T1은 `workflow-routing`이 **매 세션 상시**, 나머지는 경로 매칭 시 조건부 로드 |
 | **에이전트** | 2 | `epcc-planner`(쓰기 없음) · `epcc-reviewer`(읽기 전용) |
-| **스킬** | 35 | 기획·구현·검증·보안·마케팅 워크플로우 + 스택 가이드 생성기 + 스킬 강화기 |
-| **프리셋** | 2축 4+8 | 프론트엔드: nextjs·react-vite·vanilla·none / 백엔드: supabase·firebase·aws-serverless·aws-container·gcp-serverless·fastapi·node-api·none |
+| **스킬** | 31 | 기획·구현·검증·보안·마케팅 워크플로우 + 스택 가이드 생성기 + 스킬 강화기 |
+| **프리셋** | 2축 4+9 | 프론트엔드: nextjs·react-vite·vanilla·none / 백엔드: supabase·firebase·aws-serverless·aws-container·gcp-serverless·fastapi·node-api·node-nest·none |
 
 ### 훅
 
 | 훅 | 이벤트 | 역할 |
 |----|--------|------|
-| `session-brief` | SessionStart | 운영 계약 주입 + HEAD·미커밋·열린 작업 + **훅 생존 현황** |
+| `session-brief` | SessionStart | 운영 계약 주입 + **T1 카드 누락분 자동 설치** + HEAD·미커밋·열린 작업 + **훅 생존 현황** |
 | `security-check` | PreToolUse | 시크릿 하드코딩 차단 (exit 2) |
 | `build-gate` | Stop | 소스 수정 후 빌드/테스트 미실행 시 차단 |
 | `handoff` | PreCompact · SessionEnd | 컴팩트·종료 시 작업 상태 보존 |
@@ -94,6 +99,7 @@ bash "<플러그인-루트>/scripts/doctor.sh"
 | 계층 | 매체 | 소유 | 자동 갱신 |
 |------|------|------|-----------|
 | **T0** 상시 | `session-brief` 훅이 출력 | 플러그인 | ✅ |
+| **T1** 상시 | `.claude/rules/workflow-routing.md` (`paths:` 없음 → 매 세션 로드) | 프로젝트 | 버전 스탬프로 드리프트 감지 |
 | **T1** 조건부 | `.claude/rules/*.md` (`paths:` 매칭) | 프로젝트 | 버전 스탬프로 드리프트 감지 |
 | **T2** 참조 | 플러그인 스킬 | 플러그인 | ✅ |
 
@@ -140,7 +146,7 @@ bash scripts/doctor.sh --all        # 전체
 ## 그래프 선언
 
 `workflow.graph.json`이 노드(에이전트·스킬·훅)와 엣지(전이 조건), **에러 엣지**를
-기계 판독 가능한 형태로 선언합니다. 현재 노드 24 · 엣지 41.
+기계 판독 가능한 형태로 선언합니다. 현재 노드 49 · 엣지 67.
 
 `doctor --graph`가 검증합니다:
 - 모든 엣지의 타깃이 실재하는가
@@ -206,11 +212,12 @@ mkdir -p .claude/skills/my-brainstorming
 
 | 항목 | v2 | v3 |
 |------|-----|-----|
-| 훅 | 11개 (10개가 침묵 실패) | **5개, 전부 자기검증** |
-| 규칙 | 697줄, 프로젝트 도달 경로 없음 | **T0 26줄 + T1 830줄, 설치 실증** |
-| 작업 분류 | P0~P6 번호 + S/M/L 규모 | **되돌림 가능성 축 (경로 판정)** |
+| 훅 | 11개 (Stop의 `decision`/`reason` 등 출력 규격 위반으로 다수가 무효) | **5개, 전부 자기검증** |
+| 규칙 | generator가 `.claude/rules/`에 복사 (무조건 로드 3장 + 조건부 11장) | **T0 26줄 + T1 959줄, `install-rules.sh`로 설치 실증. 상시/조건부 구분 유지** |
+| 검증 강도 | S/M/L 규모 판단 | **되돌림 가능성 축 (경로 판정)** |
+| Phase | P0~P6 (`.claude/rules/task-workflow.md` 상시 로드) | **P0~P6 유지** — `workflow-routing.md`로 이관, 상시 로드 성질 보존 |
 | 에이전트 | frontmatter 없음, 전체 도구 접근 | **계약 완비 + 최소 권한** |
-| 스킬 | 37개 | **34개** (네이티브가 더 나은 것만 제거) |
+| 스킬 | 37개 | **31개** (네이티브가 더 나은 것만 제거, 가이드 생성기·강화기 추가) |
 | 검증 | 없음 | **`doctor` 5개 모드** |
 | 그래프 | 산문으로 흩어짐 | **`workflow.graph.json` + 계측** |
 

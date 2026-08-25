@@ -32,7 +32,7 @@ Apple 제품 페이지와 동일한 기법: 프레임 시퀀스를 Canvas에 그
 ### Step 3: 비디오 분석 및 프레임 추출
 
 ```bash
-bash <skill-dir>/scripts/extract-frames.sh   # <skill-dir> = 스킬 로드 시 표시된 Base directory "<VIDEO_PATH>" "<OUTPUT_DIR>" [TARGET_FPS]
+bash ${CLAUDE_SKILL_DIR}/scripts/extract-frames.sh   # ${CLAUDE_SKILL_DIR} = 스킬 로드 시 표시된 Base directory "<VIDEO_PATH>" "<OUTPUT_DIR>" [TARGET_FPS]
 ```
 
 ### Step 4: HTML 사이트 생성
