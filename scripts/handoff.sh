@@ -76,7 +76,7 @@ add "> 위 파일들을 참조하여 작업을 이어서 진행하세요."
 
 # ── SessionEnd면 파일로도 남긴다 ─────────────────────────────────────
 if [ "$EVENT" = "SessionEnd" ]; then
-  HD="$EPCC_ROOT/dev/handoff"
+  HD="$(epcc_handoff_dir)"
   if mkdir -p "$HD" 2>/dev/null; then
     TS=$(date -u '+%Y%m%d-%H%M%S')
     printf '%s\n' "$OUT" > "$HD/${TS}.md" 2>/dev/null || true

@@ -2,7 +2,7 @@
 
 AI Native Dev Harness for Claude Code — 되돌림 가능성 축 워크플로우, 자기검증 훅, 그래프 계측.
 
-![version](https://img.shields.io/badge/version-3.17.0-blue)
+![version](https://img.shields.io/badge/version-3.19.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 ## 무엇인가
@@ -22,6 +22,15 @@ v2에서 훅 11개 중 10개가 경로 계산 오류와 출력 규격 불일치�
 claude plugin install epcc-devkit
 ```
 
+> **주의 — 현재 마켓플레이스 배포본은 v2.0.0입니다.** 위 명령은 `origin/main`에서 받으므로
+> v3 하네스를 쓰려면 릴리스 태그가 올라간 뒤여야 합니다(`claude plugin tag --push` → main 병합).
+> 그 전까지는 저장소를 직접 등록해 설치하세요:
+>
+> ```bash
+> claude plugin marketplace add <이 저장소 경로>
+> claude plugin install epcc-devkit@easy-peasy-devkit
+> ```
+
 ### 2. Initialize Your Project
 
 프로젝트 디렉토리에서 Claude Code를 실행한 뒤:
@@ -31,7 +40,7 @@ claude plugin install epcc-devkit
 ```
 
 대화형으로 진행됩니다:
-- 프리셋 선택 — 프론트엔드 축(nextjs·react-vite·vanilla·none) + 백엔드 축(supabase·firebase·aws-serverless·aws-container·gcp-serverless·fastapi·node-api·node-nest·none)
+- 프리셋 선택 — 프론트엔드 축(nextjs·react-vite·vue·vanilla·none) + 백엔드 축(supabase·firebase·aws-serverless·aws-container·gcp-serverless·fastapi·node-api·node-nest·none)
 - 프로젝트 정보 수집
 - `epcc.config.json` + `CLAUDE.md` 생성
 - **`.claude/rules/`에 규칙 카드 설치** ← v3 신규
@@ -77,8 +86,8 @@ Phase 번호는 순서 표시일 뿐 의무가 아닙니다 — 진입 조건 4�
 | **훅** | 5 스크립트 / 6 등록 | SessionStart · PreToolUse · Stop · PreCompact · SessionEnd · PostToolUse |
 | **규칙** | T0 26줄 + T1 8개 959줄 | T0는 훅이 상시 주입(플러그인 소유). T1은 `workflow-routing`이 **매 세션 상시**, 나머지는 경로 매칭 시 조건부 로드 |
 | **에이전트** | 2 | `epcc-planner`(쓰기 없음) · `epcc-reviewer`(읽기 전용) |
-| **스킬** | 31 | 기획·구현·검증·보안·마케팅 워크플로우 + 스택 가이드 생성기 + 스킬 강화기 |
-| **프리셋** | 2축 4+9 | 프론트엔드: nextjs·react-vite·vanilla·none / 백엔드: supabase·firebase·aws-serverless·aws-container·gcp-serverless·fastapi·node-api·node-nest·none |
+| **스킬** | 29 | 기획·구현·검증·보안·마케팅 워크플로우 + 스택 가이드 생성기 + 스킬 강화기 |
+| **프리셋** | 2축 5+9 | 프론트엔드: nextjs·react-vite·vue·vanilla·none / 백엔드: supabase·firebase·aws-serverless·aws-container·gcp-serverless·fastapi·node-api·node-nest·none |
 
 ### 훅
 
@@ -146,7 +155,7 @@ bash scripts/doctor.sh --all        # 전체
 ## 그래프 선언
 
 `workflow.graph.json`이 노드(에이전트·스킬·훅)와 엣지(전이 조건), **에러 엣지**를
-기계 판독 가능한 형태로 선언합니다. 현재 노드 49 · 엣지 67.
+기계 판독 가능한 형태로 선언합니다. 현재 노드 47 · 엣지 67.
 
 `doctor --graph`가 검증합니다:
 - 모든 엣지의 타깃이 실재하는가
@@ -217,7 +226,7 @@ mkdir -p .claude/skills/my-brainstorming
 | 검증 강도 | S/M/L 규모 판단 | **되돌림 가능성 축 (경로 판정)** |
 | Phase | P0~P6 (`.claude/rules/task-workflow.md` 상시 로드) | **P0~P6 유지** — `workflow-routing.md`로 이관, 상시 로드 성질 보존 |
 | 에이전트 | frontmatter 없음, 전체 도구 접근 | **계약 완비 + 최소 권한** |
-| 스킬 | 37개 | **31개** (네이티브가 더 나은 것만 제거, 가이드 생성기·강화기 추가) |
+| 스킬 | 37개 | **29개** (네이티브가 더 나은 것만 제거, 가이드 생성기·강화기 추가) |
 | 검증 | 없음 | **`doctor` 5개 모드** |
 | 그래프 | 산문으로 흩어짐 | **`workflow.graph.json` + 계측** |
 

@@ -157,13 +157,32 @@ epcc_json_escape() {
   printf '%s' "${1:-}" | sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g' | awk 'BEGIN{printf "\""} {printf "%s%s", sep, $0; sep="\\n"} END{printf "\""}'
 }
 
+# ── 계측 기록 위치 ───────────────────────────────────────────────────
+# 기본은 프로젝트의 `.claude/.epcc`다. `EPCC_STATE_DIR`로 돌릴 수 있는 이유는
+# 하나뿐이다: **doctor --self-test가 자기가 재는 로그에 쓰면 안 된다.**
+# 픽스처 주입은 훅이 진짜 프로젝트를 보게 하려고 CLAUDE_PROJECT_DIR을 저장소로
+# 두는데(그것이 --consumer와 다른 점이다), 그 부수 효과로 하트비트·엣지 기록이
+# 실사용 기록과 섞였다. 그러면 "어느 경로가 실제로 실행되는가"는 측정이 아니라
+# 자기 주장이 된다 (평가 v3 · E-09).
+epcc_state_dir() {
+  printf '%s' "${EPCC_STATE_DIR:-${EPCC_ROOT:-.}/.claude/.epcc}"
+}
+
+# handoff 산출물 위치. `epcc_state_dir`과 같은 이유로 돌릴 수 있다 —
+# --self-test가 PreCompact/SessionEnd 픽스처를 주입하면 handoff가 **실물**
+# dev/handoff/에 쓰고, 회전(최근 10개 유지)이 실사용 복원 자료를 밀어냈다.
+# 상태 로그만 격리하고 이쪽을 빠뜨려 수리가 절반만 갔다 (평가 v5 · E-13).
+epcc_handoff_dir() {
+  printf '%s' "${EPCC_HANDOFF_DIR:-${EPCC_ROOT:-.}/dev/handoff}"
+}
+
 # ── 하트비트 ─────────────────────────────────────────────────────────
 # 매 훅이 첫 동작으로 자기 실행을 기록한다. 다른 컴포넌트(session-brief)가
 # 이 로그를 읽어 죽은 훅을 보고한다. 컴포넌트는 자기를 보증하지 않는다 (P1).
 epcc_heartbeat() {
   local code="${1:-0}" dir
   [ -z "${EPCC_ROOT:-}" ] && return 0
-  dir="$EPCC_ROOT/.claude/.epcc"
+  dir="$(epcc_state_dir)"
   mkdir -p "$dir" 2>/dev/null || return 0
   printf '%s|%s|%s|%s\n' \
     "${EPCC_HOOK_NAME:-unknown}" \
@@ -184,7 +203,7 @@ epcc_heartbeat() {
 epcc_edge() {
   local from="${1:-}" to="${2:-}" dir
   [ -z "${EPCC_ROOT:-}" ] && return 0
-  dir="$EPCC_ROOT/.claude/.epcc"
+  dir="$(epcc_state_dir)"
   mkdir -p "$dir" 2>/dev/null || return 0
   printf '%s|%s|%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$from" "$to" \
     >> "$dir/graph.log" 2>/dev/null || true

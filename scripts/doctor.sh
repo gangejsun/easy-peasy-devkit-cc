@@ -119,8 +119,10 @@ _fx_static_case() {
   local out; out=$(bash "$0" "$mode" --root "$T" 2>&1)
   if printf '%s' "$out" | grep -q "$want"; then
     ok "$name → '$want' 검출"
+    # 경고(!)로 판정하는 픽스처도 사유가 보여야 한다 — ✗만 보면 warn 기반
+    # 픽스처의 "의도한 이유로 걸렸는가"를 확인할 수 없다.
     [ -n "${EPCC_FX_WHY:-}" ] && printf "      ${C_D}%s${C_0}\n" \
-      "$(printf '%s' "$out" | grep '✗' | head -2 | sed 's/^  *//' | tr '\n' ';')"
+      "$(printf '%s' "$out" | grep -E '✗|!' | head -2 | sed 's/^  *//' | tr '\n' ';')"
   else
     bad "$name → '$want' 미검출" "결함을 심었는데 검사가 통과시켰다 — 미탐"
   fi
@@ -545,6 +547,24 @@ run_fast() {
     else
       ok "버전 4곳 일치 ($pv · marketplace ${mtot}곳 포함)"
     fi
+
+    # 릴리스 도달 — 위의 4곳이 일치해도 **배포된 것은 아니다.** 대조 대상이 전부
+    # 로컬 파일이라, 버전만 올리고 태그·푸시를 하지 않으면 소비자는 계속 옛 버전을
+    # 받는다. 실제로 3.18.0을 17번 올리는 동안 배포된 것은 2.0.0이었다 (평가 v3 · E-08·E-12).
+    # 원격을 조회하지 않는다 — 네트워크는 경계를 넘고(P7), 오프라인에서 못 돌면 검사가 아니다.
+    # .git이 없으면 침묵한다: 소비자 캐시에는 .git이 없고, 거기서 경고하면 모든
+    # 소비자에게 꺼지지 않는 경고가 된다.
+    local pname rtag
+    pname=$(grep -m1 '"name"' .claude-plugin/plugin.json 2>/dev/null | sed -E 's/.*"name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
+    rtag="${pname:-plugin}--v${pv}"
+    if [ -e .git ] && command -v git >/dev/null 2>&1; then
+      if git rev-parse -q --verify "refs/tags/$rtag" >/dev/null 2>&1; then
+        ok "릴리스 태그 존재 ($rtag)"
+      else
+        warn "버전 $pv 미배포 — 릴리스 태그 '$rtag' 없음" \
+             "커밋 후 'claude plugin tag --push'. 태그 없이 버전만 올리면 소비자는 계속 옛 버전을 받는다"
+      fi
+    fi
   fi
   [ -f plugin.json ] && bad "루트 plugin.json 중복 존재" "Claude Code는 .claude-plugin/plugin.json만 읽음" \
                      || ok "매니페스트 단일"
@@ -583,6 +603,14 @@ run_fast() {
     fi
     _claim "스킬 수" "$(grep -oE '\| \*\*스킬\*\* \| [0-9]+' README.md | grep -oE '[0-9]+$')" "$real_sk" "README.md"
     _claim "T1 카드 수" "$(grep -oE 'T1 [0-9]+개' README.md | head -1 | sed -E 's/T1 ([0-9]+)개/\1/')" "$real_ru" "README.md"
+    # 프리셋 축 개수. vue 축이 프리셋·팩·이음매·init 메뉴에 실재하는데 소비자 문서 3곳에
+    # 한 번도 안 나왔고, README는 프론트를 4개라 주장했다. 검사가 같은 표의 옆 행에서
+    # 멈춰 있었다 — 축을 늘리는 경로와 문서를 잇는 자리가 여기다 (평가 v5 · E-15).
+    local real_fe real_be
+    real_fe=$(num "$({ ls -1 presets/frontend/*.json 2>/dev/null || true; } | wc -l | tr -d ' ')")
+    real_be=$(num "$({ ls -1 presets/backend/*.json 2>/dev/null || true; } | wc -l | tr -d ' ')")
+    _claim "프론트 프리셋 수" "$(grep -oE '2축 [0-9]+\+[0-9]+' README.md | head -1 | sed -E 's/2축 ([0-9]+)\+([0-9]+)/\1/')" "$real_fe" "README.md"
+    _claim "백엔드 프리셋 수" "$(grep -oE '2축 [0-9]+\+[0-9]+' README.md | head -1 | sed -E 's/2축 ([0-9]+)\+([0-9]+)/\2/')" "$real_be" "README.md"
   fi
   [ "$wrong" -eq 0 ] && [ "$claims" -gt 0 ] && ok "문서 수치 주장 ${claims}건 실물과 일치"
 
@@ -663,11 +691,36 @@ run_self_test() {
   printf "\n${C_D}epcc doctor --self-test${C_0}\n"
   sec "훅 픽스처 주입"
 
+  # 픽스처 주입은 CLAUDE_PROJECT_DIR을 **이 저장소**로 둔다 (아래). 그것이 의도다 —
+  # 훅이 진짜 프로젝트를 보게 하는 것이 self-test이고, 합성 프로젝트 검증은 --consumer가
+  # 따로 한다. 그런데 그 부수 효과로 하트비트·엣지·베이스라인이 실사용 기록과 섞였고,
+  # --usage의 "어느 경로가 실행되는가"가 측정이 아니라 자기 주장이 됐다 (평가 v3 · E-09).
+  # 그래서 **보는 곳은 그대로 두고 쓰는 곳만** 임시 디렉토리로 돌린다.
+  local stdir sfx=""
+  stdir=$(mktemp -d 2>/dev/null) || stdir=""
+  # RETURN 트랩은 하나뿐이다 — 아래 정적 픽스처의 $sfx도 여기서 함께 지운다.
+  # (두 번 걸면 나중 것이 앞의 것을 덮어써서 임시 디렉토리가 남는다)
+  trap 'rm -rf "${stdir:-/nonexistent}" "${sfx:-/nonexistent}"; unset EPCC_STATE_DIR EPCC_HANDOFF_DIR' RETURN
+  if [ -n "$stdir" ]; then
+    export EPCC_STATE_DIR="$stdir"
+    # handoff도 같이 돌린다. 상태 로그만 격리하면 픽스처가 dev/handoff/에 실물을 쓰고
+    # 회전이 실사용 복원 자료를 밀어낸다 (평가 v5 · E-13).
+    export EPCC_HANDOFF_DIR="$stdir/handoff"
+  else
+    warn "임시 상태 디렉토리 생성 실패" "픽스처 기록이 실제 로그에 섞인다 — 계측 오염"
+  fi
+
   local fx="scripts/fixtures"
   [ -d "$fx" ] || { bad "픽스처 디렉토리 없음: $fx"; return; }
 
   local hooks_json="hooks/hooks.json"
   command -v jq >/dev/null 2>&1 || { bad "jq 필요"; return; }
+
+  # 계측 격리의 **증명**. 코드 모양(정규식 lint)이 아니라 행동을 본다 —
+  # 픽스처 주입이 실사용 산출물을 건드리면 그 순간 실패한다. 상태 로그는 이미
+  # EPCC_STATE_DIR로 돌렸으나 dev/handoff/를 빠뜨려 회전이 실물을 밀어냈다 (평가 v5 · E-13).
+  local hd_before hd_after
+  hd_before=$({ ls -1 dev/handoff 2>/dev/null || true; } | sort | tr '\n' ' ')
 
   local total=0 good=0
   # 이벤트 → 스크립트 매핑을 hooks.json에서 읽어 각 이벤트 픽스처로 실행
@@ -713,21 +766,48 @@ run_self_test() {
 
   printf "\n  훅 자기검사: ${good}/${total}\n"
 
+  hd_after=$({ ls -1 dev/handoff 2>/dev/null || true; } | sort | tr '\n' ' ')
+  if [ "$hd_before" = "$hd_after" ]; then
+    ok "픽스처가 실사용 산출물을 건드리지 않음 (dev/handoff 불변)"
+  else
+    bad "픽스처가 dev/handoff/를 변경했다" \
+        "계측이 자기가 재는 데이터를 오염시킨다 — epcc_handoff_dir() 격리 확인 필요"
+  fi
+
   # ── 양성 픽스처 (B-7): '살아있다'가 아니라 '막는다'를 증명 ──
   # 무해 픽스처는 exit 0만 확인한다. 차단돼야 할 입력이 실제로 exit 2로
   # 차단되는지는 별도 증명이 필요하다 (v2 교훈: 살아있음 ≠ 작동함).
   sec "양성 픽스처 (차단 검증)"
-  local blockfx="$fx/PreToolUse-block.json"
-  if [ -f "$blockfx" ] && [ -f scripts/security-check.sh ]; then
-    local bcode=0
-    CLAUDE_PROJECT_DIR="$ROOT" bash scripts/security-check.sh < "$blockfx" >/dev/null 2>&1 || bcode=$?
-    if [ "$bcode" -eq 2 ]; then
-      ok "security-check: 시크릿 주입 → exit 2 (차단 확인)"
+  # 도구 경로마다 따로 증명한다. 매처가 Edit|Write|MultiEdit뿐이던 동안 Bash 힙독으로
+  # 쓰는 시크릿은 차단이 0이었고, Write 픽스처만 통과시켜 그 사실이 보이지 않았다
+  # (평가 v5 · E-20). 커버리지의 구멍은 **경로별 픽스처가 없으면 보이지 않는다**.
+  local bfx bcode blabel
+  for bfx in "PreToolUse-block.json:Write 시크릿 주입" "PreToolUse-bash-block.json:Bash 힙독 시크릿 주입"; do
+    blabel="${bfx#*:}"; bfx="$fx/${bfx%%:*}"
+    if [ -f "$bfx" ] && [ -f scripts/security-check.sh ]; then
+      bcode=0
+      CLAUDE_PROJECT_DIR="$ROOT" bash scripts/security-check.sh < "$bfx" >/dev/null 2>&1 || bcode=$?
+      if [ "$bcode" -eq 2 ]; then
+        ok "security-check: $blabel → exit 2 (차단 확인)"
+      else
+        bad "security-check: $blabel에 exit $bcode" "차단 훅이 잡아야 할 것을 잡지 못함 — 미탐"
+      fi
     else
-      bad "security-check: 시크릿 주입에 exit $bcode" "차단 훅이 잡아야 할 것을 잡지 못함 — 미탐"
+      warn "양성 픽스처 없음 ($bfx)" "그 도구 경로의 차단 능력이 증명되지 않은 상태"
     fi
-  else
-    warn "양성 픽스처 없음 ($blockfx)" "차단 능력이 증명되지 않은 상태"
+  done
+
+  # 오탐 방어 — 시크릿 **문자열이 들어 있으나 파일을 쓰지 않는** 조사 명령은 통과해야 한다.
+  # 오탐은 사용자가 훅을 꺼버리게 만들고, 꺼진 훅의 차단력은 0이다.
+  local okfx="$fx/PreToolUse-bash-ok.json"
+  if [ -f "$okfx" ]; then
+    bcode=0
+    CLAUDE_PROJECT_DIR="$ROOT" bash scripts/security-check.sh < "$okfx" >/dev/null 2>&1 || bcode=$?
+    if [ "$bcode" -eq 0 ]; then
+      ok "security-check: 읽기 전용 조사 명령 → exit 0 (오탐 없음)"
+    else
+      bad "security-check: 무해한 조사 명령에 exit $bcode" "오탐 — 훅이 꺼지는 원인"
+    fi
   fi
 
   # ── 정적 검사 양성 픽스처 (RC4) ──────────────────────────────────
@@ -741,9 +821,9 @@ run_self_test() {
   # 1이 실패하면 2의 결과는 아무 의미가 없다.
   sec "정적 검사 양성 픽스처"
 
-  local sfx; sfx=$(mktemp -d 2>/dev/null) || { warn "임시 디렉토리 생성 실패" "정적 픽스처 생략"; sfx=""; }
+  sfx=$(mktemp -d 2>/dev/null) || { warn "임시 디렉토리 생성 실패" "정적 픽스처 생략"; sfx=""; }
   if [ -n "$sfx" ]; then
-    trap 'rm -rf "$sfx"' RETURN
+    # 정리는 함수 상단의 RETURN 트랩이 $stdir와 함께 담당한다
     _fx_static_tree "$sfx/base" || bad "정적 픽스처 트리 생성 실패"
 
     if [ -d "$sfx/base" ]; then
@@ -751,7 +831,8 @@ run_self_test() {
       local base_out; base_out=$(bash "$0" --fast --root "$sfx/base" 2>&1; bash "$0" --graph --root "$sfx/base" 2>&1)
       local msg
       for msg in "상시 로드 규칙 카드 없음" "치환되지 않는 스크립트 경로 표기" \
-                 "Phase 표 재출현" "카드 표 .* ≠" "그래프 미선언 스킬"; do
+                 "Phase 표 재출현" "카드 표 .* ≠" "그래프 미선언 스킬" \
+                 "미선언" "읽는 노드 없는 저장소" "미배포"; do
         printf '%s' "$base_out" | grep -q "$msg" \
           && bad "기준선 오탐: '$msg'" "결함이 없는데 검출됐다 — 검사가 못 쓰게 된다"
       done
@@ -768,6 +849,20 @@ run_self_test() {
 
       _fx_static_case "$sfx" graph-missing 'skills/orphan-skill/SKILL.md' 'orphan-skill' \
         "그래프 미선언 스킬" 'mkdir -p "$T/skills/orphan-skill" && printf -- "---\nname: orphan-skill\ndescription: x\n---\n" > "$T/skills/orphan-skill/SKILL.md"' --graph
+
+      # 라우팅 카드가 호출을 선언했는데 그래프 노드에 phase가 없는 상태 (G6).
+      # \140 은 백틱 — eval에서 명령 치환으로 해석되지 않게 8진 이스케이프를 쓴다.
+      _fx_static_case "$sfx" phase-unmapped 'rules/workflow-routing.md' '^\| P1' \
+        'phase "P1" 미선언' 'printf -- "| P1 | x | \\140/sample\\140 |\n" >> "$T/rules/workflow-routing.md"' --graph
+
+      # 쓰기만 있고 읽는 노드가 없는 저장소 (G7) — "문서가 있다"가 아니라 "소비된다".
+      _fx_static_case "$sfx" store-orphan 'workflow.graph.json' '"store"' \
+        "읽는 노드 없는 저장소" 'jq ".nodes += [{\"id\":\"memo\",\"kind\":\"store\",\"path\":\"rules/code-change.md\"}] | .edges += [{\"from\":\"sample\",\"to\":\"memo\"}]" "$T/workflow.graph.json" > "$T/g.tmp" && mv "$T/g.tmp" "$T/workflow.graph.json"' --graph
+
+      # 버전은 올렸는데 릴리스 태그가 없는 상태 (E-08·E-12). git 저장소일 때만 판정하므로
+      # 픽스처도 git init을 해야 한다 — 하지 않으면 '검출됨'이 아니라 '검사가 안 돎'이다.
+      _fx_static_case "$sfx" release-untagged 'package.json' '"version"' \
+        "미배포" 'mkdir -p "$T/.claude-plugin" && printf "{\"version\":\"9.9.9\"}\n" > "$T/package.json" && printf "{\"name\":\"fx-plugin\",\"version\":\"9.9.9\"}\n" > "$T/.claude-plugin/plugin.json" && (cd "$T" && git init -q .)'
     fi
   fi
 
@@ -850,6 +945,54 @@ run_graph() {
   done < <(jq -r '.nodes[]? | select(.kind=="agent" or .kind=="stage") | .id' "$g" 2>/dev/null)
   [ "$noerr" -gt 0 ] && warn "에러 엣지 미선언 노드 ${noerr}개" "실패 경로가 그래프에 없으면 실패는 조용히 사라진다 (G4)" \
                      || ok "모든 실행 노드가 에러 엣지 선언"
+
+  # 라우팅 카드 Phase ↔ 그래프 phase 대조 (G6)
+  # 라우팅 카드는 P0-A~P6 어휘로, 그래프는 stage/skill id로 같은 워크플로우를 주장해 왔다.
+  # 두 어휘가 이어져 있지 않으면 "Phase가 실제로 호출되는가"를 기계가 답할 수 없다.
+  local rc="rules/workflow-routing.md" pmiss=0 ptot=0
+  if [ -f "$rc" ]; then
+    while IFS=$'\t' read -r ph target; do
+      [ -z "$ph" ] && continue
+      ptot=$((ptot+1))
+      if ! printf '%s\n' "$ids" | grep -qx "$target"; then
+        bad "라우팅 카드 $ph의 호출 대상이 그래프에 없음: $target" "선언 없는 호출은 검사도 계측도 불가"
+        pmiss=$((pmiss+1)); continue
+      fi
+      jq -e --arg n "$target" --arg p "$ph" \
+        '.nodes[] | select(.id==$n) | (.phase // []) | index($p)' "$g" >/dev/null 2>&1 \
+        || { bad "$target 노드에 phase \"$ph\" 미선언" "라우팅 카드와 그래프가 다른 어휘로 같은 것을 주장한다"; pmiss=$((pmiss+1)); }
+    done < <(awk -F'|' '/^\| P[0-9]/ {
+                ph=$2; gsub(/^[ \t]+|[ \t]+$/,"",ph);
+                n=split($4, part, "`");
+                for (i=2; i<=n; i+=2) { t=part[i]; sub(/^\//,"",t);
+                  if (t ~ /^[a-z][a-z0-9-]+$/) printf "%s\t%s\n", ph, t }
+              }' "$rc")
+    [ "$pmiss" -eq 0 ] && ok "라우팅 카드 Phase 호출 ${ptot}건 전부 그래프 phase와 일치"
+  else
+    warn "$rc 없음 — Phase 대조 생략"
+  fi
+
+  # 저장소 소비 경로 (G7)
+  # store는 쓰기(인바운드)와 읽기(아웃바운드)를 모두 가져야 한다. 읽는 노드가 없는
+  # 저장소는 비용만 있고 드리프트의 원천이다 — "문서가 있다"가 아니라 "문서가 소비된다".
+  # 경고가 꺼지는 조건이 둘 다 손에 있다: 소비 엣지를 잇거나 저장소를 폐지하거나.
+  local orphan=0
+  while IFS= read -r id; do
+    [ -z "$id" ] && continue
+    jq -e --arg n "$id" '[.edges[]? | select(.from==$n)] | length > 0' "$g" >/dev/null 2>&1 \
+      || { warn "읽는 노드 없는 저장소: $id" "소비 엣지를 잇거나 저장소를 폐지한다"; orphan=$((orphan+1)); }
+  done < <(jq -r '.nodes[]? | select(.kind=="store") | .id' "$g" 2>/dev/null)
+  [ "$orphan" -eq 0 ] && ok "모든 저장소에 소비 경로 존재"
+
+  # produces 선언은 연결까지가 한 동작이다 — 선언만 하고 저장소를 잇지 않으면
+  # 그 산출물은 그래프의 사각지대로 남는다 (stage의 produces는 파일이 아니므로 제외).
+  local unlinked=0
+  while IFS= read -r id; do
+    [ -z "$id" ] && continue
+    jq -e --arg n "$id" '[.edges[]? | select(.from==$n)] | length > 0' "$g" >/dev/null 2>&1 \
+      || { bad "produces를 선언했으나 산출 엣지 없음: $id" "산출물이 그래프에서 추적 불가"; unlinked=$((unlinked+1)); }
+  done < <(jq -r '.nodes[]? | select(.produces != null and .kind != "stage") | .id' "$g" 2>/dev/null)
+  [ "$unlinked" -eq 0 ] && ok "produces 선언 노드 전부 산출 엣지 보유"
 }
 
 # ════════════════════════════════════════════════════════════════════
@@ -965,13 +1108,27 @@ run_usage() {
 
   sec "훅 하트비트"
   if [ -f "$d/hookrun.log" ]; then
-    local expected; expected=$(command -v jq >/dev/null 2>&1 && jq -r '[.hooks|to_entries[].value[]?.hooks[]?]|length' hooks/hooks.json 2>/dev/null || echo "?")
+    # 분모는 **고유 스크립트 수**다. 선언 엔트리 수를 쓰면 안 된다 —
+    # handoff.sh 하나가 PreCompact·SessionEnd 두 이벤트에 걸려 있어서,
+    # 분자(로그의 스크립트 이름 distinct)가 분모에 도달하는 것이 구조적으로 불가능해진다.
+    # 영원히 5/6을 표시하는 지표는 꺼지지 않는 경고이고, 무시를 학습시킨다 (평가 v3 · E-11).
+    local expected; expected=$(command -v jq >/dev/null 2>&1 \
+      && jq -r '[.hooks|to_entries[].value[]?.hooks[]?.command
+                 | capture("(?<f>[a-z0-9-]+)\\.sh").f] | unique | length' hooks/hooks.json 2>/dev/null \
+      || echo "?")
     printf "  최근 세션 훅 실행:\n"
     awk -F'|' '{c[$1]++; last[$1]=$2} END{for(k in c) printf "    %-24s %4d회  최근 %s\n", k, c[k], last[k]}' "$d/hookrun.log" | sort
     local distinct; distinct=$(awk -F'|' '{print $1}' "$d/hookrun.log" | sort -u | wc -l | tr -d ' ')
-    printf "  살아있는 훅: %s/%s\n" "$(num "$distinct")" "$expected"
-    local fails; fails=$(awk -F'|' '$4!="0"' "$d/hookrun.log" 2>/dev/null | wc -l | tr -d ' ')
-    [ "$(num "$fails")" -gt 0 ] && warn "비정상 종료 ${fails}건" || ok "비정상 종료 없음"
+    printf "  살아있는 훅: %s/%s\n" "$(num "$distinct")" "$(num "$expected")"
+    # if/else로 쓴다. `[ ... ] && warn "..." || ok "..."`는 warn의 반환값이 1이라
+    # (상세 인자 $2가 없을 때) 두 갈래가 **함께** 실행된다 — 실패를 보고한 직후
+    # 같은 화면에서 "없음"으로 취소하고 PASS 카운터까지 올린다 (평가 v3 · E-10).
+    local fails; fails=$(num "$(awk -F'|' '$4!="0"' "$d/hookrun.log" 2>/dev/null | wc -l | tr -d ' ')")
+    if [ "$fails" -gt 0 ]; then
+      warn "비정상 종료 ${fails}건" "$(awk -F'|' '$4!="0" {printf "%s(exit %s) ", $1, $4}' "$d/hookrun.log" 2>/dev/null | head -c 160)"
+    else
+      ok "비정상 종료 없음"
+    fi
   else
     warn "하트비트 로그 없음" "훅이 아직 한 번도 실행되지 않았거나 계측이 배선되지 않음"
   fi
@@ -989,8 +1146,18 @@ run_usage() {
         [ -z "$from" ] && continue
         grep -q "|${from}|${to}$" "$d/graph.log" 2>/dev/null \
           || { printf "    ${C_Y}미실행 엣지${C_0}: %s → %s\n" "$from" "$to"; dead=$((dead+1)); }
-      done < <(jq -r '.edges[]? | select(.instrumented == true) | "\(.from)\t\(.to)"' workflow.graph.json 2>/dev/null)
+      done < <(jq -r '.edges[]? | select(.instrumented == true and (has("conditionalEmit") | not)) | "\(.from)\t\(.to)"' workflow.graph.json 2>/dev/null)
       [ "$dead" -gt 0 ] && warn "계측 엣지 중 미실행 ${dead}개" "주장이 아니라 측정이다"
+
+      # 조건부 방출 엣지는 **분류하되 경고하지 않는다.** 차단이 일어나야(build-gate→build),
+      # 또는 주기가 돌아와야(session-start→harness-evaluation) 방출되므로, 정상 상태에서
+      # 미방출인 것이 정상이다. 이것을 죽은 엣지로 세면 영원히 꺼지지 않는 경고가 되고,
+      # 꺼지지 않는 경고는 무시를 학습시킨다 (평가 v3 · E-04).
+      while IFS=$'\t' read -r from to why; do
+        [ -z "$from" ] && continue
+        grep -q "|${from}|${to}$" "$d/graph.log" 2>/dev/null \
+          || printf "    ${C_D}미실행(조건부)${C_0}: %s → %s — %s\n" "$from" "$to" "$why"
+      done < <(jq -r '.edges[]? | select(.instrumented == true and has("conditionalEmit")) | "\(.from)\t\(.to)\t\(.conditionalEmit)"' workflow.graph.json 2>/dev/null)
     fi
   else
     warn "엣지 traversal 로그 없음"
@@ -998,14 +1165,17 @@ run_usage() {
 
   sec "스킬 호출"
   if [ -f "$d/skilluse.log" ]; then
-    awk -F'|' '{c[$2]++} END{for(k in c) printf "    %-32s %d\n", k, c[k]}' "$d/skilluse.log" | sort -k2 -rn | head -20
+    # 로그의 $2는 플랫폼이 주는 정규화 이름(`epcc-devkit:foo`)이고, 아래 미호출 판정의
+    # 대조군은 `skills/` 디렉토리명(`foo`)이다. 접두사를 벗기지 않으면 둘은 영원히 어긋나고,
+    # 방금 호출한 스킬이 같은 화면에서 '호출 기록 없음'으로 찍힌다 (평가 v5 · E-19).
+    awk -F'|' '{n=$2; sub(/^[^:]*:/,"",n); c[n]++} END{for(k in c) printf "    %-32s %d\n", k, c[k]}' "$d/skilluse.log" | sort -k2 -rn | head -20
 
     # 계측 기간 내 호출 기록 없는 플러그인 스킬 — 판정이 아니라 관찰 대상 목록.
     # 장기(수개월) 무호출이 지속되는 자산만 폐기 후보로 사용자에게 제안한다.
     local unseen="" un=0 sname
     while IFS= read -r sname; do
       [ -z "$sname" ] && continue
-      awk -F'|' '{print $2}' "$d/skilluse.log" 2>/dev/null | grep -qx "$sname" \
+      awk -F'|' '{n=$2; sub(/^[^:]*:/,"",n); print n}' "$d/skilluse.log" 2>/dev/null | grep -qx "$sname" \
         || { un=$((un+1)); unseen="$unseen $sname"; }
     done < <(ls -1 "$PLUGIN_ROOT/skills" 2>/dev/null)
     if [ "$un" -gt 0 ]; then
@@ -1015,6 +1185,40 @@ run_usage() {
   else
     warn "스킬 호출 로그 없음" "미사용 스킬 판정은 계측 후에만 (안티골 8)"
   fi
+
+  sec "상주 컨텍스트 비용"
+  # 호출 여부와 무관하게 **매 세션 무조건** 들어가는 비용. T0만 예산(40줄)이 있었고
+  # 나머지는 아무도 세지 않았다 — 특히 스킬 description은 스킬을 한 번도 안 써도
+  # 전량이 상주한다. 그래서 평가 축 P5가 계속 '미계측'이었다.
+  # 단위는 문자 수다. **토큰 환산은 하지 않는다** — 환산 계수는 모델별로 다르고
+  # 여기서 검증할 수 없다. 검증 불가한 숫자를 만드는 것이 안티골 8이다.
+  local c_t0 c_route c_desc c_sum sfile
+  c_t0=$(num "$(sed '/<!--/,/-->/d' "$PLUGIN_ROOT/templates/operating-contract.md" 2>/dev/null | wc -c | tr -d ' ')")
+  c_route=$(num "$(sed '/<!--/,/-->/d' "$PLUGIN_ROOT/rules/workflow-routing.md" 2>/dev/null | wc -c | tr -d ' ')")
+  c_desc=0
+  for sfile in "$PLUGIN_ROOT"/skills/*/SKILL.md; do
+    [ -f "$sfile" ] || continue
+    c_desc=$((c_desc + $(num "$(awk '/^---$/{n++; next} n==1 && /^(name|description):/{p=1} n==1 && /^[a-z_]+:/ && !/^(name|description):/{p=0} n==1 && p{print} n>=2{exit}' "$sfile" | wc -c | tr -d ' ')")))
+  done
+  c_sum=$((c_t0 + c_route + c_desc))
+  printf "    %-32s %8s자\n" "T0 운영 계약" "$c_t0"
+  printf "    %-32s %8s자\n" "workflow-routing (상시 로드)" "$c_route"
+  printf "    %-32s %8s자\n" "스킬 description 총합" "$c_desc"
+  printf "    %-32s %8s자\n" "── 상주 합계" "$c_sum"
+  printf "    ${C_D}session-brief 출력은 세션마다 달라 미포함 (정직 보고)${C_0}\n"
+  # 예산은 **반복 증거가 쌓인 뒤에** 둔다는 규율을 지켰다 — 평가 v3(14,219자) · v4(11,662) ·
+  # v5(11,662)에서 3회 연속 "예산 있는 T0의 4.8배인데 상한이 없다"로 관측됐다(E-07).
+  # 그래서 지금 값을 상한으로 **고정(래칫)**한다: 압축된 상태를 되돌리지 못하게만 한다.
+  # 차단이 아니라 경고다 — 이 숫자는 정확성 게이트가 아니라 절제의 눈금이고,
+  # 무관한 작업을 막으면 그것이 훅을 꺼버리게 만드는 오탐이 된다.
+  local desc_budget=12000
+  if [ "$c_desc" -gt "$desc_budget" ]; then
+    warn "스킬 description ${c_desc}자 — 예산 ${desc_budget}자 초과" \
+         "스킬을 한 번도 호출하지 않아도 전량이 매 세션 상주한다. 압축하거나 본문으로 내리세요"
+  else
+    ok "스킬 description ${c_desc}/${desc_budget}자"
+  fi
+  ok "상주 비용 실측 ${c_sum}자 (판정은 P5)"
 }
 
 # ════════════════════════════════════════════════════════════════════

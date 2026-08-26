@@ -24,12 +24,27 @@ FILE_PATH=$(epcc_field "$INPUT" '.tool_input.file_path')
 CONTENT=$(epcc_field "$INPUT" '.tool_input.content')
 NEW_STRING=$(epcc_field "$INPUT" '.tool_input.new_string')
 
-[[ "$TOOL_NAME" =~ ^(Edit|Write|MultiEdit)$ ]] || exit 0
-
-# 이 훅 자신을 편집할 때는 자기 참조 회피 (패턴 문자열이 매칭됨)
+# 이 훅 자신을 다룰 때는 자기 참조 회피 (패턴 문자열 자체가 매칭된다)
 [[ "$FILE_PATH" =~ security-check\.sh$ ]] && exit 0
 
-TEXT="${CONTENT}${NEW_STRING}"
+# 모델이 파일을 쓰는 경로는 Edit/Write만이 아니다. Bash 힙독·리다이렉션으로 쓰면
+# 매처가 Edit|Write|MultiEdit뿐일 때 시크릿 차단이 **0**이 된다 — 게이트의 실효
+# 커버리지가 도구 선택에 좌우된다 (평가 v5 · E-20).
+case "$TOOL_NAME" in
+  Edit|Write|MultiEdit)
+    TEXT="${CONTENT}${NEW_STRING}"
+    ;;
+  Bash)
+    CMD=$(epcc_field "$INPUT" '.tool_input.command')
+    case "$CMD" in *security-check.sh*) exit 0 ;; esac
+    # **파일을 쓰는 명령만** 본다. 읽기 명령까지 스캔하면 조사·검사 명령
+    # (`grep 'AKIA[0-9A-Z]{16}' ...`)이 오탐으로 막히고, 오탐은 사용자가 훅을
+    # 꺼버리게 만들며 꺼진 훅의 차단력은 0이다.
+    printf '%s' "$CMD" | grep -Eq '(^|[^0-9A-Za-z_])(tee|dd)([^0-9A-Za-z_]|$)|>' || exit 0
+    TEXT="$CMD"
+    ;;
+  *) exit 0 ;;
+esac
 [ -z "$TEXT" ] && exit 0
 
 block() {

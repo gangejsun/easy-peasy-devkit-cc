@@ -1,0 +1,31 @@
+{
+  "axis": "backend",
+  "name": "node-nest",
+  "displayName": "NestJS API 서버 (NestJS + TypeORM)",
+  "description": "직접 운영하는 NestJS API 서버 — NestJS 11 + PostgreSQL + TypeORM 1 + class-validator. 모듈·DI·데코레이터가 구조를 정한다.",
+  "techStack": {
+    "backend": {
+      "backendType": "cloud-server",
+      "cloudProvider": null,
+      "database": "PostgreSQL",
+      "dataAccess": "TypeORM",
+      "auth": "",
+      "framework": "NestJS",
+      "language": "TypeScript",
+      "packageManager": "npm",
+      "commands": {
+        "build": "npm run build",
+        "test": "npm test",
+        "lint": "npm run lint"
+      },
+      "sourceDir": "src"
+    },
+    "additionalStack": ["NestJS 11", "TypeORM 1", "class-validator", "Jest"]
+  },
+  "notes": {
+    "securityBoundary": "애플리케이션 층이 유일한 경계다 — 신뢰된 연결로 DB에 접근하므로 행 수준 정책에 기대지 않는다. 소유권 검사 누락이 곧 데이터 유출이고, 이 축 고유의 함정은 TypeORM의 `where`가 **배열이면 OR**라는 점이다: 커서 페이지네이션처럼 분기가 둘인 쿼리에서 한 분기의 소유권 필터를 빠뜨리면 그 분기가 남의 행을 통과시킨다. 인증 방식(JWT 자체 발급·세션·외부 IdP)은 미정이므로 확인 질문 대상",
+    "serverCodeLocation": "이 저장소의 API 서버. 프론트엔드 축에 서버 런타임이 있어도(Next.js 등) API 소유권은 여기다 — 둘 중 어디에 로직을 둘지 가이드에서 경계를 먼저 못박는다",
+    "toolchain": "프론트엔드와 언어·패키지 매니저가 같은 경우가 많아 모노레포가 흔하다. Nest는 데코레이터 메타데이터로 주입 대상을 찾으므로 `experimentalDecorators`·`emitDecoratorMetadata`가 켜져 있어야 하고, 이것이 꺼지면 **컴파일은 되는데 부팅이 죽는다**",
+    "variants": "프레임워크(NestJS)와 ORM(TypeORM)이 팩에 못박혀 있다. Express를 고르면 backend/node-api, Drizzle을 고르면 backend/aws-container가 그 형태를 소유한다 — 조합이 다르면 없는 것이 아니라 **틀린 것**을 받는다"
+  }
+}

@@ -1,6 +1,6 @@
 {
-  "$comment": "하네스를 기계 판독 가능한 그래프로 선언한다. v2에서 이 그래프는 마크다운 표와 산문에 흩어져 있어 검증도 계측도 불가능했고, 그 결과 '선언됐지만 도달 불가능한 자산'(rules/ 697줄)이 4개월간 아무에게도 발견되지 않았다. doctor --graph가 이 파일로 dangling 엣지·도달 불가 노드·에러 엣지 누락을 검사한다. edges의 instrumented:true 는 훅이 실제로 방출하는 엣지다. stage 간 엣지는 모델 행동이라 코드가 방출할 수 없으므로 '죽은 엣지' 판정에서 제외한다.",
-  "version": "3.17.0",
+  "$comment": "하네스를 기계 판독 가능한 그래프로 선언한다. v2에서 이 그래프는 마크다운 표와 산문에 흩어져 있어 검증도 계측도 불가능했고, 그 결과 '선언됐지만 도달 불가능한 자산'(rules/ 697줄)이 4개월간 아무에게도 발견되지 않았다. doctor --graph가 이 파일로 dangling 엣지·도달 불가 노드·에러 엣지 누락을 검사한다. edges의 instrumented:true 는 훅이 실제로 방출하는 엣지다. stage 간 엣지는 모델 행동이라 코드가 방출할 수 없으므로 '죽은 엣지' 판정에서 제외한다. nodes의 phase 는 rules/workflow-routing.md의 Phase 어휘(P0-A~E·P1~P6)와 이 그래프를 잇는다 — 두 어휘가 어긋나면 라우팅이 기계 검사 불가가 된다. nodes의 produces 는 '하네스가 나중에 다시 읽는 산출물'에만 붙인다 — 사용자에게 최종 전달되고 끝나는 산출물(마케팅 사이트·파비콘 등)은 store가 아니다. store 노드는 쓰기(인바운드)와 읽기(아웃바운드) 엣지를 모두 가져야 한다: 읽는 노드가 없는 저장소는 비용만 있고 드리프트의 원천이다.",
+  "version": "3.18.0",
   "nodes": [
     {
       "id": "session-start",
@@ -16,6 +16,9 @@
     {
       "id": "understand",
       "kind": "stage",
+      "phase": [
+        "P0"
+      ],
       "when": "영향 반경이 불명확할 때",
       "produces": "탐색 결과 (파일 목록·호출 관계)",
       "entry": true,
@@ -26,6 +29,9 @@
     {
       "id": "plan",
       "kind": "stage",
+      "phase": [
+        "P3"
+      ],
       "when": "진입 조건 4상태 중 2개 이상 미충족",
       "produces": "구현 계획 (세션을 넘어갈 때만 파일로)",
       "entry": true,
@@ -52,6 +58,9 @@
     {
       "id": "build",
       "kind": "stage",
+      "phase": [
+        "P4"
+      ],
       "when": "항상",
       "produces": "코드",
       "entry": true,
@@ -84,6 +93,9 @@
     {
       "id": "verify",
       "kind": "stage",
+      "phase": [
+        "P5"
+      ],
       "when": "Costly 이상",
       "produces": "리뷰 결과",
       "on_error": [
@@ -93,6 +105,10 @@
     {
       "id": "epcc-reviewer",
       "kind": "agent",
+      "phase": [
+        "P5",
+        "P6"
+      ],
       "path": "agents/epcc-reviewer.md",
       "tools": [
         "Read",
@@ -108,6 +124,9 @@
     {
       "id": "cross-check",
       "kind": "stage",
+      "phase": [
+        "P6"
+      ],
       "when": "Irreversible만",
       "produces": "다관점 독립 검증 결과 (correctness / security / reversibility 과반)",
       "on_error": [
@@ -191,6 +210,9 @@
     {
       "id": "council-review",
       "kind": "skill",
+      "phase": [
+        "P0-E"
+      ],
       "path": "skills/council-review/SKILL.md",
       "note": "Irreversible 기획 결정의 3관점 팬아웃 합의(기술/비즈니스/UX). 재질의 최대 1회, 미해결은 사용자 tie-break",
       "on_error": [
@@ -233,48 +255,72 @@
     {
       "id": "brainstorming",
       "kind": "skill",
+      "phase": [
+        "P0-A"
+      ],
       "path": "skills/brainstorming/SKILL.md",
       "when": "P0-A — 아이디어 단계, 요구사항이 한 문장으로 안 나옴"
     },
     {
       "id": "research",
       "kind": "skill",
+      "phase": [
+        "P0-B"
+      ],
       "path": "skills/research/SKILL.md",
       "when": "P0-B — 외부 사실 확인이 필요함"
     },
     {
       "id": "business-planner",
       "kind": "skill",
+      "phase": [
+        "P0-C"
+      ],
       "path": "skills/business-planner/SKILL.md",
       "when": "P0-C — 수익 모델·시장 진입 판단이 필요함"
     },
     {
       "id": "service-planner",
       "kind": "skill",
+      "phase": [
+        "P0-D"
+      ],
       "path": "skills/service-planner/SKILL.md",
       "when": "P0-D — 화면·사용자 플로우가 미확정"
     },
     {
       "id": "prompt-enhancer",
       "kind": "skill",
+      "phase": [
+        "P1"
+      ],
       "path": "skills/prompt-enhancer/SKILL.md",
       "when": "P1 — 요청이 한 문장이고 의도가 모호함"
     },
     {
       "id": "prd-generator",
       "kind": "skill",
+      "phase": [
+        "P2"
+      ],
       "path": "skills/prd-generator/SKILL.md",
       "when": "P2 — dev/docs/prd/에 해당 PRD가 없음"
     },
     {
       "id": "dev-docs-generator",
       "kind": "skill",
+      "phase": [
+        "P3"
+      ],
       "path": "skills/dev-docs-generator/SKILL.md",
       "when": "P3 — 작업이 세션을 넘어감 (다중 태스크)"
     },
     {
       "id": "completion-review",
       "kind": "skill",
+      "phase": [
+        "P5"
+      ],
       "path": "skills/completion-review/SKILL.md",
       "when": "P5 — Reversible 변경을 마친 직후 (Costly 이상은 epcc-reviewer)"
     },
@@ -293,12 +339,18 @@
     {
       "id": "codex-claude-loop",
       "kind": "skill",
+      "phase": [
+        "P6"
+      ],
       "path": "skills/codex-claude-loop/SKILL.md",
       "when": "Irreversible 교차검증 — 외부 모델(Codex) 렌즈 추가"
     },
     {
       "id": "gemini-claude-loop",
       "kind": "skill",
+      "phase": [
+        "P6"
+      ],
       "path": "skills/gemini-claude-loop/SKILL.md",
       "when": "Irreversible 교차검증 — 외부 모델(Gemini) 렌즈 추가"
     },
@@ -337,23 +389,9 @@
       "manual": true
     },
     {
-      "id": "insight-saver",
-      "kind": "skill",
-      "path": "skills/insight-saver/SKILL.md",
-      "when": "사용자 수동 호출 전용",
-      "manual": true
-    },
-    {
       "id": "marketing-workflow",
       "kind": "skill",
       "path": "skills/marketing-workflow/SKILL.md",
-      "when": "사용자 수동 호출 전용",
-      "manual": true
-    },
-    {
-      "id": "profile-update",
-      "kind": "skill",
-      "path": "skills/profile-update/SKILL.md",
       "when": "사용자 수동 호출 전용",
       "manual": true
     },
@@ -414,7 +452,8 @@
       "from": "session-start",
       "to": "harness-evaluation",
       "cond": "마지막 평가 후 30일+ 경과 알림",
-      "instrumented": true
+      "instrumented": true,
+      "conditionalEmit": "30일 주기 조건 — 평가 직후에는 30일간 방출되지 않는다"
     },
     {
       "from": "understand",
@@ -461,7 +500,8 @@
       "from": "build-gate",
       "to": "build",
       "cond": "빌드 미실행 → 차단",
-      "instrumented": true
+      "instrumented": true,
+      "conditionalEmit": "게이트가 실제로 차단할 때만 방출된다 — 하네스가 정상 동작하면 영원히 방출되지 않는다"
     },
     {
       "from": "build",

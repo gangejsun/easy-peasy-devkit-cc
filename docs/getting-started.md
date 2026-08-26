@@ -8,6 +8,15 @@
 claude plugin install epcc-devkit
 ```
 
+> **Note — the published marketplace build is still v2.0.0.** The command above installs from
+> `origin/main`, so the v3 harness is only available once a release tag has been pushed and merged
+> (`claude plugin tag --push` → merge to main). Until then, install from this repository directly:
+>
+> ```bash
+> claude plugin marketplace add <path to this repo>
+> claude plugin install epcc-devkit@easy-peasy-devkit
+> ```
+
 ### 2. Initialize Your Project
 
 Start Claude Code in your project directory, then run:
@@ -17,7 +26,7 @@ Start Claude Code in your project directory, then run:
 ```
 
 This will interactively:
-- Ask you to choose a frontend preset (nextjs / react-vite / vanilla / none) and a backend preset (supabase / firebase / aws-serverless / aws-container / gcp-serverless / fastapi / node-api / none)
+- Ask you to choose a frontend preset (nextjs / react-vite / vue / vanilla / none) and a backend preset (supabase / firebase / aws-serverless / aws-container / gcp-serverless / fastapi / node-api / node-nest / none)
 - Collect project information
 - Generate `epcc.config.json` and `CLAUDE.md`
 - Install rule cards into `.claude/rules/`
@@ -49,6 +58,7 @@ Presets are chosen on two axes — pick one from each.
 |----------|-------|
 | `nextjs` | Next.js 15 App Router + React 19 + Tailwind v4 + shadcn/ui + Zustand |
 | `react-vite` | React + Vite SPA + Tailwind + React Router + TanStack Query + Zustand |
+| `vue` | Vue 3 Composition API + Vite SPA + Tailwind + Vue Router + Pinia |
 | `vanilla` | No framework — standard DOM + ES modules (Vite bundle) |
 | `none` | API-only project |
 
@@ -60,7 +70,8 @@ Presets are chosen on two axes — pick one from each.
 | `aws-container` | ECS/Fargate + ALB + RDS PostgreSQL + Drizzle + Cognito (portable to on-prem) |
 | `gcp-serverless` | Cloud Run/Functions + Firestore + Identity Platform |
 | `fastapi` | FastAPI + SQLAlchemy 2.0 + Pydantic v2 + Alembic (self-hosted) |
-| `node-api` | Express/NestJS + PostgreSQL + Prisma/Drizzle (self-hosted) |
+| `node-api` | Express 5 + PostgreSQL + Prisma (self-hosted) |
+| `node-nest` | NestJS 11 + PostgreSQL + TypeORM 1 + class-validator (self-hosted) |
 | `none` | No backend / external REST API |
 
 The **combination** decides the guides. Two combinations ship pre-built guides —

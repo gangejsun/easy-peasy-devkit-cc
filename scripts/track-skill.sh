@@ -22,7 +22,7 @@ EPCC_ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || 
 SKILL=$(epcc_field "$INPUT" '.tool_input.skill')
 [ -z "$SKILL" ] && exit 0
 
-DIR="$EPCC_ROOT/.claude/.epcc"
+DIR="$(epcc_state_dir)"
 mkdir -p "$DIR" 2>/dev/null || exit 0
 printf '%s|%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$SKILL" >> "$DIR/skilluse.log" 2>/dev/null || true
 epcc_edge "build" "track-skill"   # 그래프가 instrumented:true로 선언한 엣지 — 방출 없으면 '미실행' 경고가 영구 잔존

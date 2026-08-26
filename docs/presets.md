@@ -14,6 +14,7 @@
 | --- | --- | --- |
 | `nextjs` | Next.js 15 App Router + React 19 + Tailwind v4 + shadcn/ui + Zustand | 프레임워크 내장 (Route Handlers·Server Actions) |
 | `react-vite` | React + Vite SPA (SSR 없음) + Tailwind + React Router + Zustand | 없음 — 백엔드 축이 전적으로 소유 |
+| `vue` | Vue 3 Composition API + Vite SPA (SSR 없음) + Tailwind + Vue Router + Pinia | 없음 — 백엔드 축이 전적으로 소유 |
 | `vanilla` | 프레임워크 없음 — 표준 DOM + ES 모듈 (Vite 번들) | 없음 |
 | `none` | 프론트엔드 없음 (API 전용 프로젝트) | — |
 
@@ -33,7 +34,8 @@
 | `aws-container` | 자체 서버 | ECS/Fargate + ALB + RDS PostgreSQL + Drizzle + Cognito(OIDC) | **행 수준 정책 엔진 없음** — 소유권 검사 누락이 곧 데이터 유출. AWS 종속을 인프라 층에만 두어 온프레미스 이식이 가능하다 |
 | `gcp-serverless` | 서버리스 조립 | Cloud Run/Functions + Firestore + Identity Platform | IAM/토큰 검증 + (직접 접근 경로가 있으면) Security Rules |
 | `fastapi` | 자체 서버 | FastAPI + SQLAlchemy 2.0 + Pydantic v2 + Alembic + pytest | 애플리케이션 층이 유일한 경계 |
-| `node-api` | 자체 서버 | Express/NestJS + PostgreSQL + Prisma/Drizzle + Zod | 애플리케이션 층이 유일한 경계 |
+| `node-api` | 자체 서버 | Express 5 + PostgreSQL + Prisma + Zod | 애플리케이션 층이 유일한 경계 |
+| `node-nest` | 자체 서버 | NestJS 11 + PostgreSQL + TypeORM 1 + class-validator | 애플리케이션 층이 유일한 경계. `where`가 **배열이면 OR**라 분기마다 소유권을 반복해야 한다 |
 | `none` | — | 백엔드 없음 / 외부 REST API 소비 | 외부 API 토큰 보관 위치가 위험 지점 |
 
 **데이터 계층에 정책 엔진이 있는지가 가이드 내용을 가장 크게 가른다.** 있으면 애플리케이션
@@ -44,7 +46,7 @@
 
 ## 조합 → 가이드 매핑 — 사전 제작 단위는 축이다
 
-조합은 5×8 = **40가지**지만 축은 **13가지**(프론트 5 · 백엔드 8)다. 그리고 가이드 내용의
+조합은 5×9 = **45가지**지만 축은 **14가지**(프론트 5 · 백엔드 9)다. 그리고 가이드 내용의
 대부분은 조합이 아니라 **한 축만의 함수**다 — 백엔드가 Supabase든 AWS든 React 컴포넌트
 패턴과 스타일링은 같다. 그래서 사전 제작 단위를 조합이 아니라 축으로 둔다.
 

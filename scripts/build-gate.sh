@@ -29,7 +29,7 @@ TRANSCRIPT=$(epcc_field "$INPUT" '.transcript_path')
 # ── 1. 이번 세션에 바뀐 소스 파일이 있는가 ───────────────────────────
 git rev-parse --git-dir >/dev/null 2>&1 || exit 0
 
-BASELINE="$EPCC_ROOT/.claude/.epcc/session-baseline.txt"
+BASELINE="$(epcc_state_dir)/session-baseline.txt"
 CURRENT=$(git status --porcelain 2>/dev/null | awk '{print $NF}' | sort)
 
 if [ -f "$BASELINE" ]; then

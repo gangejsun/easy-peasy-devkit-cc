@@ -48,9 +48,9 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
     printf -- '- 미커밋 %s개 파일\n' "$DIRTY"
   fi
   # 세션 시작 시점 스냅샷 — build-gate가 "이번 세션에 바뀐 것"을 판별하는 기준
-  mkdir -p "$EPCC_ROOT/.claude/.epcc" 2>/dev/null || true
+  mkdir -p "$(epcc_state_dir)" 2>/dev/null || true
   git status --porcelain 2>/dev/null | awk '{print $NF}' | sort \
-    > "$EPCC_ROOT/.claude/.epcc/session-baseline.txt" 2>/dev/null || true
+    > "$(epcc_state_dir)/session-baseline.txt" 2>/dev/null || true
 fi
 
 # 열린 워크스페이스
@@ -64,10 +64,15 @@ if [ -d "$EPCC_ROOT/dev/active" ]; then
 fi
 
 # ── 3. 훅 생존 현황 (P1: 컴포넌트는 자기를 보증하지 않는다) ──────────
-HB="$EPCC_ROOT/.claude/.epcc/hookrun.log"
+HB="$(epcc_state_dir)/hookrun.log"
 HOOKS_JSON="$PLUGIN_ROOT/hooks/hooks.json"
 if [ -f "$HOOKS_JSON" ] && command -v jq >/dev/null 2>&1; then
-  EXPECTED=$(epcc_num "$(jq -r '[.hooks|to_entries[].value[]?.hooks[]?]|length' "$HOOKS_JSON" 2>/dev/null)")
+  # 분모는 **고유 스크립트 수**다. 선언 엔트리 수를 쓰면 안 된다 — handoff.sh 하나가
+  # PreCompact·SessionEnd 두 이벤트에 걸려 있어 분자(로그의 스크립트명 distinct)가 분모에
+  # 도달하는 것이 구조적으로 불가능해진다. 그러면 매 세션 미달을 표시하는 꺼지지 않는
+  # 경고가 되고, 무시를 학습시킨다. doctor.sh의 --usage와 같은 식을 쓴다 (평가 v5 · E-14).
+  EXPECTED=$(epcc_num "$(jq -r '[.hooks|to_entries[].value[]?.hooks[]?.command
+                  | capture("(?<f>[a-z0-9-]+)\\.sh").f] | unique | length' "$HOOKS_JSON" 2>/dev/null)")
   if [ -f "$HB" ]; then
     # 최근 7일 내 실행된 고유 훅 수
     SEEN=$(epcc_num "$(awk -F'|' '{print $1}' "$HB" 2>/dev/null | sort -u | wc -l)")

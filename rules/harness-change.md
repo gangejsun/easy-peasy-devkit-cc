@@ -7,7 +7,7 @@ paths:
   - "agents/**"
   - "skills/**"
 ---
-<!-- epcc-rule-version: 3.4.2 -->
+<!-- epcc-rule-version: 3.19.0 -->
 
 # 하네스 변경 카드
 
@@ -72,6 +72,24 @@ Q1의 "빌트인"은 실제로 확인한다. `/code-review`, `/simplify`, `/secu
    — PreCompact/SessionEnd는 평문 stdout이 컨텍스트에 들어가지 않는다 (JSON 필요)
 3. `bash "${CLAUDE_PLUGIN_ROOT:-.}/scripts/doctor.sh" --fast` + `--self-test` → 통과 확인
 4. hooks.json에 등록했으면 `workflow.graph.json`에도 노드/엣지를 추가한다
+   — 라우팅 카드의 Phase에 걸리는 노드면 `phase`를, 파일을 남기면 `produces`와
+   그 산출물을 읽는 엣지까지 (doctor --graph가 대조한다)
+
+## 개입 근거 2줄 — 재실행 증거 없는 개입은 미완성이다
+
+개입(훅·규칙·스킬·브리핑 무엇이든)을 추가·수정했으면 커밋 메시지나 PR에 두 줄을 적는다.
+
+| 줄 | 내용 |
+| --- | --- |
+| (a) | **막으려는 실패** — 2회 이상 반복 관측된 것 |
+| (b) | **잘 되던 것을 망칠 위험** |
+
+(a)를 못 쓰면 그것은 가설이지 패턴이 아니다 — 추가하지 않는다.
+개별 사례의 정답을 하드코딩하지 않는다. 다음 작업에도 재사용되는 개입만 남긴다.
+
+그리고 `--self-test`가 통과해야 한다. **그럴듯한 수정과 효과 있는 수정은 다르고,
+둘을 가르는 것은 재실행뿐이다.** 위 "차단을 증명한다" 규율을 차단 장치뿐 아니라
+모든 개입에 적용한다.
 
 ## 도달 경로 검증
 
@@ -86,6 +104,41 @@ Q1의 "빌트인"은 실제로 확인한다. `/code-review`, `/simplify`, `/secu
   원천이므로 최후 수단 — 단일 정본 + 참조를 우선한다
 
 > v2에서 규칙 697줄이 4개월간 아무 프로젝트에도 도달하지 못했다. 원인은 이 검증의 부재다.
+
+## 릴리스 도달 — 버전 인상은 태그까지다
+
+버전 4곳(`plugin.json`·`package.json`·README 배지·`marketplace.json` 2곳)을 올리는 것은
+**인상의 시작이지 끝이 아니다.** 그 4곳은 전부 로컬 파일이라, 다 맞춰도 소비자는 아무것도
+받지 못한다. 마켓플레이스가 읽는 것은 **원격의 main**이다.
+
+| 단계 | 명령 | 없으면 |
+| --- | --- | --- |
+| ① 커밋 | — | 태그가 가리킬 대상이 없다 |
+| ② 매니페스트 검증 | `claude plugin validate .` **+ 로컬 설치 리허설** | 로드 거부를 설치 후에 발견한다 |
+| ③ 릴리스 태그 | `claude plugin tag --push` | `{name}--v{version}` 태그가 없다 — doctor가 "미배포"로 경고한다 |
+| ④ main 병합 | — | **마켓플레이스는 main만 본다.** 브랜치에 있는 버전은 존재하지 않는 것과 같다 |
+
+`claude plugin tag`는 태그를 만들면서 `plugin.json`과 마켓플레이스 엔트리의 일치를
+검증한다 — 손으로 대조하지 않는다.
+
+**②를 `validate` 하나로 끝내지 않는다.** `.claude-plugin/`에 매니페스트가 둘 있으면
+`validate`는 **`marketplace.json`만** 검사한다 — `plugin.json`의 오류는 통과시킨다.
+실측(평가 v5 · E-16): `plugin.json`에 `"agents": "./agents/"`를 넣고 `validate`는 ✔를 냈는데
+`install`이 `Validation errors: agents: Invalid input`으로 거부했다. 그래서 리허설이 필요하다:
+
+```bash
+claude plugin marketplace add <저장소 절대경로>   # source: directory — 워킹트리를 그대로 읽는다
+claude plugin install <플러그인>@<마켓플레이스>
+claude plugin details <플러그인>                 # 컴포넌트 인벤토리가 실물과 맞는지 대조
+```
+
+`details`의 인벤토리는 **선언 형태에 민감하다.** `agents`를 파일 경로 배열로 선언하면
+런타임은 정상 로드하는데 `details`는 `Agents (0)`으로 보고한다 — 키를 지우고 자동 발견에
+맡기면 맞는다(평가 v5 · E-17). **선언하지 않는 것이 선언하는 것보다 정확한 경우가 있다.**
+
+> 평가 v3에서 발견: 저장소가 3.18.0을 주장하는 동안 `origin/main`은 2.0.0이었고,
+> 설치본의 `gitCommitSha`가 그 2.0.0과 정확히 같았다. 태그 수는 0이었다.
+> **17번의 버전 인상이 한 번도 소비자에게 도달하지 않았다.**
 
 ## 자산 부재 판정 — 3-위치 검색
 
