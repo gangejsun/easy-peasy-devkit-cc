@@ -1,6 +1,6 @@
 ---
 name: gemini-claude-loop
-description: 외부 AI(Gemini)로 코드를 독립 검증하고 싶을 때, 또는 epcc-reviewer의 cross-check 조건 충족 시 사용합니다. Claude Code가 설계/구현하고 Gemini CLI가 검증/리뷰하는 듀얼 AI 엔지니어링 루프를 오케스트레이션합니다. 사용자가 코드 품질의 교차 검증을 요청할 때도 직접 호출 가능합니다.
+description: 외부 AI(Gemini)로 코드를 독립 검증합니다. Claude Code가 설계/구현하고 Gemini CLI가 검증/리뷰하는 듀얼 AI 루프를 오케스트레이션합니다. epcc-reviewer의 cross-check 조건 충족 시 사용자 확인 후 호출되거나, 사용자가 코드 품질 검증을 요청할 때 사용하세요. 소스가 외부 모델로 전송되므로 사전 동의 없이 실행하지 않습니다.
 ---
 
 # Gemini-Claude Engineering Loop
@@ -28,6 +28,20 @@ command -v gemini >/dev/null 2>&1 && gemini --version || echo "CLI 미설치 —
 ```
 
 미설치·미설정이면 사용자에게 안내 후 이 스킬을 건너뛴다.
+
+### Step 0.5: 외부 전송 동의 — 건너뛰지 않는다
+
+이 스킬은 **코드를 저장소 밖으로 내보낸다.** 실행 전에 무엇이 나가는지 보이고 동의를 받는다.
+
+| 전송 대상 | 범위 | 비고 |
+| --- | --- | --- |
+| 계획 검증(Step 2) | 계획 텍스트만 | 소스 미포함 |
+| 코드 리뷰·재검증 | **`git diff` 산출물** | 전체 트리를 보내지 않는다 — diff에 한정한다 |
+
+- 사용자가 직접 호출했더라도 **전송 범위는 고지한다**. 자동 경로(epcc-reviewer의
+  cross-check)에서는 **동의 없이 실행하지 않는다**
+- 시크릿·자격증명이 diff에 포함되면 중단한다 (`security-check` 훅은 파일 쓰기만 본다 —
+  외부 전송은 보지 않는다)
 
 ### Step 1~4: 공통 워크플로우
 

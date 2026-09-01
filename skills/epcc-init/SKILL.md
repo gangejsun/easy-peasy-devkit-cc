@@ -72,7 +72,7 @@ Step 2·4·4.5·4.7은 원래 필수 대기 3곳 + 조건부 5곳이었다. Step
   4. aws-container   — AWS 컨테이너: ECS/Fargate + RDS PostgreSQL + Drizzle + Cognito
                        (온프레미스 이식을 전제로 AWS 종속을 인프라 층에만 둔다)
   5. gcp-serverless  — GCP 조립: Cloud Run/Functions + Firestore + Identity Platform
-  6. fastapi         — 자체 서버: FastAPI + SQLAlchemy 2.0 + Pydantic v2 + Alembic
+  6. fastapi         — 자체 서버 · **Python**: FastAPI + SQLAlchemy 2.0 + Pydantic v2 + Alembic
   7. node-api        — 자체 서버: Express 5 + PostgreSQL + Prisma
   8. node-nest       — 자체 서버: NestJS 11 + PostgreSQL + TypeORM 1 + class-validator
                        (모듈·DI·데코레이터가 구조를 정한다 — Express의 변형이 아니다)
@@ -85,7 +85,7 @@ Step 2·4·4.5·4.7은 원래 필수 대기 3곳 + 조건부 5곳이었다. Step
 | --- | --- | --- |
 | BaaS | supabase · firebase | 벤더가 DB·인증·스토리지를 함께 제공. 데이터 계층에 정책 엔진이 있다 |
 | 서버리스 조립 | aws-serverless · gcp-serverless | 관리형 서비스를 직접 조합. **행 수준 정책 엔진이 없을 수 있어** 애플리케이션 층 검사 비중이 커진다 |
-| 자체 서버 | aws-container · fastapi · node-api · node-nest | 상주 서버를 운영. 애플리케이션 층이 유일한 경계 |
+| 자체 서버 | aws-container · fastapi · node-api · node-nest | 상주 서버를 운영. 애플리케이션 층이 유일한 경계. **`fastapi`만 Python이고 나머지 셋은 TypeScript다** — 툴체인이 갈리므로 프론트 축과 명령이 달라진다 |
 
 **언어(TypeScript/JavaScript)는 프리셋이 아니라 차원이다.** 프리셋 기본값을 표시하고
 Step 4에서 확인받는다 — 이 값에 따라 가이드의 타입 표준 슬롯이 살아나거나 JSDoc 규약으로
@@ -332,7 +332,6 @@ dev/
 │   ├── research/
 │   ├── business/
 │   ├── service/
-│   ├── insights/
 │   └── design/
 ```
 
