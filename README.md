@@ -88,9 +88,9 @@ Phase 번호는 순서 표시일 뿐 의무가 아닙니다 — 진입 조건 4�
 | 계층 | 수 | 내용 |
 |------|-----|------|
 | **훅** | 5 스크립트 / 6 등록 | SessionStart · PreToolUse · Stop · PreCompact · SessionEnd · PostToolUse |
-| **규칙** | T0 36줄 + T1 8개 1,038줄 | T0는 훅이 상시 주입(플러그인 소유). T1은 `workflow-routing`이 **매 세션 상시**, 나머지는 경로 매칭 시 조건부 로드 |
+| **규칙** | T0 40줄 + T1 8개 1,097줄 | T0는 훅이 상시 주입(플러그인 소유). T1은 `workflow-routing`이 **매 세션 상시**, 나머지는 경로 매칭 시 조건부 로드 |
 | **에이전트** | 2 | `epcc-planner`(쓰기 없음) · `epcc-reviewer`(읽기 전용) |
-| **스킬** | 29 | 기획·구현·검증·보안·마케팅 워크플로우 + 스택 가이드 생성기 + 스킬 강화기 |
+| **스킬** | 30 | 기획·구현·검증·보안·마케팅 워크플로우 + 스택 가이드 생성기 + 스킬 강화기 |
 | **프리셋** | 2축 5+9 | 프론트엔드: nextjs·react-vite·vue·vanilla·none / 백엔드: supabase·firebase·aws-serverless·aws-container·gcp-serverless·fastapi·node-api·node-nest·none |
 
 ### 훅
@@ -159,7 +159,7 @@ bash scripts/doctor.sh --all        # 전체
 ## 그래프 선언
 
 `workflow.graph.json`이 노드(에이전트·스킬·훅)와 엣지(전이 조건), **에러 엣지**를
-기계 판독 가능한 형태로 선언합니다. 현재 노드 47 · 엣지 67.
+기계 판독 가능한 형태로 선언합니다. 현재 노드 48 · 엣지 69.
 
 `doctor --graph`가 검증합니다:
 - 모든 엣지의 타깃이 실재하는가
@@ -227,11 +227,11 @@ mkdir -p .claude/skills/my-brainstorming
 | 항목 | v2 | v3 |
 |------|-----|-----|
 | 훅 | 11개 (Stop의 `decision`/`reason` 등 출력 규격 위반으로 다수가 무효) | **5개, 전부 자기검증** |
-| 규칙 | generator가 `.claude/rules/`에 복사 (무조건 로드 3장 + 조건부 11장) | **T0 36줄 + T1 1,038줄, `install-rules.sh`로 설치 실증. 상시/조건부 구분 유지** |
+| 규칙 | generator가 `.claude/rules/`에 복사 (무조건 로드 3장 + 조건부 11장) | **T0 40줄 + T1 1,097줄, `install-rules.sh`로 설치 실증. 상시/조건부 구분 유지** |
 | 검증 강도 | S/M/L 규모 판단 | **되돌림 가능성 축 (경로 판정)** |
 | Phase | P0~P6 (`.claude/rules/task-workflow.md` 상시 로드) | **P0~P6 유지** — `workflow-routing.md`로 이관, 상시 로드 성질 보존 |
 | 에이전트 | frontmatter 없음, 전체 도구 접근 | **계약 완비 + 최소 권한** |
-| 스킬 | 37개 | **29개** (네이티브가 더 나은 것만 제거, 가이드 생성기·강화기 추가) |
+| 스킬 | 37개 | **30개** (네이티브가 더 나은 것만 제거, 가이드 생성기·강화기·축약 원장 추가) |
 | 검증 | 없음 | **`doctor` 5개 모드** |
 | 그래프 | 산문으로 흩어짐 | **`workflow.graph.json` + 계측** |
 
@@ -247,6 +247,7 @@ PostToolUse 추적기 3종
 | `/security-review` | 내장은 브랜치 diff 전용이고 시크릿을 명시적으로 제외합니다. 이 스킬은 코드베이스 전수 감사·의존성 CVE·결제 보안을 담당 |
 | `/receiving-code-review` | 내장은 지적을 *생성*합니다. 받은 지적을 *비판적으로 검증*하는 대응물은 없습니다 |
 | `/harness-evaluation` | `doctor`는 측정(훅 생존·dangling·예산), 이 스킬은 판단(설계가 좋은가·지금 모델에 과잉인가) |
+| `/shortcut-ledger` | 내장 `/simplify`는 **이미 쓴** 코드를 줄입니다. 의도적으로 남긴 축약의 천장이 만료됐는지 추적하는 대응물은 없습니다 (쓰기 전 규범 자체는 `code-change.md` 「구현 사다리」) |
 
 > **판단 기준**: "네이티브가 존재한다"는 중복의 증거이지 열등의 증거가 아닙니다.
 > 폐기를 제안하려면 양쪽 본문을 열어 커버 영역을 비교해야 하고, 비교 대상은
