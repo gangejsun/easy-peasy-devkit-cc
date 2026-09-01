@@ -52,6 +52,29 @@ Bash 규칙. 같은 변수를 양쪽에 쓰면 권한 프롬프트 없이 번들
 `rules`는 **플러그인 컴포넌트 타입이 아니다.** 플러그인의 `rules/`는 자동 배포되지
 않으므로 `scripts/install-rules.sh`가 프로젝트 `.claude/rules/`로 설치한다.
 
+## 2.5 마켓플레이스 — 한 저장소, 여러 플러그인
+
+확인: 2026-09-01 · 출처: https://code.claude.com/docs/en/plugin-marketplaces
+
+하나의 `marketplace.json`이 **같은 저장소의 서브디렉토리에 있는 여러 플러그인**을
+호스팅할 수 있다.
+
+| 사실 | 내용 |
+| --- | --- |
+| `source` | `"./"`로 시작하는 **상대 경로**. **마켓플레이스 루트**(=`.claude-plugin/`을 담은 디렉토리) 기준으로 해석된다 |
+| `../` | **쓰지 않는다** — 마켓플레이스 루트 밖은 참조 불가 |
+| 서브 플러그인 매니페스트 | 각 플러그인 디렉토리에 **자기 `.claude-plugin/plugin.json`이 있어야 한다** |
+| 버전 | 플러그인마다 **독립**이다. 마켓플레이스 `metadata.version`과 같을 필요가 없다 |
+
+이 저장소가 그 형태다 — `epcc-devkit`(`source: "./"`)과 `epcc-marketing`
+(`source: "./marketing/"`)이 공존한다. 마케팅 스킬을 분리한 이유는 **개발 세션의
+컨텍스트 예산**이다: 스킬 description은 스킬을 한 번도 쓰지 않아도 상주하므로,
+개발과 무관한 스킬이 개발 세션의 예산을 먹는다.
+
+**따라오는 함정 하나** — `doctor`의 버전 대조가 `marketplace.json`의 **모든** `"version"`을
+긁으면 남의 플러그인 버전까지 기준과 맞춰야 하는 것으로 읽혀 **오탐으로 실패한다.**
+대조는 `plugin.json`의 이름과 같은 엔트리로 좁힌다 (`doctor.sh` 「매니페스트」).
+
 ## 3. `.claude/rules/` 로딩
 
 확인: 2026-08-24 · 출처: https://code.claude.com/docs/en/memory

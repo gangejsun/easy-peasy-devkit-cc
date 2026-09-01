@@ -51,6 +51,15 @@ sec()  { printf "\n${C_D}── %s ───────────────
 
 num() { local v; v=$(printf '%s' "${1:-}" | tr -d '[:space:]'); case "$v" in ''|*[!0-9]*) printf '0';; *) printf '%s' "$v";; esac; }
 
+# 스킬 루트가 둘이다 — dev 하네스(skills/)와 마케팅 플러그인(marketing/skills/).
+# **위생 검사는 둘 다** 본다: 분리가 검사 사각지대를 만들면 그 분리는 개선이 아니다.
+# 반대로 description 예산 · 그래프 선언 · 「선언↔실물」의 스킬 수는 **skills/만** 센다 —
+# 마케팅 스킬은 개발 세션 컨텍스트에 상주하지 않고 workflow.graph.json에도 없기 때문이다.
+skill_roots() { local d; for d in skills marketing/skills; do [ -d "$d" ] && printf '%s\n' "$d"; done; }
+skill_dirs()  { local r; while IFS= read -r r; do find "$r" -mindepth 1 -maxdepth 1 -type d 2>/dev/null; done < <(skill_roots); }
+skill_mds()   { local d; while IFS= read -r d; do [ -f "$d/SKILL.md" ] && printf '%s\n' "$d/SKILL.md"; done < <(skill_dirs); }
+_shared_copies() { local d; while IFS= read -r d; do grep -rl 'epcc-doctor: shared-copy' "$d/references" "$d/resources" 2>/dev/null; done < <(skill_dirs); }
+
 # 코드 행만 남긴다 — 주석과 사용자 메시지 문자열은 검사 대상이 아니다.
 # (린터가 자기 에러 메시지를 검출하는 것은 린터의 결함이다)
 # BSD sed는 BRE에서 \| 교대를 지원하지 않는다 → -E(ERE) 필수
@@ -234,7 +243,7 @@ run_fast() {
   # **실패하지 않고 조용히 무매칭**이 되므로 검사가 아무것도 안 잡는 채로 통과한다.
   # -E(ERE)를 쓰고 | 로 적어야 한다.
   local bre="" n=0
-  for f in scripts/*.sh skills/*/scripts/*.sh; do
+  for f in scripts/*.sh skills/*/scripts/*.sh marketing/skills/*/scripts/*.sh; do
     [ -f "$f" ] || continue
     code_lines "$f" 2>/dev/null | grep -qE "(grep|sed)([[:space:]]+-[a-df-zA-Z]+)*[[:space:]]+'[^']*\\\\\\|" || continue
     bre="$bre $(basename "$f")"; n=$((n+1))
@@ -447,15 +456,22 @@ run_fast() {
 
   # ── 6. 스킬 위생 ──
   sec "스킬 description 위생"
-  local stot blk proj
-  stot=$(num "$(ls -d skills/*/ 2>/dev/null | wc -l | tr -d ' ')")
-  blk=$(num "$(grep -l '^description: |' skills/*/SKILL.md 2>/dev/null | wc -l | tr -d ' ')")
-  proj=$(num "$(grep -l '(project)' skills/*/SKILL.md 2>/dev/null | wc -l | tr -d ' ')")
+  local stot=0 blk=0 proj=0 sm
+  while IFS= read -r sm; do
+    [ -z "$sm" ] && continue
+    stot=$((stot+1))
+    grep -q '^description: |' "$sm" 2>/dev/null && blk=$((blk+1))
+    grep -q '(project)' "$sm" 2>/dev/null && proj=$((proj+1))
+  done < <(skill_mds)
   [ "$blk" -gt 0 ] && warn "블록 스칼라 description ${blk}/${stot}" "단일 행 권장 (sprawl 유발)" || ok "블록 스칼라 없음"
   [ "$proj" -gt 0 ] && warn "'(project)' 접미사 ${proj}/${stot}" "라우팅에 무의미, 상시 상주 비용만 차지" || ok "'(project)' 접미사 없음"
 
   # 네이티브와 싸우는 문구
-  if grep -rq 'skill-creator 플러그인보다 우선' skills/ 2>/dev/null; then
+  local nfight=0 sr
+  while IFS= read -r sr; do
+    grep -rq 'skill-creator 플러그인보다 우선' "$sr" 2>/dev/null && nfight=1
+  done < <(skill_roots)
+  if [ "$nfight" -eq 1 ]; then
     bad "네이티브 스킬(skill-creator)을 밀어내는 문구 존재" "플랫폼 네이티브와 싸우지 않는다 (P6)"
   else
     ok "네이티브를 밀어내는 문구 없음"
@@ -466,17 +482,18 @@ run_fast() {
   # 기존 dangling 검사는 .claude/rules만 봐서 이 사각지대가 5건을 4개월간 숨겼다.
   sec "스킬 내부 참조"
   local sdang=0 schecked=0
-  for sd in skills/*/; do
+  local sd
+  while IFS= read -r sd; do
     [ -f "$sd/SKILL.md" ] || continue
     while IFS= read -r ref; do
       [ -z "$ref" ] && continue
       schecked=$((schecked+1))
       # 스킬 디렉토리 우선, 플러그인 루트 폴백 (${CLAUDE_PLUGIN_ROOT}/scripts/* 참조 허용)
-      if [ ! -f "$sd$ref" ] && [ ! -f "$ref" ]; then
+      if [ ! -f "$sd/$ref" ] && [ ! -f "$ref" ]; then
         bad "$(basename "$sd") → $ref 없음"; sdang=$((sdang+1))
       fi
     done < <(grep -ohE '(skills/[A-Za-z0-9._-]+/)?(references|assets|resources|scripts)/[A-Za-z0-9._/-]+\.(md|json|csv|txt|py|sh|html|hbs)' "$sd/SKILL.md" 2>/dev/null | sort -u)
-  done
+  done < <(skill_dirs)
   [ "$sdang" -eq 0 ] && ok "스킬 내부 참조 ${schecked}건 모두 실재"
 
   # .claude/skills/ 하드코딩 — 플러그인 스킬이 프로젝트 오버라이드 경로를 지시하면
@@ -486,7 +503,7 @@ run_fast() {
     [ -z "$hit" ] && continue
     warn ".claude/skills/ 경로 하드코딩: $hit" "\${CLAUDE_SKILL_DIR} 기준으로 변경"
     hc=$((hc+1))
-  done < <(grep -rln 'python3 \.claude/skills/\|bash \.claude/skills/' skills/*/SKILL.md 2>/dev/null)
+  done < <(skill_mds | while IFS= read -r sm; do grep -lE 'python3 \.claude/skills/|bash \.claude/skills/' "$sm" 2>/dev/null; done)
   [ "$hc" -eq 0 ] && ok "스크립트 호출의 .claude/skills/ 하드코딩 없음"
 
   # 번들 스크립트 경로 표기 — Claude Code가 치환하는 것은 \${CLAUDE_SKILL_DIR}와
@@ -500,7 +517,7 @@ run_fast() {
     bogus=$((bogus+1))
   # BSD grep은 BRE에서 \| 교대를 지원하지 않는다 → -E(ERE) 필수.
   # (이 파일 상단 code_lines()가 sed에 대해 같은 함정을 이미 적어두었다)
-  done < <(grep -rnE '<skill[-_]dir>|\{skill[-_]dir\}|<Base directory>' skills/ 2>/dev/null | cut -c1-120)
+  done < <(skill_roots | while IFS= read -r sr; do grep -rnE '<skill[-_]dir>|\{skill[-_]dir\}|<Base directory>' "$sr" 2>/dev/null; done | cut -c1-120)
   [ "$bogus" -eq 0 ] && ok "번들 스크립트 경로 표기 정상 (\${CLAUDE_SKILL_DIR})"
 
   # 공유 사본 쌍의 내용 drift (사본 공유 구조의 알려진 실패 모드)
@@ -516,8 +533,8 @@ run_fast() {
         warn "공유 사본 내용 상이: $first ↔ $f2" "사본 드리프트 — 한쪽을 원본으로 정하고 동기화"
         drift=$((drift+1))
       fi
-    done < <(grep -rl 'epcc-doctor: shared-copy' skills/*/references skills/*/resources 2>/dev/null | grep "/$base$" | sort)
-  done < <(grep -rl 'epcc-doctor: shared-copy' skills/*/references skills/*/resources 2>/dev/null | xargs -I{} basename {} | sort | uniq -d)
+    done < <(_shared_copies | grep "/$base$" | sort)
+  done < <(_shared_copies | xargs -I{} basename {} | sort | uniq -d)
   [ "$drift" -eq 0 ] && ok "공유 사본 드리프트 없음"
 
   # ── 7. 매니페스트 정합 ──
@@ -575,18 +592,31 @@ run_fast() {
   else
     [ "$cv" = "$pv" ] || mism="$mism plugin.json=${cv:-없음}"
     [ "$rv" = "$pv" ] || mism="$mism README배지=${rv:-없음}"
-    # marketplace.json은 버전이 2곳이다(마켓플레이스 자체 + 플러그인 항목) — 전부 대조한다
-    local mtot=0 mbad=0 mv
-    while IFS= read -r mv; do
-      [ -z "$mv" ] && continue
-      mtot=$((mtot+1))
-      [ "$mv" = "$pv" ] || mbad=$((mbad+1))
-    done < <(grep -oE '"version"[[:space:]]*:[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+"' .claude-plugin/marketplace.json 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-    [ "$mtot" -eq 0 ] && mism="$mism marketplace.json=읽지못함"
-    [ "$mbad" -gt 0 ] && mism="$mism marketplace.json(${mbad}/${mtot}곳 불일치)"
+    # marketplace.json의 버전은 2곳이다 — 마켓플레이스 metadata + **이 플러그인의** 항목.
+    # 이 저장소는 플러그인을 둘 호스팅하고(epcc-marketing은 독립 버전이다) 파일의 모든
+    # "version"을 긁으면 남의 버전까지 기준과 대조해 **오탐으로 실패한다.** 엔트리로 좁힌다.
+    # jq 부재는 판정 불가다 — 차단하지 않고 건너뛰되 침묵하지 않는다 (3상태 규율).
+    local mpname mtot=0 mbad=0 mv mskip=0
+    mpname=$(grep -m1 '"name"' .claude-plugin/plugin.json 2>/dev/null | sed -E 's/.*"name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
+    if command -v jq >/dev/null 2>&1; then
+      while IFS= read -r mv; do
+        [ -z "$mv" ] && continue
+        mtot=$((mtot+1))
+        [ "$mv" = "$pv" ] || mbad=$((mbad+1))
+      done < <(jq -r --arg n "$mpname" \
+                 '[.metadata.version?, (.plugins[]?|select(.name==$n)|.version)] | map(select(.!=null)) | .[]' \
+                 .claude-plugin/marketplace.json 2>/dev/null)
+      [ "$mtot" -eq 0 ] && mism="$mism marketplace.json=읽지못함"
+      [ "$mbad" -gt 0 ] && mism="$mism marketplace.json(${mbad}/${mtot}곳 불일치)"
+    else
+      mskip=1
+    fi
     if [ -n "$mism" ]; then
       bad "버전 불일치 (기준 package.json=$pv):$mism" \
           "4곳을 동시에 올린다 — plugin.json · package.json · README 배지 · marketplace.json"
+    elif [ "$mskip" -eq 1 ]; then
+      warn "marketplace.json 버전 대조 판정 불가 — jq 없음" \
+           "plugin.json · package.json · README 배지 3곳은 일치 ($pv)"
     else
       ok "버전 4곳 일치 ($pv · marketplace ${mtot}곳 포함)"
     fi
@@ -943,7 +973,11 @@ run_self_test() {
   # 쓰는 시크릿은 차단이 0이었고, Write 픽스처만 통과시켜 그 사실이 보이지 않았다
   # (평가 v5 · E-20). 커버리지의 구멍은 **경로별 픽스처가 없으면 보이지 않는다**.
   local bfx bcode blabel
-  for bfx in "PreToolUse-block.json:Write 시크릿 주입" "PreToolUse-bash-block.json:Bash 힙독 시크릿 주입"; do
+  # 파괴적 명령은 시크릿과 **다른 축**이다 (파일을 하나도 쓰지 않고 되돌릴 수 없게 만든다).
+  # 축이 다르면 픽스처도 따로 있어야 한다 — 시크릿 픽스처가 통과해도 이쪽 커버리지는 0일 수 있다.
+  for bfx in "PreToolUse-block.json:Write 시크릿 주입" \
+             "PreToolUse-bash-block.json:Bash 힙독 시크릿 주입" \
+             "PreToolUse-bash-destructive.json:Bash 파괴적 명령"; do
     blabel="${bfx#*:}"; bfx="$fx/${bfx%%:*}"
     if [ -f "$bfx" ] && [ -f scripts/security-check.sh ]; then
       bcode=0
@@ -960,16 +994,19 @@ run_self_test() {
 
   # 오탐 방어 — 시크릿 **문자열이 들어 있으나 파일을 쓰지 않는** 조사 명령은 통과해야 한다.
   # 오탐은 사용자가 훅을 꺼버리게 만들고, 꺼진 훅의 차단력은 0이다.
-  local okfx="$fx/PreToolUse-bash-ok.json"
-  if [ -f "$okfx" ]; then
+  local okfx oklabel
+  for okfx in "PreToolUse-bash-ok.json:시크릿 문자열 조사 명령" \
+              "PreToolUse-bash-destructive-ok.json:파괴 구문 조사 명령"; do
+    oklabel="${okfx#*:}"; okfx="$fx/${okfx%%:*}"
+    [ -f "$okfx" ] || { warn "오탐 픽스처 없음 ($okfx)" "그 경로의 오탐 방어가 증명되지 않은 상태"; continue; }
     bcode=0
     CLAUDE_PROJECT_DIR="$ROOT" bash scripts/security-check.sh < "$okfx" >/dev/null 2>&1 || bcode=$?
     if [ "$bcode" -eq 0 ]; then
-      ok "security-check: 읽기 전용 조사 명령 → exit 0 (오탐 없음)"
+      ok "security-check: $oklabel → exit 0 (오탐 없음)"
     else
-      bad "security-check: 무해한 조사 명령에 exit $bcode" "오탐 — 훅이 꺼지는 원인"
+      bad "security-check: 무해한 $oklabel에 exit $bcode" "오탐 — 훅이 꺼지는 원인"
     fi
-  fi
+  done
 
   # ── 정적 검사 양성 픽스처 (RC4) ──────────────────────────────────
   # 정적 검사(상시 카드·치환자 표기·Phase 이원화·카드 표 수·그래프 미선언)는
@@ -1369,35 +1406,44 @@ run_usage() {
   # 호출 여부와 무관하게 **매 세션 무조건** 들어가는 비용. T0만 예산(40줄)이 있었고
   # 나머지는 아무도 세지 않았다 — 특히 스킬 description은 스킬을 한 번도 안 써도
   # 전량이 상주한다. 그래서 평가 축 P5가 계속 '미계측'이었다.
-  # 단위는 문자 수다. **토큰 환산은 하지 않는다** — 환산 계수는 모델별로 다르고
-  # 여기서 검증할 수 없다. 검증 불가한 숫자를 만드는 것이 안티골 8이다.
+  # 단위는 **바이트**다(wc -c). 한국어는 문자당 약 3바이트라 문자 수보다 크다 —
+  # 아래 래칫의 역사값이 전부 바이트로 측정됐으므로 값이 아니라 라벨을 맞춘다.
+  # **토큰 환산은 하지 않는다** — 환산 계수는 모델별로 다르고 여기서 검증할 수 없다.
+  # 검증 불가한 숫자를 만드는 것이 안티골 8이다.
   local c_t0 c_route c_desc c_sum sfile
   c_t0=$(num "$(sed '/<!--/,/-->/d' "$PLUGIN_ROOT/templates/operating-contract.md" 2>/dev/null | wc -c | tr -d ' ')")
   c_route=$(num "$(sed '/<!--/,/-->/d' "$PLUGIN_ROOT/rules/workflow-routing.md" 2>/dev/null | wc -c | tr -d ' ')")
   c_desc=0
+  local dtop="" dn dv
   for sfile in "$PLUGIN_ROOT"/skills/*/SKILL.md; do
     [ -f "$sfile" ] || continue
-    c_desc=$((c_desc + $(num "$(awk '/^---$/{n++; next} n==1 && /^(name|description):/{p=1} n==1 && /^[a-z_]+:/ && !/^(name|description):/{p=0} n==1 && p{print} n>=2{exit}' "$sfile" | wc -c | tr -d ' ')")))
+    dv=$(num "$(awk '/^---$/{n++; next} n==1 && /^(name|description):/{p=1} n==1 && /^[a-z_]+:/ && !/^(name|description):/{p=0} n==1 && p{print} n>=2{exit}' "$sfile" | wc -c | tr -d ' ')")
+    c_desc=$((c_desc + dv))
+    dn=$(basename "$(dirname "$sfile")")
+    dtop="${dtop}${dv} ${dn}
+"
   done
   c_sum=$((c_t0 + c_route + c_desc))
-  printf "    %-32s %8s자\n" "T0 운영 규칙" "$c_t0"
-  printf "    %-32s %8s자\n" "workflow-routing (상시 로드)" "$c_route"
-  printf "    %-32s %8s자\n" "스킬 description 총합" "$c_desc"
-  printf "    %-32s %8s자\n" "── 상주 합계" "$c_sum"
+  printf "    %-32s %8s바이트\n" "T0 운영 규칙" "$c_t0"
+  printf "    %-32s %8s바이트\n" "workflow-routing (상시 로드)" "$c_route"
+  printf "    %-32s %8s바이트\n" "스킬 description 총합" "$c_desc"
+  printf "    %-32s %8s바이트\n" "── 상주 합계" "$c_sum"
+  # 총합만으로는 무엇을 압축할지 모른다 — 상위 3개를 함께 보인다.
+  printf "    ${C_D}상위: %s${C_0}\n" "$(printf '%s' "$dtop" | sort -rn | head -3 | awk '{printf "%s %s · ", $2, $1}' | sed 's/ · $//')"
   printf "    ${C_D}session-brief 출력은 세션마다 달라 미포함 (정직 보고)${C_0}\n"
-  # 예산은 **반복 증거가 쌓인 뒤에** 둔다는 규율을 지켰다 — 평가 v3(14,219자) · v4(11,662) ·
+  # 예산은 **반복 증거가 쌓인 뒤에** 둔다는 규율을 지켰다 — 평가 v3(14,219바이트) · v4(11,662) ·
   # v5(11,662)에서 3회 연속 "예산 있는 T0의 4.8배인데 상한이 없다"로 관측됐다(E-07).
   # 그래서 지금 값을 상한으로 **고정(래칫)**한다: 압축된 상태를 되돌리지 못하게만 한다.
   # 차단이 아니라 경고다 — 이 숫자는 정확성 게이트가 아니라 절제의 눈금이고,
   # 무관한 작업을 막으면 그것이 훅을 꺼버리게 만드는 오탐이 된다.
   local desc_budget=12000
   if [ "$c_desc" -gt "$desc_budget" ]; then
-    warn "스킬 description ${c_desc}자 — 예산 ${desc_budget}자 초과" \
+    warn "스킬 description ${c_desc}바이트 — 예산 ${desc_budget}바이트 초과" \
          "스킬을 한 번도 호출하지 않아도 전량이 매 세션 상주한다. 압축하거나 본문으로 내리세요"
   else
-    ok "스킬 description ${c_desc}/${desc_budget}자"
+    ok "스킬 description ${c_desc}/${desc_budget}바이트"
   fi
-  ok "상주 비용 실측 ${c_sum}자 (판정은 P5)"
+  ok "상주 비용 실측 ${c_sum}바이트 (판정은 P5)"
 }
 
 # ════════════════════════════════════════════════════════════════════

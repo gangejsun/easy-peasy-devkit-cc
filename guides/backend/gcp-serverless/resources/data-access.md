@@ -95,8 +95,18 @@ const task2 = (await tasksRef.doc(taskId).get()).data();
 
 `withConverter`를 붙인 참조는 **한 곳에서만** 만들어 export한다. 다른 파일이 맨 `firestore.collection('tasks')`를 만들면 그 경로만 원시 문서를 받는다.
 
+**이 절이 파일 전문을 싣는다** — 변이 네 함수의 근거는 6절이 설명하되 코드는 여기 한 번만 있다. 두 블록으로 나누면 어느 쪽도 완전 파일이 아니게 되고, 그러면 이 모듈은 타입체크도 실행 검사도 받지 못한다.
+
+<!-- file: src/firestore/tasks.ts -->
 ```ts
 // src/firestore/tasks.ts
+import { Timestamp, type CollectionReference, type Query } from '@google-cloud/firestore';
+import { firestore } from './client.js';
+import { taskConverter } from './converter.js';
+import { decodeCursor, encodeCursor } from './cursor.js';
+import { AppError } from '../errors.js';
+import type { Task, TaskCreate, TaskQuery, TaskUpdate } from '../schemas/task.js';
+
 export const tasksRef: CollectionReference<Task> = firestore
   .collection('tasks')
   .withConverter(taskConverter);
@@ -116,6 +126,40 @@ export async function listTasks(
   const last = items.at(-1);
   const nextCursor = last && items.length === q.limit ? encodeCursor(last.createdAt, last.id) : null;
   return { items, nextCursor };
+}
+
+export async function createTask(ownerId: string, data: TaskCreate): Promise<Task> {
+  const ref = tasksRef.doc();                              // ID를 먼저 받는다
+  const task: Task = { id: ref.id, ownerId, title: data.title,
+                       status: data.status, createdAt: Timestamp.now() };
+  await ref.create(task);                                  // converter가 id를 데이터에서 뺀다
+  return task;
+}
+
+export async function getTask(ownerId: string, taskId: string): Promise<Task | null> {
+  const task = (await tasksRef.doc(taskId).get()).data();
+  if (!task || task.ownerId !== ownerId) return null;      // ID만으로 읽으면 남의 것을 준다
+  return task;
+}
+
+export async function updateTask(ownerId: string, taskId: string, patch: TaskUpdate): Promise<Task> {
+  const ref = tasksRef.doc(taskId);
+  return firestore.runTransaction(async (tx) => {
+    const current = (await tx.get(ref)).data();
+    if (!current || current.ownerId !== ownerId) throw new AppError('NOT_FOUND', '작업을 찾을 수 없다');
+    const next: Task = { ...current, ...patch };
+    tx.set(ref, next);
+    return next;
+  });
+}
+
+export async function deleteTask(ownerId: string, taskId: string): Promise<void> {
+  const ref = tasksRef.doc(taskId);
+  await firestore.runTransaction(async (tx) => {
+    const current = (await tx.get(ref)).data();
+    if (!current || current.ownerId !== ownerId) throw new AppError('NOT_FOUND', '작업을 찾을 수 없다');
+    tx.delete(ref);
+  });
 }
 ```
 
@@ -166,44 +210,13 @@ export function decodeCursor(cursor: string): { createdAt: Timestamp; taskId: st
 
 ## 6. 변이는 트랜잭션 안에서 읽고 확인한 뒤 쓴다
 
-`createTask`는 문서 ID를 **먼저 받아** 완전한 `Task`를 만들고, `data`의 `title`과 `status`를 **모두** 옮긴다 — `status`를 하드코딩하면 클라이언트가 보낸 값이 조용히 사라진다.
+코드는 **4절이 전문으로 싣는다**(사본을 두지 않는다). 여기서 읽을 것은 형태 셋이다.
 
-```ts
-// src/firestore/tasks.ts
-export async function createTask(ownerId: string, data: TaskCreate): Promise<Task> {
-  const ref = tasksRef.doc();                              // ID를 먼저 받는다
-  const task: Task = { id: ref.id, ownerId, title: data.title,
-                       status: data.status, createdAt: Timestamp.now() };
-  await ref.create(task);                                  // converter가 id를 데이터에서 뺀다
-  return task;
-}
-
-export async function getTask(ownerId: string, taskId: string): Promise<Task | null> {
-  const task = (await tasksRef.doc(taskId).get()).data();
-  if (!task || task.ownerId !== ownerId) return null;      // ID만으로 읽으면 남의 것을 준다
-  return task;
-}
-
-export async function updateTask(ownerId: string, taskId: string, patch: TaskUpdate): Promise<Task> {
-  const ref = tasksRef.doc(taskId);
-  return firestore.runTransaction(async (tx) => {
-    const current = (await tx.get(ref)).data();
-    if (!current || current.ownerId !== ownerId) throw new AppError('NOT_FOUND', '작업을 찾을 수 없다');
-    const next: Task = { ...current, ...patch };
-    tx.set(ref, next);
-    return next;
-  });
-}
-
-export async function deleteTask(ownerId: string, taskId: string): Promise<void> {
-  const ref = tasksRef.doc(taskId);
-  await firestore.runTransaction(async (tx) => {
-    const current = (await tx.get(ref)).data();
-    if (!current || current.ownerId !== ownerId) throw new AppError('NOT_FOUND', '작업을 찾을 수 없다');
-    tx.delete(ref);
-  });
-}
-```
+| 함수 | 경계 | 틀리면 |
+| --- | --- | --- |
+| `createTask` | `data.title`과 `data.status`를 **모두** 옮긴다 | `status`를 하드코딩하면 클라이언트가 보낸 값이 조용히 사라진다 |
+| `getTask` | 읽은 뒤 `ownerId`를 **확인**한다 | 문서 ID만으로 읽으면 남의 작업을 준다 |
+| `updateTask` · `deleteTask` | `runTransaction` 안에서 **읽고 확인한 뒤 쓴다** | 확인과 쓰기를 나누면 그 사이에 소유자가 바뀐 문서를 덮어쓴다 |
 
 <!-- verified: 에뮬레이터에서 없는 문서 ID에 delete()를 호출해 writeTime을 받은 것을 관측. 대조군 delete({exists:true})는 gRPC 5로 거부됐다 -->
 **`delete()`는 없는 문서에도 성공한다.** 없는 ID에 불렀더니 예외 없이 `writeTime`이 돌아왔고,

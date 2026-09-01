@@ -24,6 +24,7 @@
 `el`은 **문자열 자식을 텍스트 노드로만** 넣는다. 이 축에서 이스케이프가 사는 유일한
 자리이고, 뒤에서 막아 주는 층이 없다.
 
+<!-- file: src/dom/el.js -->
 ```js
 // src/dom/el.js
 /**
@@ -46,18 +47,7 @@ export function el(tag, props = {}, children = []) {
   }
   return node;
 }
-```
 
-`el('span', {}, ['<img src=x onerror="alert(1)">'])`는 자식 **요소가 0개**다. 반면 `props`는
-손대지 않은 채 속성이 되므로 — `el('a', { href: 'javascript:…' })`의 `href`는 그대로 남는다 —
-**`props`에 사용자 입력을 싣지 않는 것이 규칙**이다(경로 검증은 `resources/routing.md`).
-<!-- verified: happy-dom@20.11.6 에서 childElementCount===0 과 getAttribute('href') 를 단언으로 관측 -->
-
-반복 마크업은 `<template>`에서 복제한다. `fromTemplate`은 **복제본**을 주므로 원본이 남고,
-마크업이 `index.html`에 있으면 검색·검토·번역이 되며 문자열 조립이 사라진다.
-
-```js
-// src/dom/el.js
 /**
  * @param {string} id
  * @returns {DocumentFragment}
@@ -70,6 +60,14 @@ export function fromTemplate(id) {
   return /** @type {DocumentFragment} */ (tpl.content.cloneNode(true));
 }
 ```
+
+`el('span', {}, ['<img src=x onerror="alert(1)">'])`는 자식 **요소가 0개**다. 반면 `props`는
+손대지 않은 채 속성이 되므로 — `el('a', { href: 'javascript:…' })`의 `href`는 그대로 남는다 —
+**`props`에 사용자 입력을 싣지 않는 것이 규칙**이다(경로 검증은 `resources/routing.md`).
+<!-- verified: happy-dom@20.11.6 에서 childElementCount===0 과 getAttribute('href') 를 단언으로 관측 -->
+
+반복 마크업은 `<template>`에서 복제한다. 위 파일의 `fromTemplate`은 **복제본**을 주므로 원본이 남고,
+마크업이 `index.html`에 있으면 검색·검토·번역이 되며 문자열 조립이 사라진다.
 
 ```html
 <!-- index.html — 행 마크업. 클래스 이름 규약은 resources/styling.md 소유다 -->
@@ -86,6 +84,7 @@ export function fromTemplate(id) {
 **인자 순서가 이 팩에서 가장 위험한 자리다.** `type`과 `selector`가 **둘 다 문자열**이라
 뒤바꿔도 `tsc`가 통과시키고 런타임 오류도 없다 — 그냥 아무 일도 일어나지 않는다.
 
+<!-- file: src/dom/delegate.js -->
 ```js
 // src/dom/delegate.js
 /**
@@ -123,8 +122,14 @@ const offRow = delegate(root, 'click', '[data-task-id]', onRow);
 디핑이 없다. 그래서 「상태가 바뀌면 컨테이너를 통째로 다시 그린다」가 이 축에서는
 **스크롤·포커스·입력값을 날리는 결함**이다 — 있는 행은 고치고, 사라진 행만 지운다.
 
+<!-- file: src/components/task-list.js -->
 ```js
 // src/components/task-list.js
+import { el, fromTemplate } from '../dom/el.js';
+import { delegate } from '../dom/delegate.js';
+import { upsertTask } from '../store/tasks.js';
+/** @typedef {import('../schemas/task.js').Task} Task */
+
 /** @param {Task} task @returns {HTMLElement} */
 function createRow(task) {
   const row = fromTemplate('task-row').querySelector('.task-list__row');
@@ -156,15 +161,7 @@ function syncRows(list, tasks) {
   }
   for (const gone of stale.values()) gone.remove();
 }
-```
 
-## 5. 마운트와 정리 계약 (`src/components/task-list.js`)
-
-`subscribe`가 **등록 즉시 현재 값으로 한 번 방출**하므로 마운트 코드에 「첫 렌더」가
-따로 없다. 초기 렌더를 손으로 한 번 더 부르면 **두 번 그려진다.**
-
-```js
-// src/components/task-list.js
 /**
  * @param {Element} root
  * @param {typeof import('../store/tasks.js').tasksStore} store
@@ -188,6 +185,12 @@ export function mountTaskList(root, store) {
   };
 }
 ```
+
+## 5. 마운트와 정리 계약 (`src/components/task-list.js`)
+
+전문은 4절이 싣는다. `subscribe`가 **등록 즉시 현재 값으로 한 번 방출**하므로 `mountTaskList`에
+「첫 렌더」가 따로 없다 — 초기 렌더를 손으로 한 번 더 부르면 **두 번 그려진다.**
+반환값은 **정리 함수**다. 버리면 스토어 구독과 위임 리스너가 남아 누수가 된다.
 
 - **반환값이 유일한 언마운트 경로다.** 라우트의 `render`는 이 값을 그대로 돌려주면 된다
 - **정리 함수는 만든 것을 전부 되돌린다.** 하나만 부르면 나머지 절반이 남고 그 절반은

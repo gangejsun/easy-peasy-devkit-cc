@@ -14,11 +14,11 @@
 | 서버 데이터 (DB의 내용) | Server Component 페칭 — **스토어 복제 금지** |
 | 폼 제출 진행/결과/낙관적 값 | `useActionState` / `useOptimistic` |
 
-원칙: **아래로 내려갈수록 비용이 크다.** `useState`로 충분한 상태를 Zustand에 올리지 않는다.
-전역 스토어 도입은 "3개 이상의 무관한 트리가 같은 상태를 구독"할 때만 정당하다.
+원칙: **아래로 내려갈수록 비용이 크다.** `useState`로 충분한 상태를 Zustand에 올리지 않는다. 전역 스토어 도입은 "3개 이상의 무관한 트리가 같은 상태를 구독"할 때만 정당하다.
 
 ## 2. Zustand 기본형
 
+<!-- file: stores/cart-store.ts -->
 ```ts
 // stores/cart-store.ts
 import { create } from 'zustand'
@@ -49,6 +49,7 @@ export const useCartStore = create<CartState>()((set) => ({
 
 ## 3. 구독은 selector로 — 전체 구독 금지
 
+<!-- file: components/cart/cart-summary.tsx -->
 ```tsx
 // components/cart/cart-summary.tsx
 'use client'
@@ -87,6 +88,7 @@ export function CartSummary() {
   (사이드바 열림, 클라이언트 전용 토글). 초기값이 사용자·요청과 무관할 때만
 - **Provider 패턴 필수**: 요청별 초기값(사용자 데이터 등)으로 시작하는 스토어
 
+<!-- file: stores/ui-store.ts -->
 ```ts
 // stores/ui-store.ts — vanilla 스토어 팩토리
 import { createStore } from 'zustand/vanilla'
@@ -103,6 +105,7 @@ export const createUiStore = (init?: Partial<Pick<UiState, 'sidebarOpen'>>) =>
   }))
 ```
 
+<!-- file: stores/ui-store-provider.tsx -->
 ```tsx
 // stores/ui-store-provider.tsx — 요청(트리)마다 스토어 1개 생성
 'use client'
@@ -148,6 +151,7 @@ export const useCartStore = create<CartState>()(
 **Hydration 주의**: 서버 첫 렌더는 초기값, 브라우저는 복원값 — 불일치가 생긴다.
 persist된 값에 의존하는 UI는 마운트 확인 후 렌더한다.
 
+<!-- file: components/cart/cart-badge.tsx -->
 ```tsx
 // components/cart/cart-badge.tsx
 'use client'
@@ -205,17 +209,16 @@ export function ProfileForm({ defaultValues }: { defaultValues?: ProfileFormData
 }
 ```
 
-- 제출 자체는 여전히 Server Action으로 — RHF는 클라이언트 검증·필드 상태만 담당
-  (서버 측 재검증은 backend-guide 관할)
-- **폼 스키마에 `.default()`를 쓰지 않는다** — zodResolver의 입력/출력 타입이 어긋나
-  `useForm` 제네릭과 마찰이 생긴다. 기본값은 `defaultValues`로 준다
+- 제출 자체는 여전히 Server Action으로 — RHF는 클라이언트 검증·필드 상태만 담당(서버 측 재검증은 backend-guide 관할)
+- **폼 스키마에 `.default()`를 쓰지 않는다** — zodResolver의 입력/출력 타입이 어긋나 `useForm` 제네릭과 마찰이 생긴다. 기본값은 `defaultValues`로 준다
 
 ## 7. URL 상태 — `searchParams` 읽기·쓰기
 
-필터·탭·검색어·페이지 번호는 **URL이 저장소**다. 공유·북마크·뒤로가기가 공짜로 따라오고,
-Server Component가 새 `searchParams`로 다시 실행되므로 클라이언트 재페칭 코드가 필요 없다.
-읽기는 `useSearchParams()`, 쓰기는 아래 훅 하나로 통일한다.
+필터·탭·검색어·페이지 번호는 **URL이 저장소**다. 공유·북마크·뒤로가기가 공짜로 따라오고, Server
+Component가 새 `searchParams`로 다시 실행되므로 클라이언트 재페칭 코드가 필요 없다. 읽기는
+`useSearchParams()`, 쓰기는 아래 훅 하나로 통일한다.
 
+<!-- file: hooks/use-query-params.ts -->
 ```ts
 // hooks/use-query-params.ts
 'use client'
@@ -243,15 +246,13 @@ export function useQueryParams() {
 }
 ```
 
-- `router.replace`는 히스토리를 쌓지 않는다 — 타이핑마다 뒤로가기 항목이 생기는 것을 막는다.
-  탭 전환처럼 뒤로가기로 돌아갈 수 있어야 하면 `router.push`를 쓴다
+- `router.replace`는 히스토리를 쌓지 않는다 — 타이핑마다 뒤로가기 항목이 생기는 것을 막는다. 탭 전환처럼 뒤로가기로 돌아갈 수 있어야 하면 `router.push`를 쓴다
 - `useSearchParams()`를 쓰는 컴포넌트는 `<Suspense>` 경계 안에 있어야 한다
 - 사용 예(디바운스 검색)는 resources/performance.md, 서버 쪽 번역은 resources/data-fetching.md
 
 ## 8. 버튼형 변이 — `useTransition`
 
-폼이 아닌 변이(삭제·완료 토글 버튼)는 `useActionState`를 쓸 수 없다. Server Action을
-직접 호출하되 **`startTransition`으로 감싸** pending 상태를 얻고 버튼을 비활성화한다.
+폼이 아닌 변이(삭제·완료 토글 버튼)는 `useActionState`를 쓸 수 없다. Server Action을 직접 호출하되 **`startTransition`으로 감싸** pending 상태를 얻고 버튼을 비활성화한다.
 
 ```tsx
 // app/(main)/tasks/_components/delete-task-button.tsx

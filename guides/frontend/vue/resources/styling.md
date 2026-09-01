@@ -39,6 +39,7 @@ Tailwind는 소스를 **문자열로** 훑는다. 스캔 범위 밖의 파일에
 
 ## 2. `cn()` 헬퍼
 
+<!-- file: src/lib/cn.ts -->
 ```ts
 // src/lib/cn.ts
 import { clsx, type ClassValue } from 'clsx';
@@ -75,6 +76,7 @@ const rowClass = computed(() => cn('flex items-center p-6', props.dense && 'p-3'
 `<script setup>`은 **값을** export할 수 없다. 여러 컴포넌트와 테스트가 같은 변형 표를
 읽어야 하므로 표는 SFC 옆의 `.ts` 파일이 소유한다.
 
+<!-- file: src/components/common/button-variants.ts -->
 ```ts
 // src/components/common/button-variants.ts
 import { cn } from '@/lib/cn';

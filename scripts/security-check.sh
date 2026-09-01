@@ -27,6 +27,161 @@ NEW_STRING=$(epcc_field "$INPUT" '.tool_input.new_string')
 # 이 훅 자신을 다룰 때는 자기 참조 회피 (패턴 문자열 자체가 매칭된다)
 [[ "$FILE_PATH" =~ security-check\.sh$ ]] && exit 0
 
+# ══════════════════════════════════════════════════════════════════════
+# 파괴적 명령 게이트
+# ══════════════════════════════════════════════════════════════════════
+#
+# 시크릿 검사와 **축이 다르다.** 시크릿은 "값이 잘못된 쪽에 있다"를 보고,
+# 이 게이트는 "되돌릴 수 없는 일이 지금 일어나려 한다"를 본다.
+# 되돌림 분류(T0)는 **편집 경로**로 판정하므로 `DROP TABLE`처럼 파일을 하나도
+# 건드리지 않는 파괴는 원리적으로 잡지 못한다 — 그 사각지대가 여기다.
+#
+# 차단(exit 2)은 **되돌림이 사실상 불가능한 것만**이다. `rm -rf`·`reset --hard`·
+# `clean -fdx`는 경고에 둔다: 오탐은 사용자가 훅을 꺼버리게 만들고, 꺼진 훅의
+# 차단력은 0이다. 같은 항목에서 오탐이 2건 이상 나오면 규칙을 넓히지 말고
+# **조건을 좁히거나 그 항목을 경고로 내린다** (rules/lessons.md의 false-positive 규율).
+#
+# **3상태다.** 강제 푸시의 대상 브랜치를 판정할 수 없으면(저장소 밖·detached·커밋 0개)
+# 차단하지 않고 「판정 불가」를 명시 보고한 뒤 통과시킨다.
+#
+# 알려진 한계 — `cat x.sql | psql`처럼 파괴 구문이 **파일 안에** 있으면 명령 문자열에
+# 나타나지 않아 잡히지 않는다. 훅은 흔한 경로를 막을 뿐이고, 나머지는 되돌림 분류와
+# 사용자 확인이 담당한다. 이 한계를 넓히려 정규식을 키우면 오탐이 먼저 커진다.
+
+dblock() {   # $1 무엇  $2 영향  $3 안전한 대안
+  printf '❌ 차단: %s\n\n' "$1" >&2
+  printf '영향: %s\n' "$2" >&2
+  printf '안전한 대안: %s\n\n' "$3" >&2
+  printf '이 명령이 정말 필요하면 영향과 롤백 절차를 사용자에게 먼저 제시하고 확인을 받으세요.\n' >&2
+  exit 2
+}
+dwarn() { printf '⚠️  %s\n     %s\n' "$1" "$2" >&2; }
+
+# 명령의 첫 토큰 (선행 환경변수 대입은 건너뛴다)
+_first_tok() {
+  printf '%s' "$1" | sed -E 's/^[[:space:]]*//; s/^([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*//' | awk '{print $1; exit}'
+}
+
+# 조사·검색 명령인가. `grep 'DROP TABLE' supabase/migrations/`를 막으면 그것이 바로 오탐이다.
+#
+# 판정 순서가 중요하다. "명령 어딘가에 psql/supabase가 있으면 읽기가 아니다"로 먼저
+# 걸러면 **경로에 들어있는 이름**(`supabase/migrations/`)이 클라이언트로 오인된다.
+# 그래서 첫 토큰으로 먼저 읽기를 확정하고, **파이프 뒤 명령 위치**에 클라이언트가
+# 올 때만(`cat x.sql | psql`) 읽기 판정을 뒤집는다.
+_readonly_cmd() {
+  case "$(_first_tok "$1")" in
+    grep|egrep|fgrep|rg|ag|cat|head|tail|less|more|ls|find|wc|awk|diff|jq|file|stat|which|echo|printf) ;;
+    git) printf '%s' "$1" | grep -Eq '^[[:space:]]*git[[:space:]]+(log|diff|show|grep|blame|status|branch|remote|config|rev-parse|describe|ls-files)([^a-zA-Z-]|$)' || return 1 ;;
+    *) return 1 ;;
+  esac
+  # 읽기 명령이 파괴적 실행기로 흘러들어가는가 — 그때는 읽기가 아니다
+  printf '%s' "$1" | grep -Eqi '[|;&][[:space:]]*(sudo[[:space:]]+)?(npx[[:space:]]+)?(psql|mysql|mariadb|sqlite3|mongosh?|supabase|prisma|drizzle-kit|alembic|sqlcmd)([[:space:]]|$)' && return 1
+  return 0
+}
+
+# 파일에 텍스트를 **쓰는** 명령은 파괴의 실행이 아니다.
+# `cat > 0003_drop_legacy.sql <<'EOF' ... EOF`는 마이그레이션을 **작성**하는 것이지
+# 실행하는 것이 아니고, 픽스처·문서·테스트를 쓸 때도 같은 문자열이 나온다.
+# (시크릿 검사는 반대 방향이다 — 시크릿은 쓰는 행위 자체가 노출이므로 그 경로는 계속 본다.
+#  실제로 이 게이트를 만들 때 자기 픽스처 작성 명령이 막혔다. 그게 이 함수가 생긴 이유다.)
+# 힙독만으로 판정하지 않는다: `psql <<'SQL'`은 힙독이지만 실행이다.
+_authoring_cmd() {
+  case "$(_first_tok "$1")" in
+    cat|tee|printf|echo) printf '%s' "$1" | grep -Eq '(>|<<)' && return 0 ;;
+  esac
+  return 1
+}
+
+destructive_gate() {
+  local DCMD="$1" target=""
+  dhas() { printf '%s' "$DCMD" | grep -Eqi -e "$1"; }
+
+  # ── 데이터 파괴 (SQL·마이그레이션 도구) ────────────────────────────
+  # 조사 명령도 작성 명령도 아닌 것 = 실행하려는 것
+  if ! _readonly_cmd "$DCMD" && ! _authoring_cmd "$DCMD"; then
+
+    dhas '(^|[^a-z_])drop[[:space:]]+(table|database|schema)([^a-z_]|$)' \
+      && dblock "DDL로 테이블/데이터베이스/스키마 삭제" \
+                "해당 객체와 그 안의 모든 행이 사라집니다. 백업 없이는 복구 불가입니다" \
+                "먼저 백업(pg_dump 등)을 뜨고, 트랜잭션 안에서 실행해 결과를 확인한 뒤 커밋하세요"
+
+    # coreutils `truncate -s 0 file`은 대시가 있어 걸리지 않는다
+    dhas '(^|[^a-z_])truncate[[:space:]]+(table[[:space:]]+)?["a-z_]' \
+      && dblock "TRUNCATE — 테이블 전체 비우기" \
+                "모든 행이 삭제되고 대개 롤백·복구가 불가능합니다 (트리거도 건너뜁니다)" \
+                "DELETE ... WHERE 로 범위를 좁히거나, 백업 후 실행하세요"
+
+    # WHERE 없는 DELETE — 테이블명 뒤가 바로 `;` 또는 끝일 때만 (WHERE가 있으면 매칭 안 됨)
+    dhas '(^|[^a-z_])delete[[:space:]]+from[[:space:]]+["a-z_][a-z0-9_."]*[[:space:]]*(;|$)' \
+      && dblock "WHERE 없는 DELETE FROM" \
+                "대상 테이블의 모든 행이 삭제됩니다" \
+                "WHERE 절로 범위를 좁히고, 먼저 같은 조건의 SELECT COUNT(*)로 영향 행 수를 확인하세요"
+
+    dhas 'supabase[[:space:]]+db[[:space:]]+reset' \
+      && dblock "supabase db reset — 로컬 DB 초기화" \
+                "스키마와 데이터가 전부 삭제되고 마이그레이션이 처음부터 재적용됩니다. 시드 밖의 데이터는 사라집니다" \
+                "특정 마이그레이션만 되돌리려면 되돌림 마이그레이션을 새로 작성하세요"
+
+    dhas 'prisma[[:space:]]+migrate[[:space:]]+reset|prisma[[:space:]]+db[[:space:]]+push[^|;&]*--force-reset' \
+      && dblock "prisma 스키마 초기화" \
+                "데이터베이스를 드롭하고 다시 만듭니다. 기존 데이터는 전부 사라집니다" \
+                "prisma migrate dev 로 증분 마이그레이션을 만드세요"
+
+    dhas 'alembic[[:space:]]+downgrade[[:space:]]+base|drizzle-kit[[:space:]]+drop' \
+      && dblock "마이그레이션 전량 되돌리기" \
+                "모든 마이그레이션이 역적용되어 스키마와 데이터가 사라집니다" \
+                "되돌릴 리비전을 하나만 지정하세요 (alembic downgrade -1)"
+
+    # WHERE 없는 UPDATE는 되돌릴 수는 있으나 조용히 전 행을 바꾼다 — 경고
+    dhas '(^|[^a-z_])update[[:space:]]+["a-z_][a-z0-9_."]*[[:space:]]+set[^;]*(;|$)' \
+      && ! dhas '(^|[^a-z_])where([^a-z_]|$)' \
+      && dwarn "WHERE 없는 UPDATE — 테이블 전 행이 바뀝니다" "WHERE 절로 범위를 좁혔는지 확인하세요"
+  fi
+
+  # ── git 히스토리 파괴 ──────────────────────────────────────────────
+  dhas 'git[[:space:]]+filter-branch|git[[:space:]]+filter-repo|git[[:space:]]+push[^|;&]*--mirror' \
+    && dblock "git 히스토리 재작성/미러 푸시" \
+              "모든 커밋 해시가 바뀌어 다른 사람의 클론이 전부 어긋납니다. 원격 히스토리는 되돌릴 수 없습니다" \
+              "재작성이 정말 필요하면 팀에 먼저 공지하고, 백업 브랜치와 태그를 남긴 뒤 진행하세요"
+
+  # ── 강제 푸시 — 대상 브랜치로 판정한다 (3상태) ─────────────────────
+  if dhas 'git[[:space:]]+push' && dhas '(--force([^-]|$)|[[:space:]]-f([[:space:]]|$))' && ! dhas '--force-with-lease'; then
+    # 명시 refspec의 마지막 비플래그 토큰을 대상으로 본다
+    target=$(printf '%s' "$DCMD" | tr ';|&' '\n' | grep -E 'git[[:space:]]+push' | head -1 \
+             | awk '{n=0; for(i=1;i<=NF;i++) if($i !~ /^-/) t[++n]=$i; if(n>=4) print t[n]}')
+    target="${target##*:}"
+    # refspec이 없으면 현재 브랜치다. 커밋 0개 저장소에서 rev-parse가 exit 128로
+    # 죽지 않게 HEAD 존재를 먼저 확인한다 — 없으면 판정 불가로 남긴다.
+    if [ -z "$target" ] && git rev-parse -q --verify HEAD >/dev/null 2>&1; then
+      target=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || printf '')
+    fi
+    case "$target" in
+      main|master|develop|development|release|release/*|prod|production|stage|staging)
+        dblock "공유 브랜치에 강제 푸시 ($target)" \
+               "원격 히스토리를 덮어써 다른 사람이 푸시한 커밋이 사라질 수 있습니다. 복구하려면 그 사람의 로컬 사본이 필요합니다" \
+               "git push --force-with-lease — 남의 커밋이 있으면 거부됩니다. 이미 공개된 커밋은 revert로 되돌리세요" ;;
+      ""|HEAD)
+        printf '⚠️  판정 불가: 강제 푸시의 대상 브랜치를 확인할 수 없습니다\n' >&2
+        printf '     (저장소 밖 · detached HEAD · 커밋 0개). 차단하지 않고 통과시킵니다 —\n' >&2
+        printf '     대상이 공유 브랜치인지 직접 확인하고, --force-with-lease를 쓰세요.\n' >&2 ;;
+      *)
+        dwarn "기능 브랜치 강제 푸시 ($target)" "공유 중인 브랜치면 --force-with-lease를 쓰세요" ;;
+    esac
+  fi
+
+  # ── 되돌릴 수 있으나 조용히 잃는 것들 — 경고만 ─────────────────────
+  if dhas '(^|[^a-z_])rm[[:space:]]+(-[a-zA-Z]*[rR][a-zA-Z]*[[:space:]]+)*-?[a-zA-Z]*[fF]' \
+     && ! dhas '(node_modules|/dist|/build|\.next|\.turbo|\.cache|/tmp/|coverage)'; then
+    dwarn "rm -rf — 삭제된 파일은 휴지통을 거치지 않습니다" "대상 경로를 다시 확인하세요. 추적 중인 파일이면 git으로 되돌릴 수 있는지 먼저 보세요"
+  fi
+  dhas 'git[[:space:]]+reset[^|;&]*--hard' \
+    && dwarn "git reset --hard — 미커밋 변경이 사라집니다" "먼저 git stash 또는 git diff > patch 로 남기세요"
+  dhas 'git[[:space:]]+clean[^|;&]*-[a-z]*[fd]' \
+    && dwarn "git clean — 추적되지 않는 파일이 삭제됩니다" "git clean -n 으로 대상을 먼저 확인하세요"
+
+  return 0
+}
+
 # 모델이 파일을 쓰는 경로는 Edit/Write만이 아니다. Bash 힙독·리다이렉션으로 쓰면
 # 매처가 Edit|Write|MultiEdit뿐일 때 시크릿 차단이 **0**이 된다 — 게이트의 실효
 # 커버리지가 도구 선택에 좌우된다 (평가 v5 · E-20).
@@ -36,7 +191,11 @@ case "$TOOL_NAME" in
     ;;
   Bash)
     CMD=$(epcc_field "$INPUT" '.tool_input.command')
-    case "$CMD" in *security-check.sh*) exit 0 ;; esac
+    # 자기 참조 회피 — 이 훅과 doctor는 패턴 문자열 자체를 본문에 갖고 있다
+    case "$CMD" in *security-check.sh*|*doctor.sh*) exit 0 ;; esac
+
+    # 파괴적 명령은 **파일을 쓰지 않아도** 되돌릴 수 없다. 아래 쓰기 필터보다 먼저 본다.
+    destructive_gate "$CMD"
     # **파일을 쓰는 명령만** 본다. 읽기 명령까지 스캔하면 조사·검사 명령
     # (`grep 'AKIA[0-9A-Z]{16}' ...`)이 오탐으로 막히고, 오탐은 사용자가 훅을
     # 꺼버리게 만들며 꺼진 훅의 차단력은 0이다.

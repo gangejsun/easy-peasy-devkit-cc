@@ -6,6 +6,7 @@ Vite SPA에서 라우트 레코드를 **코드로 직접 선언**한다. 파일 
 
 ## 1. 라우트 레코드 (`src/router/routes.ts`)
 
+<!-- file: src/router/routes.ts -->
 ```ts
 // src/router/routes.ts
 import type { RouteRecordRaw } from 'vue-router';

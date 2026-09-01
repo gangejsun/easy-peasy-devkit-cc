@@ -21,6 +21,7 @@
 
 ## 1. 런타임 — 표준 HTTP 서버
 
+<!-- file: src/index.ts -->
 ```ts
 // src/index.ts
 import { serve } from '@hono/node-server'
@@ -84,23 +85,44 @@ RDS Proxy는 **인프라 층에 머무는 예**다. 앱은 호스트가 프록�
 S3 **프로토콜**은 MinIO가 그대로 구현한다. 그래서 SDK 사용 자체는 문제가 아니고,
 **엔드포인트를 설정 가능하게 두고 어댑터 한 파일에 가두는 것**이 계약이다.
 
+앱 코드가 보는 타입과 그것을 구현하는 어댑터는 **다른 파일**이다. 한 파일에 두면
+`@aws-sdk`가 앱 코드의 import 그래프에 들어와 포트를 두는 의미가 사라진다.
+
+<!-- file: src/storage/index.ts -->
 ```ts
 // src/storage/index.ts — 앱 코드가 보는 유일한 타입
 export interface ObjectStorage {
   put(key: string, body: Uint8Array, contentType: string): Promise<void>
   presignGet(key: string, expiresInSec: number): Promise<string>
 }
+```
 
+<!-- file: src/storage/s3.ts -->
+```ts
 // src/storage/s3.ts — 유일하게 AWS SDK를 아는 파일
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { env } from '@/config/env'
+import type { ObjectStorage } from '@/storage'
 
 const client = new S3Client({
   region: env.AWS_REGION,                     // 이 어댑터 설정의 일부 — 앱 로직은 리전을 모른다
   endpoint: env.S3_ENDPOINT,                  // 미설정 → AWS 기본, 설정 → MinIO 등
   forcePathStyle: Boolean(env.S3_ENDPOINT),   // MinIO는 path-style이 필요하다
 })
+
+export const s3Storage: ObjectStorage = {
+  async put(key, body, contentType) {
+    await client.send(new PutObjectCommand({
+      Bucket: env.S3_BUCKET, Key: key, Body: body, ContentType: contentType,
+    }))
+  },
+  async presignGet(key, expiresInSec) {
+    // 서명 URL의 수명은 **초**다. 분으로 착각하면 60배 긴 URL이 나간다
+    return getSignedUrl(client, new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: key }),
+                        { expiresIn: expiresInSec })
+  },
+}
 ```
 
 `AWS_REGION`은 env 스키마에서 **선택 값**이다 (`resources/input-validation.md`). 온프레미스

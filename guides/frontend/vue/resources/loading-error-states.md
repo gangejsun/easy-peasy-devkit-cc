@@ -127,6 +127,7 @@ const text = computed(() => props.message ?? toUserMessage(props.error));
 함수이므로 이음매가 준다. 이 팩이 소유하는 것은 두 가지뿐이다: 클라이언트가 스스로
 만드는 전송 계층 코드와, 무엇이 와도 화면이 무너지지 않게 하는 **폴백**.
 
+<!-- file: src/lib/toUserMessage.ts -->
 ```ts
 // src/lib/toUserMessage.ts
 import { ApiError } from '@/api/errors';   // 이음매가 제공한다

@@ -11,7 +11,7 @@
 > 이 문서는 사본이 아니라 **읽기 표면**이며, 값이 갈리면 정본이 옳다.
 > 사본은 드리프트의 원천이라는 것이 이 저장소의 일관된 입장이고, 이 문서도 예외가 아니다.
 
-**실물 대조** — 훅 5 · T1 규칙 카드 8 · 스킬 30 · 그래프 노드 48 · 엣지 69
+**실물 대조** — 훅 5 · T1 규칙 카드 8 · 스킬 27 · 그래프 노드 46 · 엣지 76
 (`doctor --fast`가 이 줄을 실물과 대조한다. 손으로 적은 수는 반드시 낡기 때문이다.)
 
 | 절 | 무엇을 다루는가 |
@@ -148,10 +148,15 @@ v3에서 이 훅이 맡는 것은 셋이다: 규범을 넣는 자리, 규칙 설
 
 ### ② `security-check` — PreToolUse (`Edit|Write|MultiEdit|Bash`)
 
-**하는 일** (`scripts/security-check.sh`, 146줄) — 쓰려는 내용에서 시크릿 패턴을 찾아
-발견하면 stderr에 이유를 적고 **exit 2**로 도구 호출 자체를 막는다.
-AWS·GitHub·Stripe·토스페이먼츠·카카오페이·OpenAI·Anthropic·Google·Supabase(신형 키와
-레거시 JWT)·PEM 개인키·GCP 서비스 계정 JSON·`package.json` 내 시크릿.
+**하는 일** — 이 훅은 **축이 둘**이다.
+
+1. **시크릿 배치** — 쓰려는 내용에서 시크릿 패턴을 찾아 발견하면 stderr에 이유를 적고
+   **exit 2**로 도구 호출 자체를 막는다. AWS·GitHub·Stripe·토스페이먼츠·카카오페이·
+   OpenAI·Anthropic·Google·Supabase(신형 키와 레거시 JWT)·PEM 개인키·
+   GCP 서비스 계정 JSON·`package.json` 내 시크릿.
+2. **파괴적 명령** — 되돌릴 수 없는 일이 지금 일어나려 하는가. 되돌림 분류(T0)는
+   **편집 경로**로 판정하므로 `DROP TABLE`처럼 **파일을 하나도 건드리지 않는 파괴**를
+   원리적으로 잡지 못한다. 그 사각지대가 이 축이다.
 
 **왜 있는가** — v2에서 **유일하게 작동한 훅**이다. 이유가 설계 지침이 됐다:
 *판정에 프로젝트 루트가 필요 없어서* 잘못된 루트 계산의 영향을 받지 않았다.
@@ -167,6 +172,13 @@ v3도 그 성질을 유지한다 — 이 훅만은 `epcc_begin`을 쓰지 않고
   명령만 본다. 읽기 명령까지 보면 `grep 'AKIA[0-9A-Z]{16}' .` 같은 **조사 명령이 오탐으로
   막힌다.** 오탐 → 훅을 끔 → 차단력 0. 커버리지를 넓히는 것과 오탐을 만드는 것 사이에서
   이 훅은 일관되게 후자를 피한다.
+- **파괴적 명령에서 「읽기」와 「작성」과 「실행」을 가른다** — 같은 문자열이 세 자리에
+  나타난다. `grep 'DROP TABLE' supabase/migrations/`는 **조사**이고,
+  `cat > 0003.sql <<'EOF' … EOF`는 **작성**이며, `psql -c "DROP TABLE …"`만이 **실행**이다.
+  셋을 구분하지 않으면 이 게이트는 마이그레이션을 쓰지도 읽지도 못하게 만든다.
+  (실제로 이 게이트를 만들 때 자기 픽스처를 쓰는 명령이 막혔다 — `_authoring_cmd`가
+  거기서 나왔다.) 그리고 판정은 **3상태**다: 강제 푸시의 대상 브랜치를 확인할 수 없으면
+  차단하지 않고 「판정 불가」를 명시 보고한 뒤 통과시킨다.
 - **차단과 경고를 나눈다** — 스키마 검증 누락, `dangerouslySetInnerHTML`, `.env` 편집은
   **경고만** 한다. 예컨대 같은 파일의 기존 sanitize import는 이 diff에 안 보일 수 있다.
   확신할 수 없는 것을 차단으로 접지 않는 것이 3상태 규율의 적용이다.
@@ -360,7 +372,7 @@ T0에 무엇이 들어가는가도 이 예산이 정한다 — **작업 시작 �
 
 ### T2가 왜 on-demand인가
 
-스킬 30개의 본문을 상주시키면 컨텍스트가 남지 않는다. 상주하는 것은 각 스킬의
+스킬 27개의 본문을 상주시키면 컨텍스트가 남지 않는다. 상주하는 것은 각 스킬의
 `description`뿐이고, 그마저 `doctor --usage`가 문자 수로 예산을 잰다.
 **규범은 상주해야 하고 절차는 불릴 때 오면 된다** — 그 구분이 T1과 T2의 경계다.
 
@@ -368,12 +380,12 @@ T0에 무엇이 들어가는가도 이 예산이 정한다 — **작업 시작 �
 
 ```
 T0 운영 규칙            40줄  (매 세션, 플러그인 — doctor가 40줄 상한을 강제)
-workflow-routing.md     61줄  (매 세션, 프로젝트)
-조건부 카드 7장      1,036줄  (해당 경로를 만질 때만)
-스킬 description        상주  (doctor --usage가 문자 예산으로 감시 — 11,991/12,000자)
+workflow-routing.md     85줄  (매 세션, 프로젝트 — 「지시 우선순위」 포함)
+조건부 카드 7장      1,063줄  (해당 경로를 만질 때만)
+스킬 description        상주  (doctor --usage가 문자 예산으로 감시 — 10,614/12,000자)
 ```
 
-**매 세션 상주는 101줄이다.** 규칙 1,097줄 전체가 상주하는 것이 아니라는 점이
+**매 세션 상주는 125줄이다.** 규칙 1,148줄 전체가 상주하는 것이 아니라는 점이
 3계층의 실질적 효과다.
 
 ---
@@ -384,10 +396,10 @@ workflow-routing.md     61줄  (매 세션, 프로젝트)
 
 | 카드 | `paths:` 트리거 | 무엇을 막는가 |
 | --- | --- | --- |
-| `workflow-routing.md` | **없음 (상시)** | 무엇을 어떤 순서로 만들지 모르는 채 시작하는 것 (P0~P6) + 낡은 작성물을 근거로 쓰는 것(참조 신선도) |
+| `workflow-routing.md` | **없음 (상시)** | 무엇을 어떤 순서로 만들지 모르는 채 시작하는 것 (P0~P6) + 낡은 작성물을 근거로 쓰는 것(참조 신선도) + **하네스가 프로젝트를 덮어쓰는 것**(지시 우선순위·비침습) |
 | `code-change.md` | `src/**` `app/**` `packages/**` `lib/**` | **이미 있는 것을 다시 쓰는 것**(구현 사다리 — 저장소 재사용 → 표준 → 플랫폼 네이티브 → 기존 의존성 → 한 줄) · 고친 뒤 남는 잔재 · 패턴 전파 누락 · "존재 ≠ 실행" 배선 미확인 · 의존성 무단 추가 |
 | `security.md` | 같음 | 정규식 훅이 **못 잡는** 것 — 시크릿의 **배치**, `NEXT_PUBLIC_`/`VITE_` 노출, 입력·인가 경계, XSS, 오픈 리다이렉트 |
-| `reversibility.md` | `src/**` `supabase/**` `**/migrations/**` `dev/active/**` | 클래스 판정 **이후**에 무엇을 하는가 · 접근 정책 분기점 |
+| `reversibility.md` | `src/**` `supabase/**` `**/migrations/**` `dev/active/**` | 클래스 판정 **이후**에 무엇을 하는가 · 접근 정책 분기점 · 분기점의 **선택이 증발하는 것**(결정 기록) |
 | `harness-change.md` | `.claude/**` `scripts/**` `hooks/**` `rules/**` `agents/**` `skills/**` | 하네스가 자라기만 하는 것 · 침묵 실패 · 도달 경로 없는 자산 · 릴리스 미도달 |
 | `lessons.md` | 코드·하네스·문서 경로 전반 | 지적을 받고 기록하지 않는 것 · 승격 선언만 하고 자산은 안 바뀌는 것 |
 | `doc-dependency.md` | `dev/docs/{prd,database,design,architecture,api}/**` | 문서 6엣지 의존 그래프가 열린 채 남는 것 |
@@ -558,11 +570,11 @@ v2에서도 이 구조는 존재했다. 다만 **마크다운 표와 산문에 �
 
 | kind | 수 | 무엇 |
 | --- | --- | --- |
-| `skill` | 31 | 스킬 30개 + `install-guide`(조립 전용 경로를 따로 세운 노드) |
+| `skill` | 28 | 스킬 27개 + `install-guide`(조립 전용 경로를 따로 세운 노드) |
 | `stage` | 6 | `understand` · `plan` · `build` · `verify` · `cross-check` · `rule-promotion` — **모델의 행동**이라 코드가 방출할 수 없다 |
 | `hook` | 5 | 코드가 실행하는 유일한 부류 |
 | `agent` | 2 | `epcc-planner` · `epcc-reviewer` |
-| `store` | 2 | `lessons` · `eval-report` |
+| `store` | 3 | `lessons`(실수) · `decisions`(선택) · `eval-report`(결함) |
 | `tool` | 1 | `doctor` |
 | `terminal` | 1 | `user-report` — 루프가 사람에게서 끝나는 자리 |
 
@@ -675,12 +687,12 @@ P6으로 가고, `cross-check` 3렌즈 과반과 사용자 확인과 롤백 절�
 에이전트는 `.claude/rules/`를 상속받지 않으므로 필요한 규범은 **에이전트 프롬프트에 직접**
 적는다. 단 같은 규범을 두 곳이 주장하지 않게 한 쪽은 인용으로 둔다.
 
-### 스킬 30 — 발동 방식으로 나뉜다
+### 스킬 27 — 발동 방식으로 나뉜다
 
 | 발동 방식 | 예 | 성격 |
 | --- | --- | --- |
-| 조건 충족 시 모델이 자동 발동 | `prd-generator` · `completion-review` · `receiving-code-review` · `shortcut-ledger` | 라우팅 카드의 Phase가 조건을 정한다. Phase가 없는 것은 description이 정한다 |
-| **수동 호출 전용** | `harness-evaluation` · `research` · `execution-dashboard` · 마케팅 3종 | 자동으로 돌면 비용이 크거나 사용자 의도가 필요하다 |
+| 조건 충족 시 모델이 자동 발동 | `prd-generator` · `completion-review` · `receiving-code-review` · `shortcut-ledger` · `pr-prep` | 라우팅 카드의 Phase가 조건을 정한다. Phase가 없는 것은 description이 정한다 |
+| **수동 호출 전용** | `harness-evaluation` · `research` · `execution-dashboard` · `codebase-survey` | 자동으로 돌면 비용이 크거나 사용자 의도가 필요하다 |
 | 다른 스킬·훅이 호출 | `stack-guide-generator`(← `epcc-init`) · `skill-enhancer`(← 평가) | 그래프에서 인바운드 엣지를 갖는다 |
 
 **네이티브와 겹치면 만들지 않는다**가 원칙이지만, 반대 규율이 함께 있다 —
@@ -692,6 +704,15 @@ P6으로 가고, `cross-check` 3렌즈 과반과 사용자 확인과 롤백 절�
 한다. 그래서 `/security-review`(전수 감사·의존성 CVE·시크릿)와 `receiving-code-review`
 (지적을 *생성*하는 게 아니라 *검증*한다)는 살아남았고, `skill-generator`·
 `requesting-code-review`·`persistent-loop`은 제거됐다.
+
+**description은 스킬을 한 번도 안 써도 상주한다.** 그래서 스킬 수는 컨텍스트 예산이고,
+예산이 차면 새 자산을 만들 수 없다. 실제로 v3.21.0에서 여유가 **7자**까지 줄었고,
+그 시점의 해법은 압축이 아니라 **분리**였다 — 마케팅 5종(`marketing-workflow` ·
+`scroll-stop-builder` · `scroll-stop-prompter` · `seo-strategy` · `web-asset-generator`)을
+같은 저장소의 두 번째 플러그인 `epcc-marketing`으로 옮겼다(`docs/platform-contract.md` §2.5).
+**개발과 무관한 스킬이 개발 세션의 예산을 먹는 것이 문제였지, 스킬이 나쁜 것이 아니었다.**
+분리가 검사 사각지대를 만들지 않도록 `doctor`의 **위생 검사는 두 루트를 모두** 보고,
+예산·그래프·「선언↔실물」의 스킬 수만 `skills/`로 좁혔다.
 
 **합성 판정의 첫 사례가 `shortcut-ledger`다.** `/simplify`는 *이미 쓴* 코드를 줄이고
 `/code-review`는 diff의 지적을 만든다 — 둘 다 대상이 **diff**다. 결손은 **쓰기 전**이었고,

@@ -57,6 +57,7 @@ export const ListSkeleton = ({ rows }: { rows: number }) => (
 두 컴포넌트는 `src/components/common/`에 **한 번만** 정의하고 모든 화면이 같은 props로
 부른다. 화면마다 다른 모양으로 부르면 시그니처가 갈라져 타입이 먼저 깨진다.
 
+<!-- file: src/components/common/EmptyState.tsx -->
 ```tsx
 // src/components/common/EmptyState.tsx
 export type EmptyStateProps = { title?: string; description?: string; action?: ReactNode };
@@ -72,8 +73,13 @@ export function EmptyState({ title = '표시할 항목이 없습니다', descrip
 }
 ```
 
+<!-- file: src/components/common/ErrorState.tsx -->
 ```tsx
 // src/components/common/ErrorState.tsx
+import { ApiError } from '@/lib/api/errors';
+import { toUserMessage } from '@/lib/toUserMessage';
+import { Button } from '@/components/ui/Button';
+
 export type ErrorStateProps = {
   title?: string;
   message?: string;

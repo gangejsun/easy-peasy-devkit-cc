@@ -1267,6 +1267,20 @@ check_fence_imports() {
       # 데이터 파일에는 이미 예외를 뒀는데 코드 안 문자열에는 없었다.
       gsub(/\047[^\047]*\047/, "", line)
       gsub(/"[^"]*"/, "", line)
+      # 백틱 템플릿도 문자열이다. 다만 통째로 지우면 `${…}` 안의 **진짜 식**을 놓치므로
+      # 텍스트만 버리고 보간부는 남긴다. 실측: vanilla 의
+      # `throw new Error(`Task 형태가 아니다: ${where}`)` 에서 한국어 메시지에 들어 있던
+      # 낱말 Task 가 심볼 사용으로 잡혔다 — 따옴표 두 종만 벗기던 자리의 구멍이다.
+      while (1) {
+        s0 = index(line, "`"); if (s0 == 0) break
+        rest = substr(line, s0 + 1); e0 = index(rest, "`"); if (e0 == 0) break
+        tpl = substr(rest, 1, e0 - 1); keep = ""
+        while (match(tpl, /\$\{[^}]*\}/)) {
+          keep = keep " " substr(tpl, RSTART + 2, RLENGTH - 3)
+          tpl = substr(tpl, RSTART + RLENGTH)
+        }
+        line = substr(line, 1, s0 - 1) keep substr(rest, e0 + 1)
+      }
       print FILENAME "\t" start "\t" line
     }
   ' $files > "$TMP/fileunits.tsv"
@@ -1463,8 +1477,12 @@ check_hub_contract() {
   { awk '/^## provides/{f=1;next} f&&/^## /{f=0} f' "$led"
     awk '/^## requires/{f=1;next} f&&/^## /{f=0} f' "$led"
     awk '/^## 예제에 등장하는/{f=1;next} f&&/^## /{f=0} f' "$led"
-  } | grep -oE '^\|[[:space:]]*`[^`]+`' | grep -oE '`[^`]+`' | tr -d '`' \
-    | tr '·' '\n' | tr -d ' ' | grep -E '^[A-Za-z_][A-Za-z0-9_]*$' | sort -u > "$TMP/ledgersyms.txt"
+  # 한 행에 여러 심볼(`pool` · `db`)이 오는 관용구가 실재한다 — **첫 심볼만 뽑으면 나머지가
+  # 원장에 없는 것이 되어 허브 import가 유령으로 오인된다** (실측: aws-container의 `db`).
+  # prov.tsv 파서는 이미 분해하고 있었다 — 두 자리가 같은 셀을 다르게 읽고 있던 것이 결함이다.
+  # 첫 셀 전체에서 백틱 토큰을 **전부** 뽑는다.
+  } | awk -F'|' '/^\|[[:space:]]*`/{print $2}' | grep -oE '`[^`]+`' | tr -d '`' \
+    | tr -d ' ' | grep -E '^[A-Za-z_][A-Za-z0-9_]*$' | sort -u > "$TMP/ledgersyms.txt"
 
   # ⓐ 허브 Common Imports 의 심볼
   local hub="$G/PACK.md"; [ -f "$G/SKILL.md" ] && hub="$G/SKILL.md"
@@ -1762,6 +1780,8 @@ run_self_test() {
   _fx_assert_pack "$fx/pk/secintercept/fxpack2" 0 "링크 인터셉트의 오리진 비교는 위험 형태가 아니다"
   _fx_assert_pack "$fx/pk/fvscope/fxpack2"      0 "스코프 패키지가 경쟁 제품으로 오인되지 않는다"
   _fx_assert_pack "$fx/pk/envclass/fxpack2"     0 "클래스 필드로 선언한 env 스키마를 인정한다"
+  _fx_assert_pack "$fx/pk/multisym/fxpack2"     0 "한 행의 두 번째 심볼도 원장 등재로 인정 (허브 유령 오탐)"
+  _fx_assert_pack "$fx/pk/tpllit/fxpack2"       0 "템플릿 리터럴 텍스트의 낱말은 심볼 사용이 아니다"
 
   sec "양성 팩 픽스처 (차단해야 한다)"
   _fx_assert_pack "$fx/pk/polnoex/fxpack2"   1 "정책 증명 예 열 없음"
@@ -2115,7 +2135,7 @@ FXPP
 }
 FXPJ
 
-  for m in polnoex polbadex polrealex secorigin secprefix secok secrefer ledgerbad reqexport fvbad vocab dupfence noproof noshape badarity noimport reqnosig polnohdr jsonfence polbadfile ghostres jstypedef jstypedefgone secintercept fvscope fvscopebad envclass envclassbad; do
+  for m in polnoex polbadex polrealex secorigin secprefix secok secrefer ledgerbad reqexport fvbad vocab dupfence noproof noshape badarity noimport reqnosig polnohdr jsonfence polbadfile ghostres jstypedef jstypedefgone secintercept fvscope fvscopebad envclass envclassbad multisym tpllit; do
     mkdir -p "$fx/pk/$m" && cp -R "$b" "$fx/pk/$m/" || return 1
   done
   # c.md를 더하는 픽스처는 pack.json에도 실어야 의도한 검사에서 차단된다.
@@ -2378,6 +2398,31 @@ FXP15
   # jstypedef 에만 실제 선언을 넣는다. jstypedefgone 은 원장에만 있고 본문에 없다
   printf '\n```js\n/** @typedef {{ id: string }} FxTask */\nexport const FX_TASK_KEY = "task"\n```\n' \
     >> "$fx/pk/jstypedef/fxpack2/resources/b.md"
+
+  # ⑬ 원장 한 행에 심볼이 둘(`a` · `b`)일 때, 허브가 **두 번째**를 import 한다.
+  # 원장 심볼 추출이 첫 백틱 토큰만 뽑던 동안 두 번째는 「원장에 없음」이 되어 유령으로
+  # 잡혔다 (실측: aws-container 의 `db`). prov.tsv 파서는 이미 분해하고 있었으므로
+  # 같은 셀을 두 자리가 다르게 읽던 것이 결함이다 — 팩이 아니라 게이트 쪽이었다.
+  sed -i.bak 's#^| `boot` | b.md |#| `pool` · `db` | b.md | `Pool` · `db` — 커넥션과 ORM 핸들 | 클라이언트 |\
+| `boot` | b.md |#' "$fx/pk/multisym/fxpack2/ledger.md" && rm -f "$fx/pk/multisym/fxpack2/ledger.md.bak"
+  cat >> "$fx/pk/multisym/fxpack2/PACK.md" <<'FXMS'
+
+<!-- pack-slot: common-imports-axis -->
+## Common Imports
+
+```ts
+import { db } from '@/db/client'
+```
+<!-- /pack-slot -->
+FXMS
+  printf '\n<!-- file: src/db/client.ts -->\n```ts\n// src/db/client.ts\nexport const pool = { end() {} }\nexport const db = { pool }\n```\n' \
+    >> "$fx/pk/multisym/fxpack2/resources/b.md"
+
+  # ⑭ 완전 파일의 **템플릿 리터럴 텍스트**에 원장 심볼 이름이 낱말로 등장한다.
+  # 따옴표 두 종만 벗기던 동안 백틱 안의 산문이 모듈 바인딩 사용으로 읽혀 정상 파일이
+  # 미조달로 잡혔다 (실측: vanilla 의 `Task 형태가 아니다: ${where}`).
+  printf '\n<!-- file: src/fx-msg.ts -->\n```ts\n// src/fx-msg.ts\nexport function fxMsg(where: string): string {\n  return `boot 형태가 아니다: ${where}`\n}\n```\n' \
+    >> "$fx/pk/tpllit/fxpack2/resources/b.md"
 
   # ⑪ 미완 팩: pack.json이 선언한 리소스가 실파일로 없다.
   # L0(계약)만 동결하고 리소스를 아직 안 쓴 팩이 실제로 저장소에 있었고, 「디렉토리가

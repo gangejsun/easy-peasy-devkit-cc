@@ -2,7 +2,7 @@
 
 AI Native Dev Harness for Claude Code — 되돌림 가능성 축 워크플로우, 자기검증 훅, 그래프 계측.
 
-![version](https://img.shields.io/badge/version-3.20.0-blue)
+![version](https://img.shields.io/badge/version-3.22.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 ## 무엇인가
@@ -34,6 +34,16 @@ claude plugin install epcc-devkit
 > claude plugin marketplace add <이 저장소 경로>
 > claude plugin install epcc-devkit@easy-peasy-devkit
 > ```
+
+**마케팅 스킬은 별도 플러그인입니다.** 같은 마켓플레이스에 `epcc-marketing`(스킬 5종 —
+AI 프롬프트 · 스크롤 드리븐 사이트 · SEO 3-Mode · 웹 에셋)이 함께 있고, **독립 버전**으로
+나갑니다. 개발 하네스에서 분리한 이유는 컨텍스트 예산입니다 — 스킬 description은 그 스킬을
+한 번도 쓰지 않아도 매 세션 상주하므로, 개발과 무관한 스킬이 개발 세션의 예산을 먹습니다.
+필요할 때만 설치하세요:
+
+```bash
+claude plugin install epcc-marketing@easy-peasy-devkit
+```
 
 ### 2. Initialize Your Project
 
@@ -88,9 +98,9 @@ Phase 번호는 순서 표시일 뿐 의무가 아닙니다 — 진입 조건 4�
 | 계층 | 수 | 내용 |
 |------|-----|------|
 | **훅** | 5 스크립트 / 6 등록 | SessionStart · PreToolUse · Stop · PreCompact · SessionEnd · PostToolUse |
-| **규칙** | T0 40줄 + T1 8개 1,097줄 | T0는 훅이 상시 주입(플러그인 소유). T1은 `workflow-routing`이 **매 세션 상시**, 나머지는 경로 매칭 시 조건부 로드 |
+| **규칙** | T0 40줄 + T1 8개 1,148줄 | T0는 훅이 상시 주입(플러그인 소유). T1은 `workflow-routing`이 **매 세션 상시**, 나머지는 경로 매칭 시 조건부 로드 |
 | **에이전트** | 2 | `epcc-planner`(쓰기 없음) · `epcc-reviewer`(읽기 전용) |
-| **스킬** | 30 | 기획·구현·검증·보안·마케팅 워크플로우 + 스택 가이드 생성기 + 스킬 강화기 |
+| **스킬** | 27 | 측량·기획·구현·검증·보안·PR 워크플로우 + 스택 가이드 생성기 + 스킬 강화기 (마케팅 5종은 `epcc-marketing` 플러그인으로 분리) |
 | **프리셋** | 2축 5+9 | 프론트엔드: nextjs·react-vite·vue·vanilla·none / 백엔드: supabase·firebase·aws-serverless·aws-container·gcp-serverless·fastapi·node-api·node-nest·none |
 
 ### 훅
@@ -159,7 +169,7 @@ bash scripts/doctor.sh --all        # 전체
 ## 그래프 선언
 
 `workflow.graph.json`이 노드(에이전트·스킬·훅)와 엣지(전이 조건), **에러 엣지**를
-기계 판독 가능한 형태로 선언합니다. 현재 노드 48 · 엣지 69.
+기계 판독 가능한 형태로 선언합니다. 현재 노드 46 · 엣지 76.
 
 `doctor --graph`가 검증합니다:
 - 모든 엣지의 타깃이 실재하는가
@@ -196,6 +206,23 @@ bash scripts/doctor.sh --all        # 전체
 | 그 외 모든 조합 | 두 축의 조합 | 가이드 **생성** (검증 루프 포함) |
 
 ## Project Override — 사용자 자산의 우선권
+
+**규범부터** — 파일 메커니즘 이전에, 모델이 따르는 우선순위가 명시되어 있습니다
+(`.claude/rules/workflow-routing.md` 「지시 우선순위」, 매 세션 상시 로드). 두 층은 방향이
+반대입니다:
+
+- **안전 바닥** (되돌림 분류 · 검증 의무 · 시크릿 경계 · 분기점) — 프로젝트는 **올릴 수만**
+  있습니다. 내리려면 사용자의 명시 요청이 필요합니다.
+- **절차·양식** (가이드 팩의 스택 관행 · 스킬 워크플로 · 네이밍 · 문서 형식) —
+  **프로젝트가 이깁니다.** 순서는 사용자 요청 → 프로젝트 `CLAUDE.md`·`AGENTS.md` →
+  프로젝트 `.claude/rules/`·`docs/` → **저장소의 기존 코드 패턴** → 플러그인 가이드·스킬.
+
+핵심은 마지막 화살표입니다 — **기존 코드 패턴이 플러그인 가이드를 이깁니다.** 가이드가
+권하는 형태와 저장소가 실제로 쓰는 형태가 다르면 저장소를 따릅니다. 그리고 소비자가 원래
+갖고 있던 `AGENTS.md`·`CODEX.md`·`.github/`·`docs/`·기존 `CLAUDE.md`는 **명시 요청 없이
+고치지 않습니다**(비침습).
+
+아래는 그 규범을 파일 수준에서 뒷받침하는 메커니즘입니다.
 
 | 자산 | 우선 메커니즘 |
 |------|--------------|
@@ -248,6 +275,8 @@ PostToolUse 추적기 3종
 | `/receiving-code-review` | 내장은 지적을 *생성*합니다. 받은 지적을 *비판적으로 검증*하는 대응물은 없습니다 |
 | `/harness-evaluation` | `doctor`는 측정(훅 생존·dangling·예산), 이 스킬은 판단(설계가 좋은가·지금 모델에 과잉인가) |
 | `/shortcut-ledger` | 내장 `/simplify`는 **이미 쓴** 코드를 줄입니다. 의도적으로 남긴 축약의 천장이 만료됐는지 추적하는 대응물은 없습니다 (쓰기 전 규범 자체는 `code-change.md` 「구현 사다리」) |
+| `/codebase-survey` | 내장 `/init`은 `CLAUDE.md`를 **한 번** 만듭니다. `epcc-init`도 최초 1회만 실측하고, 그렇게 만든 프로젝트 소유 카드 두 장(`project-structure`·`code-conventions`)에는 **갱신 경로도 드리프트 감지 장치도 없습니다.** 이 스킬이 그 갱신 경로이며, 구조를 처방하지 않고 측정·서술만 합니다 |
+| `/pr-prep` | 내장 `/code-review`는 diff의 **결함**을, `epcc-reviewer`는 **계약**을, `/completion-review`는 **문서**를 다룹니다. **PR 본문을 만드는 대응물은 없습니다** — 되돌림 클래스가 의무 섹션(롤백 절차·호출처·개입 근거)을 정하는 형태는 이 하네스 고유입니다 |
 
 > **판단 기준**: "네이티브가 존재한다"는 중복의 증거이지 열등의 증거가 아닙니다.
 > 폐기를 제안하려면 양쪽 본문을 열어 커버 영역을 비교해야 하고, 비교 대상은

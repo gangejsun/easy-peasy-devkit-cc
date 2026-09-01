@@ -169,6 +169,7 @@ function collapseSidebar() { ui.isSidebarOpen = false; }
 순서 통제는 이음매의 세션 리소스가 소유한다 — 두 곳에서 캐시를 비우면 어느 쪽이 실제로
 도는지 추적이 어려워진다.
 
+<!-- file: src/stores/clearClientState.ts -->
 ```ts
 // src/stores/clearClientState.ts — 스토어를 추가하면 이 목록에도 추가한다
 import { useUiStore, STORAGE_KEY } from './ui';

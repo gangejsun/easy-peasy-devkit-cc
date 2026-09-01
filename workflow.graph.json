@@ -398,34 +398,6 @@
       "manual": true
     },
     {
-      "id": "marketing-workflow",
-      "kind": "skill",
-      "path": "skills/marketing-workflow/SKILL.md",
-      "when": "사용자 수동 호출 전용",
-      "manual": true
-    },
-    {
-      "id": "scroll-stop-builder",
-      "kind": "skill",
-      "path": "skills/scroll-stop-builder/SKILL.md",
-      "when": "사용자 수동 호출 전용",
-      "manual": true
-    },
-    {
-      "id": "scroll-stop-prompter",
-      "kind": "skill",
-      "path": "skills/scroll-stop-prompter/SKILL.md",
-      "when": "사용자 수동 호출 전용",
-      "manual": true
-    },
-    {
-      "id": "seo-strategy",
-      "kind": "skill",
-      "path": "skills/seo-strategy/SKILL.md",
-      "when": "사용자 수동 호출 전용",
-      "manual": true
-    },
-    {
       "id": "ui-ux-design",
       "kind": "skill",
       "path": "skills/ui-ux-design/SKILL.md",
@@ -433,11 +405,31 @@
       "manual": true
     },
     {
-      "id": "web-asset-generator",
+      "id": "codebase-survey",
       "kind": "skill",
-      "path": "skills/web-asset-generator/SKILL.md",
-      "when": "사용자 수동 호출 전용",
-      "manual": true
+      "path": "skills/codebase-survey/SKILL.md",
+      "when": "기존 저장소에 하네스를 나중에 설치했거나 프로젝트 소유 카드가 낡았을 때",
+      "produces": ".claude/rules/project-structure.md · code-conventions.md 갱신 + 드리프트 diff",
+      "note": "측정·서술 전용 — 구조를 처방하지 않는다. epcc-init은 스택을 '고르고' 이 스킬은 현재 사실을 '잰다'. 두 프로젝트 소유 카드의 유일한 갱신 경로",
+      "on_error": [
+        "user-report"
+      ]
+    },
+    {
+      "id": "pr-prep",
+      "kind": "skill",
+      "path": "skills/pr-prep/SKILL.md",
+      "when": "변경을 PR로 낼 때",
+      "note": "PR 본문 생성. /code-review는 diff 결함, epcc-reviewer는 계약, completion-review는 문서 — 본문을 만드는 자산은 이것뿐. 되돌림 클래스가 의무 섹션을 정한다",
+      "on_error": [
+        "user-report"
+      ]
+    },
+    {
+      "id": "decisions",
+      "kind": "store",
+      "path": "rules/reversibility.md",
+      "note": "분기점에서 사용자가 고른 결과. 실제 파일은 소비자의 docs/decisions.md이고 형식 정본은 rules/reversibility.md 「결정 기록」이다. lessons(실수)와 다른 축 — 섞으면 둘 다 못 쓰게 된다"
     }
   ],
   "edges": [
@@ -772,6 +764,41 @@
       "from": "shortcut-ledger",
       "to": "build",
       "cond": "회수·만료 판정분"
+    },
+    {
+      "from": "understand",
+      "to": "codebase-survey",
+      "cond": "저장소 전체의 스택·구조·아키텍처가 미파악"
+    },
+    {
+      "from": "codebase-survey",
+      "to": "understand",
+      "cond": "측량 결과 + 카드 드리프트 반환"
+    },
+    {
+      "from": "build",
+      "to": "pr-prep",
+      "cond": "변경을 PR로 낼 때"
+    },
+    {
+      "from": "build",
+      "to": "decisions",
+      "cond": "분기점 결과가 Costly 이상"
+    },
+    {
+      "from": "council-review",
+      "to": "decisions",
+      "cond": "사용자 확인된 통합 권고 결정"
+    },
+    {
+      "from": "decisions",
+      "to": "epcc-planner",
+      "cond": "선행 결정 확인 (참조 신선도 재검증 후)"
+    },
+    {
+      "from": "decisions",
+      "to": "pr-prep",
+      "cond": "PR 본문 Decisions 줄"
     }
   ]
 }

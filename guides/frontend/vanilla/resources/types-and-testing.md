@@ -71,6 +71,7 @@ const titles = tasks.map(/** @param {Task} t @returns {string} */ ((t) => t.titl
 **스키마가 진실이고 타입은 거기서 도출한다.** 손으로 쓴 `@typedef`를 스키마 옆에 두면
 두 벌이 되고, 두 벌은 반드시 갈라진다.
 
+<!-- file: src/schemas/task.js -->
 ```js
 // src/schemas/task.js
 import { z } from 'zod';
@@ -99,6 +100,19 @@ export const TaskCreateSchema = z.object({
 /** @typedef {import('zod').infer<typeof TaskCreateSchema>} TaskCreate */
 
 export const TaskUpdateSchema = z.object(taskInputFields).partial().strict();
+
+/**
+ * @param {unknown} raw
+ * @returns {Task}
+ */
+export function parseTask(raw) {
+  const result = TaskSchema.safeParse(raw);
+  if (!result.success) {
+    const where = result.error.issues.map((i) => i.path.join('.')).join(', ');
+    throw new Error(`Task 형태가 아니다: ${where}`);
+  }
+  return result.data;
+}
 ```
 
 - **`TaskUpdateSchema`를 `TaskCreateSchema.partial()`로 만들지 않는다.** `.partial()`은
@@ -113,22 +127,6 @@ export const TaskUpdateSchema = z.object(taskInputFields).partial().strict();
 쓰는 것은 이 값이지 심볼 이름이 아니다.
 
 ## 5. 경계 파서 `parseTask` — `@type`이 끝나는 자리
-
-```js
-// src/schemas/task.js
-/**
- * @param {unknown} raw
- * @returns {Task}
- */
-export function parseTask(raw) {
-  const result = TaskSchema.safeParse(raw);
-  if (!result.success) {
-    const where = result.error.issues.map((i) => i.path.join('.')).join(', ');
-    throw new Error(`Task 형태가 아니다: ${where}`);
-  }
-  return result.data;
-}
-```
 
 `safeParse`는 던지지 않고 `{ success, data | error }`를 준다. 여기서 **파서가 던지는 것이
 계약이다** — 호출자가 실패를 무시하고 진행할 길을 남기지 않는다. `error.issues[].path`가
@@ -149,6 +147,7 @@ const task = parseTask(await res.json());
 **환경을 읽는 유일한 파일이다.** 모듈 최상위에서 파싱하므로 값이 어긋나면 부팅이 실패한다 —
 첫 요청 시점에 터지면 사용자가 반쯤 살아 있는 화면을 본다.
 
+<!-- file: src/config.js -->
 ```js
 // src/config.js
 import { z } from 'zod';

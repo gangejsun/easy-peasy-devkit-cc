@@ -28,6 +28,7 @@
 **`fetcher`가 `AbortSignal`을 받는 것이 계약이다.** 새 `load()`는 진행 중인 것을 먼저
 취소하고, 취소된 요청의 결과는 도착해도 버린다.
 
+<!-- file: src/state/resource.js -->
 ```js
 // src/state/resource.js
 import { createStore } from '../store/create.js';
@@ -105,6 +106,7 @@ load();              // 0ms 에 온다  (/tasks?filter=open)
 
 ## 4. 상태 렌더 (`src/state/render.js`)
 
+<!-- file: src/state/render.js -->
 ```js
 // src/state/render.js
 /**

@@ -56,6 +56,7 @@ interface ImportMetaEnv {
 interface ImportMeta { readonly env: ImportMetaEnv }
 ```
 
+<!-- file: src/config.ts -->
 ```ts
 // src/config.ts — 앱 코드(http.ts·oidcConfig.ts 포함)는 import.meta.env를 직접 읽지 않는다.
 // 값을 **호출부에서 리터럴 키로 읽어** 넘긴다 — 함수 안에서 import.meta.env[name]을 하면
@@ -143,6 +144,7 @@ function label(s: TicketStatus): string {
 test: { environment: 'jsdom', setupFiles: ['./src/test/setup.ts'], globals: true }
 ```
 
+<!-- file: src/test/setup.ts -->
 ```ts
 // src/test/setup.ts
 import '@testing-library/jest-dom/vitest';
@@ -153,6 +155,7 @@ afterEach(() => { server.resetHandlers(); cleanup(); });
 afterAll(() => server.close());
 ```
 
+<!-- file: src/test/msw/handlers.ts -->
 ```ts
 // src/test/msw/handlers.ts — MSW v2 API
 import { http, HttpResponse } from 'msw';
@@ -175,6 +178,7 @@ export const handlers = [
 
 ## 6. 렌더 헬퍼
 
+<!-- file: src/test/renderWithProviders.tsx -->
 ```tsx
 // src/test/renderWithProviders.tsx
 export function renderWithProviders(ui: ReactNode, { route = '/' } = {}) {

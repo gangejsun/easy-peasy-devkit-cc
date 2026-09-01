@@ -145,6 +145,7 @@ const ExpensiveChart = memo(function ExpensiveChart({ data }: { data: ChartPoint
 
 ## 6. Debounce — 빈번한 입력 이벤트
 
+<!-- file: hooks/use-debounce.ts -->
 ```ts
 // hooks/use-debounce.ts
 import { useEffect, useState } from 'react'
@@ -191,6 +192,7 @@ URL이 바뀌면 Server Component가 새 `searchParams`로 다시 실행된다 �
 
 `useEffect`에서 만든 구독·타이머·리스너는 반드시 cleanup으로 해제한다.
 
+<!-- file: components/common/live-status.tsx -->
 ```tsx
 // components/common/live-status.tsx
 'use client'

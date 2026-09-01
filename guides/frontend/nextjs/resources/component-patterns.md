@@ -38,6 +38,7 @@ import하면 빌드 에러가 나지만, **일반 서버 코드는 에러 없이
 </CollapsiblePanel>
 ```
 
+<!-- file: components/common/collapsible-panel.tsx -->
 ```tsx
 // components/common/collapsible-panel.tsx (Client Component)
 'use client'
@@ -128,6 +129,7 @@ export function PageSection({ title, action, children }: PageSectionProps) {
 **새 공통 컴포넌트를 만들기 전에 `components/layout/`·`components/common/`을
 grep으로 확인한다** — 이미 있으면 재사용하고, 없을 때만 추가한다.
 
+<!-- file: components/layout/page-header.tsx -->
 ```tsx
 // components/layout/page-header.tsx
 import { ChevronLeft } from 'lucide-react'
@@ -227,6 +229,7 @@ export default function TasksLoading() {
 
 빈 상태는 화면마다 반복되는 대표적 UI다 — §3의 규칙대로 `components/common/`에 추출한다.
 
+<!-- file: components/common/empty-state.tsx -->
 ```tsx
 // components/common/empty-state.tsx (Server Component — 훅 불필요)
 interface EmptyStateProps {

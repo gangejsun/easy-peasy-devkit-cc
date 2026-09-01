@@ -21,39 +21,39 @@
 
 | 심볼 | 정의 파일 | 형태 | 성격 |
 | --- | --- | --- | --- |
-| `makeApp` | project-structure.md | `() => Express` — `listen`하지 않는다 | Express 5 앱 조립 (라우터 마운트 · 미들웨어 순서) |
-| `notFound` | project-structure.md | `RequestHandler` (3인자) — 에러 미들웨어 **앞**에 마운트 | 404 미들웨어 — 에러 미들웨어 **앞**에 둔다 |
-| `prisma` | data-access.md | `PrismaClient` 싱글턴 | PrismaClient 싱글턴 (이 팩에서 유일한 인스턴스) |
-| `listTasks` | data-access.md | `(ownerId: string, q: { limit: number; cursor?: string; status?: TaskStatus }) => Promise<TaskView[]>` | 목록 조회 (소유권 필터 + 커서 페이지네이션) |
-| `getTask` | data-access.md | `(ownerId: string, id: string) => Promise<TaskView \| null>` — **소유자가 먼저다** | 단건 조회 (소유권 필터 포함) |
-| `insertTask` | data-access.md | `(ownerId: string, input: TaskCreate) => Promise<TaskView>` | 생성 |
-| `updateTask` | data-access.md | `(ownerId: string, id: string, patch: TaskUpdate) => Promise<TaskView>` — 0행이면 `AppError('NOT_FOUND')` | 수정 — **영향 행 수를 확인한다** |
-| `deleteTask` | data-access.md | `(ownerId: string, id: string) => Promise<void>` — 0행이면 `AppError('NOT_FOUND')` | 삭제 — **영향 행 수를 확인한다** |
-| `TaskView` | data-access.md | `Prisma.TaskGetPayload<{ select: typeof fields }>` — `ownerId`를 담지 않는다 | 쿼리 5개의 반환 타입(`select`로 좁힌 형태). **이음매의 `tasksRouter`가 핸들러를 타이핑하려면 이름이 있어야 한다** — 익명이면 소비자가 `Awaited<ReturnType<typeof getTask>>`를 써야 한다 |
-| `EnvSchema` | input-validation.md | `ZodObject` — `safeParse(process.env)`로 부팅 시점에 적용 | 환경변수 스키마 |
-| `env` | input-validation.md | `Env` (검증된 값). `PORT`·`LOG_LEVEL`·`NODE_ENV`·`DATABASE_URL`·`DRAIN_DELAY_MS`·`SHUTDOWN_TIMEOUT_MS` | 검증된 환경 값 — `process.env`를 읽는 유일한 자리 |
-| `TaskCreateSchema` | input-validation.md | `z.strictObject` — 미지 키를 **거부**한다 | 생성 요청 본문 |
-| `TaskUpdateSchema` | input-validation.md | 부분 업데이트. `.default()`를 겹치지 않는다 | 수정 요청 본문 (부분 업데이트) |
-| `TaskQuerySchema` | input-validation.md | `z.object` — 미지 키를 **제거**한다 (쿼리는 거부하지 않는다) | 목록 쿼리 문자열 |
-| `Env` | input-validation.md | `z.infer<typeof EnvSchema>` | `z.infer<typeof EnvSchema>` |
-| `TaskCreate` | input-validation.md | `z.output<typeof TaskCreateSchema>` | 생성 본문 타입 — **이음매의 `tasksRouter`가 핸들러를 타이핑한다** |
-| `TaskUpdate` | input-validation.md | `z.output<typeof TaskUpdateSchema>` | 수정 본문 타입 |
-| `TaskQuery` | input-validation.md | `z.output<typeof TaskQuerySchema>` | 목록 쿼리 타입 |
-| `parseBody` | input-validation.md | `<S>(schema: S, req: Request) => z.output<S>` — 실패는 `AppError('VALIDATION_FAILED', …, fieldErrors)` | 요청 본문 파싱 헬퍼 — 실패를 `AppError`로 정규화 |
-| `parseQuery` | input-validation.md | `<S>(schema: S, req: Request) => z.output<S>` — **반환값을 쓴다**. `req.query`에 대입하지 않는다 | 쿼리 문자열 파싱 헬퍼 |
-| `ERROR_STATUS` | error-handling.md | `Record<string, number>` — 도메인 코드 → HTTP 상태. **유일한 매핑표** | 도메인 에러 코드 → HTTP 상태 표 |
-| `toAppError` | error-handling.md | `(e: unknown) => AppError` — `errorHandler`가 **반드시 먼저 호출한다** | 알 수 없는 throw → `AppError` 정규화 |
-| `isUniqueViolation` | error-handling.md | `(e: unknown) => boolean` — Prisma `P2002` | Prisma `P2002` 판별 |
-| `isRecordNotFound` | error-handling.md | `(e: unknown) => boolean` — Prisma `P2025` | Prisma `P2025` 판별 |
-| `fieldErrors` | error-handling.md | `(e: ZodError) => Record<string, string[]>` | `ZodError` → `Record<string, string[]>` |
-| `testDb` | testing.md | `PrismaClient` — 워커별 스키마로 격리 | 테스트 DB 연결 (스키마별 격리) |
-| `resetDb` | testing.md | `() => Promise<void>` — 테스트 간 정리 | 테스트 간 정리 |
-| `seedTask` | testing.md | `(ownerId: string, patch?: Partial<Task>) => Promise<Task>` | 픽스처 생성 |
-| `shutdown` | operations.md | `(server: Server) => Promise<void>` — **배수를 수행한다**. 시그널 배선이 아니다 (`process.on('SIGTERM', () => void shutdown(server))`) | SIGTERM 처리 — 연결 배수 후 종료 |
-| `healthz` | operations.md | `RequestHandler` — liveness. 의존성을 보지 않는다 | liveness |
-| `readyz` | operations.md | `RequestHandler` — readiness. 배수 중이면 503 | readiness — 의존성 확인 뒤 준비 완료 |
-| `logger` | operations.md | `pino.Logger` — 요청 스코프는 `req.log`를 쓴다 | 구조적 로거 (pino) |
-| `beginDrain` | operations.md | `() => void` — `readyz`를 503으로 내린다 | 배수 시작 플래그. **`shutdown`(쓰는 쪽)과 `readyz`(읽는 쪽)가 모듈이 갈려 진입점이 필요하다** — 없애면 배수 중에도 `readyz`가 200을 돌려줘 liveness ≠ readiness가 무너진다 (C3 검토) |
+| `makeApp` | project-structure.md | **`src/app.ts`** — `() => Express` — `listen`하지 않는다 | Express 5 앱 조립 (라우터 마운트 · 미들웨어 순서) |
+| `notFound` | project-structure.md | **`src/app.ts`** — `RequestHandler` (3인자) — 에러 미들웨어 **앞**에 마운트 | 404 미들웨어 — 에러 미들웨어 **앞**에 둔다 |
+| `prisma` | data-access.md | **`src/db/client.ts`** — `PrismaClient` 싱글턴 | PrismaClient 싱글턴 (이 팩에서 유일한 인스턴스) |
+| `listTasks` | data-access.md | **`src/db/tasks.ts`** — `(ownerId: string, q: { limit: number; cursor?: string; status?: TaskStatus }) => Promise<TaskView[]>` | 목록 조회 (소유권 필터 + 커서 페이지네이션) |
+| `getTask` | data-access.md | **`src/db/tasks.ts`** — `(ownerId: string, id: string) => Promise<TaskView \| null>` — **소유자가 먼저다** | 단건 조회 (소유권 필터 포함) |
+| `insertTask` | data-access.md | **`src/db/tasks.ts`** — `(ownerId: string, input: TaskCreate) => Promise<TaskView>` | 생성 |
+| `updateTask` | data-access.md | **`src/db/tasks.ts`** — `(ownerId: string, id: string, patch: TaskUpdate) => Promise<TaskView>` — 0행이면 `AppError('NOT_FOUND')` | 수정 — **영향 행 수를 확인한다** |
+| `deleteTask` | data-access.md | **`src/db/tasks.ts`** — `(ownerId: string, id: string) => Promise<void>` — 0행이면 `AppError('NOT_FOUND')` | 삭제 — **영향 행 수를 확인한다** |
+| `TaskView` | data-access.md | **`src/db/tasks.ts`** — `Prisma.TaskGetPayload<{ select: typeof fields }>` — `ownerId`를 담지 않는다 | 쿼리 5개의 반환 타입(`select`로 좁힌 형태). **이음매의 `tasksRouter`가 핸들러를 타이핑하려면 이름이 있어야 한다** — 익명이면 소비자가 `Awaited<ReturnType<typeof getTask>>`를 써야 한다 |
+| `EnvSchema` | input-validation.md | **`src/env.ts`** — `ZodObject` — `safeParse(process.env)`로 부팅 시점에 적용 | 환경변수 스키마 |
+| `env` | input-validation.md | **`src/env.ts`** — `Env` (검증된 값). `PORT`·`LOG_LEVEL`·`NODE_ENV`·`DATABASE_URL`·`DRAIN_DELAY_MS`·`SHUTDOWN_TIMEOUT_MS` | 검증된 환경 값 — `process.env`를 읽는 유일한 자리 |
+| `TaskCreateSchema` | input-validation.md | **`src/schemas/task.ts`** — `z.strictObject` — 미지 키를 **거부**한다 | 생성 요청 본문 |
+| `TaskUpdateSchema` | input-validation.md | **`src/schemas/task.ts`** — 부분 업데이트. `.default()`를 겹치지 않는다 | 수정 요청 본문 (부분 업데이트) |
+| `TaskQuerySchema` | input-validation.md | **`src/schemas/task.ts`** — `z.object` — 미지 키를 **제거**한다 (쿼리는 거부하지 않는다) | 목록 쿼리 문자열 |
+| `Env` | input-validation.md | **`src/env.ts`** — `z.infer<typeof EnvSchema>` | `z.infer<typeof EnvSchema>` |
+| `TaskCreate` | input-validation.md | **`src/schemas/task.ts`** — `z.output<typeof TaskCreateSchema>` | 생성 본문 타입 — **이음매의 `tasksRouter`가 핸들러를 타이핑한다** |
+| `TaskUpdate` | input-validation.md | **`src/schemas/task.ts`** — `z.output<typeof TaskUpdateSchema>` | 수정 본문 타입 |
+| `TaskQuery` | input-validation.md | **`src/schemas/task.ts`** — `z.output<typeof TaskQuerySchema>` | 목록 쿼리 타입 |
+| `parseBody` | input-validation.md | **`src/http/parse.ts`** — `<S>(schema: S, req: Request) => z.output<S>` — 실패는 `AppError('VALIDATION_FAILED', …, fieldErrors)` | 요청 본문 파싱 헬퍼 — 실패를 `AppError`로 정규화 |
+| `parseQuery` | input-validation.md | **`src/http/parse.ts`** — `<S>(schema: S, req: Request) => z.output<S>` — **반환값을 쓴다**. `req.query`에 대입하지 않는다 | 쿼리 문자열 파싱 헬퍼 |
+| `ERROR_STATUS` | error-handling.md | **`src/http/errors.ts`** — `Record<string, number>` — 도메인 코드 → HTTP 상태. **유일한 매핑표** | 도메인 에러 코드 → HTTP 상태 표 |
+| `toAppError` | error-handling.md | **`src/http/errors.ts`** — `(e: unknown) => AppError` — `errorHandler`가 **반드시 먼저 호출한다** | 알 수 없는 throw → `AppError` 정규화 |
+| `isUniqueViolation` | error-handling.md | **`src/http/errors.ts`** — `(e: unknown) => boolean` — Prisma `P2002` | Prisma `P2002` 판별 |
+| `isRecordNotFound` | error-handling.md | **`src/http/errors.ts`** — `(e: unknown) => boolean` — Prisma `P2025` | Prisma `P2025` 판별 |
+| `fieldErrors` | error-handling.md | **`src/http/errors.ts`** — `(e: ZodError) => Record<string, string[]>` | `ZodError` → `Record<string, string[]>` |
+| `testDb` | testing.md | **`src/test/db.ts`** — `PrismaClient` — 워커별 스키마로 격리 | 테스트 DB 연결 (스키마별 격리) |
+| `resetDb` | testing.md | **`src/test/db.ts`** — `() => Promise<void>` — 테스트 간 정리 | 테스트 간 정리 |
+| `seedTask` | testing.md | **`src/test/db.ts`** — `(ownerId: string, patch?: Partial<Task>) => Promise<Task>` | 픽스처 생성 |
+| `shutdown` | operations.md | **`src/ops/shutdown.ts`** — `(server: Server) => Promise<void>` — **배수를 수행한다**. 시그널 배선이 아니다 (`process.on('SIGTERM', () => void shutdown(server))`) | SIGTERM 처리 — 연결 배수 후 종료 |
+| `healthz` | operations.md | **`src/ops/health.ts`** — `RequestHandler` — liveness. 의존성을 보지 않는다 | liveness |
+| `readyz` | operations.md | **`src/ops/health.ts`** — `RequestHandler` — readiness. 배수 중이면 503 | readiness — 의존성 확인 뒤 준비 완료 |
+| `logger` | operations.md | **`src/ops/logger.ts`** — `pino.Logger` — 요청 스코프는 `req.log`를 쓴다 | 구조적 로거 (pino) |
+| `beginDrain` | operations.md | **`src/ops/health.ts`** — `() => void` — `readyz`를 503으로 내린다 | 배수 시작 플래그. **`shutdown`(쓰는 쪽)과 `readyz`(읽는 쪽)가 모듈이 갈려 진입점이 필요하다** — 없애면 배수 중에도 `readyz`가 200을 돌려줘 liveness ≠ readiness가 무너진다 (C3 검토) |
 
 ## requires — 이음매가 제공해야 한다
 

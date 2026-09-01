@@ -48,6 +48,7 @@ interface ImportMeta { readonly env: ImportMetaEnv }
 채로 무력화한다. vue-tsc 2 이후에는 SFC의 실제 타입이 이겨 무해하지만, 그래도 불필요하고
 도구를 바꾸는 순간 되살아나는 함정이라 두지 않는다.
 
+<!-- file: src/config.ts -->
 ```ts
 // src/config.ts — import.meta.env가 등장하는 유일한 파일
 function required(name: string, value: string | undefined): string {
@@ -80,6 +81,7 @@ export const config = {
 응답 본문은 `unknown`이다. 여기서 단언만 하면 서버 계약이 바뀌어도 컴파일이 통과하고,
 오류는 화면 깊은 곳에서 터진다. 경계에 **좁히기 함수**를 두고 요청 경로 위에 놓는다.
 
+<!-- file: src/features/tasks/api/tasks.parse.ts -->
 ```ts
 // src/features/tasks/api/tasks.parse.ts
 import { ApiError } from '@/api/errors';   // 이음매가 제공한다
@@ -134,6 +136,7 @@ plugins: [vue()],
 test: { environment: 'jsdom', setupFiles: ['./src/test/setup.ts'], globals: true },
 ```
 
+<!-- file: src/test/msw/handlers.ts -->
 ```ts
 // src/test/msw/handlers.ts — msw v2 API
 import { http, HttpResponse } from 'msw';
@@ -149,6 +152,7 @@ export const handlers = [
 ];
 ```
 
+<!-- file: src/test/setup.ts -->
 ```ts
 // src/test/setup.ts
 import { setupServer } from 'msw/node';
@@ -168,6 +172,7 @@ import하지 않으므로 실제 충돌은 없지만, 한 파일에서 둘 다 �
 
 ## 6. 마운트 헬퍼
 
+<!-- file: src/test/mountWithProviders.ts -->
 ```ts
 // src/test/mountWithProviders.ts
 import { mount, type MountingOptions } from '@vue/test-utils';

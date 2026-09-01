@@ -301,6 +301,10 @@ Step 7의 카드가 **플러그인 소유**(버전 스탬프로 자동 갱신)�
 1. `${CLAUDE_PLUGIN_ROOT}/templates/rules/project-structure.template.md`를 읽는다
 2. **기존 코드가 있으면 실제 트리를 실측한다** (`ls` + 주요 디렉토리 2~3 depth) —
    추측으로 채우지 않는다. 신규 프로젝트면 프리셋 + Step 4.7 토폴로지의 목표 구조로 채운다
+2.5. **「의존 방향」 절을 채운다** — 기존 코드가 있으면 import가 실제로 흐르는 방향을
+   실측하고, 신규면 프리셋 토폴로지의 방향을 적는다. 레이어가 없으면
+   「단층 — 해당 없음」이라고 적는다. **억지로 세우지 않는다** — 없는 레이어를
+   카드에 적으면 `epcc-reviewer`가 존재하지 않는 위반을 보고한다
 3. 플레이스홀더와 안내 주석을 전부 치환·제거하고 `.claude/rules/` 아래
    `project-structure.md`로 저장한다
 4. `${CLAUDE_PLUGIN_ROOT}/templates/rules/code-conventions.template.md`도 같은 방식 —

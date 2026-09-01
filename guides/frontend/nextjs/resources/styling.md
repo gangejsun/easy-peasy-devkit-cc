@@ -75,6 +75,7 @@ npx shadcn@latest add button input dialog skeleton
 - 스타일 확장은 사용처에서 `className` → 내부 `cn()`이 Tailwind 충돌을 병합한다
 - 새 원시 UI가 필요하면 직접 만들기 전에 shadcn/ui 카탈로그를 먼저 확인한다
 
+<!-- file: lib/utils.ts -->
 ```ts
 // lib/utils.ts — 모든 조건부 클래스 조합의 표준
 import { clsx, type ClassValue } from 'clsx'

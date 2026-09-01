@@ -10,7 +10,9 @@
 
 ## 클라이언트는 싱글턴 하나 (`src/db/client.ts`)
 
+<!-- file: src/db/client.ts -->
 ```ts
+// src/db/client.ts
 import { readFileSync } from 'node:fs'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { Pool } from 'pg'

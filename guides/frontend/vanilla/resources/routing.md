@@ -1,11 +1,11 @@
 <!-- epcc-pack: frontend/vanilla v3.14.0 -->
 # 라우팅 — 단일 진입점, 그리고 화면을 떠날 때 무엇이 죽는가
 
-소유: `src/router/index.js`의 `createRouter` · `src/router/links.js`의 `interceptLinks` ·
-`src/router/return-to.js`의 `safeReturnTo`. 소유하지 않는 것 — 로딩·빈·에러 렌더는
+소유: `createRouter`(`src/router/index.js`) · `interceptLinks`(`src/router/links.js`) ·
+`safeReturnTo`(`src/router/return-to.js`). 소유하지 않는 것 — 로딩·빈·에러 렌더는
 `resources/loading-error-states.md`, DOM 헬퍼는 `resources/component-patterns.md`, 전역 상태는
 `resources/state-management.md`. 로그인 화면·토큰 보관·세션 갱신은 이음매의 `auth-and-session`
-슬롯이고, 이 파일은 `session`·`requireSession`을 **부르기만** 한다.
+슬롯이고 이 파일은 `session`·`requireSession`을 **부르기만** 한다.
 
 ## 1. 결정 트리 — 이 값을 URL에 둘 것인가
 
@@ -18,20 +18,36 @@ URL은 이 축에서 **유일하게 새로고침을 견디는 저장소**다. �
 | 로그인 후 돌아갈 자리 | 쿼리 — **단 `safeReturnTo`를 통과한 값만** (§5) | 검증 없이 실으면 오픈 리다이렉트다 |
 | 스크롤 위치 | `history.state` (§7) | 항목마다 다르므로 전역이 아니다 |
 
-**URL에서 읽은 값은 신뢰 입력이 아니다.** `params`도 쿼리도 사용자가 손으로 고칠 수 있다 —
-경계에서 `safeParse`로 검증하고(`resources/types-and-testing.md`), 복귀 경로는 §5로 보낸다.
+**URL에서 읽은 값은 신뢰 입력이 아니다.** `params`도 쿼리도 사용자가 고칠 수 있다 — 경계에서 `safeParse`로 검증하고(`resources/types-and-testing.md`), 복귀 경로는 §5로 보낸다.
 
 ## 2. 라우터 (`src/router/index.js`)
 
 **각 라우트의 `render(params)`는 정리 함수를 반환한다.** 프레임워크가 없으므로 라우터가 다음
 화면을 그리기 전에 부를 수 있는 것은 그 반환값뿐이다. `start()`도 자신의 해지 함수를 돌려준다.
 
+<!-- file: src/router/index.js -->
 ```js
 // src/router/index.js — 매칭과 수명
 /**
  * @typedef {(params: Record<string, string>) => (() => void)} RouteRender
  * @typedef {{ path: string, render: RouteRender }} Route
  */
+
+/** `/tasks/:id`의 세그먼트를 맞춘다. `'*'`는 무엇이든 맞는다.
+ * @param {string} pattern @param {string} pathname @returns {Record<string, string> | null} */
+function matchPath(pattern, pathname) {
+  if (pattern === '*') return {};
+  const pat = pattern.split('/').filter(Boolean);
+  const seg = pathname.split('/').filter(Boolean);
+  if (pat.length !== seg.length) return null;
+  /** @type {Record<string, string>} */
+  const params = {};
+  for (let i = 0; i < pat.length; i += 1) {
+    if (pat[i].startsWith(':')) params[pat[i].slice(1)] = decodeURIComponent(seg[i]);
+    else if (pat[i] !== seg[i]) return null;
+  }
+  return params;
+}
 
 /** @param {Route[]} routes @returns {{ start(): () => void, navigate(path: string): void }} */
 export function createRouter(routes) {
@@ -50,19 +66,43 @@ export function createRouter(routes) {
       return;
     }
   }
+
+  return {
+    start() {
+      window.history.scrollRestoration = 'manual';   // 브라우저의 자동 복원과 다투지 않는다
+      /** @param {PopStateEvent} e @returns {void} */
+      const onPop = (e) => {
+        renderCurrent();
+        const state = /** @type {{ scrollY?: number } | null} */ (e.state);
+        window.scrollTo(0, state?.scrollY ?? 0);     // 뒤로가기는 있던 자리로
+      };
+      window.addEventListener('popstate', onPop);
+      running = true;
+      renderCurrent();
+      return () => { running = false; window.removeEventListener('popstate', onPop); if (dispose) dispose(); };
+    },
+    /** @param {string} to @returns {void} */
+    navigate(to) {
+      if (!running) return;
+      // 떠나는 항목에 위치를 새기고 새 항목을 쌓는다
+      window.history.replaceState({ scrollY: window.scrollY }, '', window.location.pathname + window.location.search);
+      window.history.pushState({ scrollY: 0 }, '', to);
+      renderCurrent();
+      window.scrollTo(0, 0);                         // 새 화면은 위에서 시작한다
+    },
+  };
 }
 ```
 
 - **정리를 먼저 부르고 그린다.** 뒤집으면 이전 화면의 구독이 새 컨테이너에 한 번 더 쓴다
-- `matchPath`는 `/tasks/:id`의 세그먼트를 맞춰 보고 `'*'`는 무엇이든 맞는다 — `'*'` 라우트가
-  **배열의 마지막**에 있어야 404가 다른 경로를 삼키지 않는다
-- `running` 플래그가 없으면 `stop()` 뒤의 `navigate()`가 **떼어낸 컨테이너에 화면을 다시
-  그린다**. 정리 함수는 라우터를 멈추는 것까지가 계약이다 <!-- verified: happy-dom@20.11.6 에서 stop() 후 navigate() 가 렌더를 수행하는 것을 관측하고 플래그로 막았다 -->
+- `'*'` 라우트는 **배열의 마지막**에 둔다 — 앞에 있으면 404가 다른 경로를 삼킨다
+- `running` 플래그가 없으면 `stop()` 뒤의 `navigate()`가 **떼어낸 컨테이너에 다시 그린다**. 정리 함수는 라우터를 멈추는 것까지가 계약이다 <!-- verified: happy-dom@20.11.6 에서 stop() 후 navigate() 가 렌더를 수행하는 것을 관측하고 플래그로 막았다 -->
 
 ## 3. 링크 인터셉트 (`src/router/links.js`) — 목록은 줄일 수 없다
 
 `<a href>`를 통째로 가로채면 「새 탭으로 열기」가 조용히 깨진다 — **하나만 빠져도** 그렇다.
 
+<!-- file: src/router/links.js -->
 ```js
 // src/router/links.js
 /** @param {Element} root @param {(path: string) => void} navigate @returns {() => void} */
@@ -92,14 +132,13 @@ export function interceptLinks(root, navigate) {
 | `target` · `download` | `_blank`가 같은 탭에서 열리고, 파일이 저장되지 않는다 |
 | 다른 오리진 | 외부 링크가 앱 안에서 404가 된다. `mailto:`·`tel:`도 여기서 걸린다 |
 
-`e.defaultPrevented`를 먼저 보면 **다른 핸들러가 이미 처리한 클릭을 두 번 처리하지 않는다.**
-`anchor.href`는 DOM이 이미 절대 URL로 만들어 둔 값이라 상대 경로도 오리진 비교에 걸린다.
-이 판정을 `safeReturnTo`로 대신할 수 없다 — 저쪽은 **문자열**을, 이쪽은 **요소**를 본다.
+`e.defaultPrevented`를 먼저 보면 다른 핸들러가 처리한 클릭을 두 번 처리하지 않는다. `anchor.href`는
+DOM이 이미 절대 URL로 만든 값이라 상대 경로도 오리진 비교에 걸린다. 이 판정을 `safeReturnTo`로
+대신할 수 없다 — 저쪽은 **문자열**을, 이쪽은 **요소**를 본다.
 
 ## 4. 보호 라우트 — 강제 지점은 팩 안에 있다
 
-`requireSession(navigate, returnTo)`의 **`returnTo`는 이미 검증된 값이다.** 검증을 이음매에
-맡기면 정책 `safe-return-to`가 그것을 볼 수 없다 — 통과시키는 **호출자**가 여기다.
+`requireSession(navigate, returnTo)`의 **`returnTo`는 이미 검증된 값이다.** 검증을 이음매에 맡기면 정책 `safe-return-to`가 그것을 볼 수 없다 — 통과시키는 **호출자**가 여기다.
 
 ```js
 // src/main.js — 보호 라우트 (라우트 화면은 routes 배열에 인라인으로 둔다)
@@ -164,8 +203,7 @@ export function safeReturnTo(raw) {
 | `url.origin` 비교 | `/\evil.example` | `new URL()`이 역슬래시를 슬래시로 정규화해 **호스트가 `evil.example`이 된다** |
 | `pathname`의 `'//'` 검사 | `/..//evil.example` | 파서가 origin을 통과시킨 **뒤** 점 세그먼트를 정규화해 결과가 다시 `//evil.example`이 된다 |
 
-**세 번째와 네 번째가 둘 다 필요하다.** origin 비교만 남기면 `/..//evil.example`이, `pathname`
-검사만 남기면 `/\evil.example`이 통과한다. 게이트의 `check_security_shapes`가 네 번째를 강제한다.
+**세 번째와 네 번째가 둘 다 필요하다.** origin 비교만 남기면 `/..//evil.example`이, `pathname` 검사만 남기면 `/\evil.example`이 통과한다. 게이트의 `check_security_shapes`가 네 번째를 강제한다.
 
 ## 6. 벡터 판정 — 지워 보고 확인했다
 
@@ -182,45 +220,17 @@ export function safeReturnTo(raw) {
 
 <!-- verified: node 22 로 12건 + null·숫자 2건을 실행. pack-smoke.sh 의 unsafe() 판정식을 그대로 썼다 -->
 
-**양성 대조군**을 함께 돌렸다 — 「전부 차단」이라는 고장난 구현도 위 표의 앞 네 행에서는
-초록이기 때문이다. 층을 지운 판을 같은 벡터에 먹이면 접두사 검사만 남긴 판은 **A1·A2·A8을
-그대로 반환**하고, origin 비교만 남긴 판은 **A5·A6을 `//evil.example`로 반환**한다. A11·A12는
-네 판 모두 통과했다 — 그래서 마지막 행이 「막지 않는다」의 증명이다.
+**양성 대조군**을 함께 돌렸다 — 「전부 차단」이라는 고장난 구현도 앞 네 행에서는 초록이기
+때문이다. 접두사 검사만 남긴 판은 **A1·A2·A8을 그대로 반환**하고, origin 비교만 남긴 판은
+**A5·A6을 `//evil.example`로 반환**한다. A11·A12는 네 판 모두 통과했다 — 마지막 행이 「막지 않는다」의 증명이다.
 <!-- verified: 4개 변이판을 같은 벡터 러너에 통과시켜 FAIL 3건 / 2건 / 0건 / 0건 을 관측 -->
 
 ## 7. 404와 스크롤 복원
 
-**404는 라우트다.** 매칭 실패를 `if`로 특수 처리하면 정리 계약 밖으로 새는 화면이 생긴다 —
-배열 마지막의 `'*'`가 그 자리이고, 다른 라우트와 똑같이 정리 함수를 반환한다.
+**404는 라우트다.** 매칭 실패를 `if`로 특수 처리하면 정리 계약 밖으로 새는 화면이 생긴다 — 배열 마지막의 `'*'`가 그 자리이고, 다른 라우트와 똑같이 정리 함수를 반환한다.
 
-```js
-// src/router/index.js — start() · navigate() 와 스크롤
-start() {
-  window.history.scrollRestoration = 'manual';   // 브라우저의 자동 복원과 다투지 않는다
-  /** @param {PopStateEvent} e @returns {void} */
-  const onPop = (e) => {
-    renderCurrent();
-    const state = /** @type {{ scrollY?: number } | null} */ (e.state);
-    window.scrollTo(0, state?.scrollY ?? 0);     // 뒤로가기는 있던 자리로
-  };
-  window.addEventListener('popstate', onPop);
-  running = true;
-  renderCurrent();
-  return () => { running = false; window.removeEventListener('popstate', onPop); if (dispose) dispose(); };
-}
-// navigate() 안 — 떠나는 항목에 위치를 새기고 새 항목을 쌓는다
-window.history.replaceState({ scrollY: window.scrollY }, '', here);
-window.history.pushState({ scrollY: 0 }, '', to);
-renderCurrent();
-window.scrollTo(0, 0);                                               // 새 화면은 위에서 시작한다
-```
-
-- **떠나기 직전의 `replaceState`가 핵심이다.** 위치를 히스토리 **항목**에 새기지 않고 모듈
-  변수에 두면 여러 단계 뒤로가기에서 전부 같은 값이 나온다. `'manual'`을 켜지 않으면
-  브라우저의 자동 복원과 우리 `scrollTo`가 겹쳐 화면이 튄다
-- 실제 스크롤 위치·복원 타이밍은 **실 브라우저에서 검증하지 못했다** — happy-dom은
-  `history.state`에 값이 실리는 것까지만 보여 준다
-  <!-- unverified: 저작 환경에 브라우저가 없다. happy-dom 은 scrollY 가 항상 0이라 값의 왕복만 대리 확인된다 -->
+코드는 2절이 전문으로 싣는다. **떠나기 직전의 `replaceState`가 핵심이다** — 위치를 히스토리 **항목**에 새기지 않고 모듈 변수에 두면 여러 단계 뒤로가기가 전부 같은 값을 준다. `'manual'`을 켜지 않으면 브라우저의 자동 복원과 `scrollTo`가 겹쳐 화면이 튄다. 실제 스크롤 위치·복원 타이밍은 **실 브라우저에서 검증하지 못했다.**
+<!-- unverified: 저작 환경에 브라우저가 없다. happy-dom 은 scrollY 가 항상 0이라 값의 왕복만 대리 확인된다 -->
 
 ## 8. 차단을 증명하는 테스트 (`test/return-to.test.js`)
 

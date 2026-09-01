@@ -110,9 +110,11 @@ const unsub = useUiStore.subscribe((s) => console.log(s.density));
 하나의 스토어 안에서 관심사를 나눠야 할 때는 슬라이스 함수로 쪼갠 뒤 합친다.
 파일이 갈라져도 스토어 인스턴스는 하나이므로 액션끼리 `get()`으로 참조할 수 있다.
 
+<!-- file: src/stores/slices/sidebar.ts -->
 ```ts
 // src/stores/slices/sidebar.ts
 import type { StateCreator } from 'zustand';
+import type { FilterSlice } from '@/stores/slices/filter';
 
 export type SidebarSlice = {
   isSidebarOpen: boolean;
@@ -126,8 +128,12 @@ export const createSidebarSlice: StateCreator<SidebarSlice & FilterSlice, [], []
   });
 ```
 
+<!-- file: src/stores/slices/filter.ts -->
 ```ts
 // src/stores/slices/filter.ts
+import type { StateCreator } from 'zustand';
+import type { SidebarSlice } from '@/stores/slices/sidebar';
+
 export type FilterSlice = {
   savedFilters: string[];
   addFilter: (name: string) => void;
@@ -143,9 +149,14 @@ export const createFilterSlice: StateCreator<SidebarSlice & FilterSlice, [], [],
   });
 ```
 
+<!-- file: src/stores/uiStore.ts -->
 ```ts
 // src/stores/uiStore.ts — 합치는 곳 (§2의 단일 스토어가 커졌을 때 이 형태로 **옮긴다**.
 // 같은 스토어의 다른 조립 방식이므로 두 정의를 동시에 두지 않는다)
+import { create } from 'zustand';
+import { createSidebarSlice, type SidebarSlice } from '@/stores/slices/sidebar';
+import { createFilterSlice, type FilterSlice } from '@/stores/slices/filter';
+
 export type UiState = SidebarSlice & FilterSlice & { reset: () => void };
 
 export const useUiStore = create<UiState>()((set, get, store) => ({
@@ -169,8 +180,11 @@ export const useUiStore = create<UiState>()((set, get, store) => ({
 로그아웃 절차가 소유한다 (`resources/auth-and-session.md` §6) — 두 곳에서 캐시를 비우면
 어느 쪽이 실제로 도는지 추적이 어려워진다.
 
+<!-- file: src/stores/clearClientState.ts -->
 ```ts
 // src/stores/clearClientState.ts — 스토어를 추가하면 이 목록에도 추가한다
+import { useUiStore } from '@/stores/uiStore';
+
 export function clearClientState() {
   useUiStore.getState().reset();     // 모든 스토어에 reset()이 있어야 하는 이유
 }

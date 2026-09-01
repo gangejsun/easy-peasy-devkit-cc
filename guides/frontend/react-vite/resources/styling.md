@@ -38,6 +38,7 @@ export default {
 
 ## 2. `cn()` 헬퍼
 
+<!-- file: src/lib/cn.ts -->
 ```ts
 // src/lib/cn.ts
 import { clsx, type ClassValue } from 'clsx';

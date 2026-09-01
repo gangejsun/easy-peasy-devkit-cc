@@ -84,6 +84,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 로그인 여부에 따라 사용자 메뉴/로그인 버튼을 가르는 헤더는 **Server Component**로 만든다.
 클라이언트에서 세션을 조회하면 첫 렌더에 로그인 버튼이 잠깐 보였다가 바뀐다(깜빡임).
 
+<!-- file: components/layout/app-header.tsx -->
 ```tsx
 // components/layout/app-header.tsx (Server Component — 'use client' 없음)
 import Link from 'next/link'

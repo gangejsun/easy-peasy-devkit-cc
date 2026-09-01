@@ -175,6 +175,7 @@ const describedBy = computed(() =>
 
 ## 8. 제네릭 컴포넌트
 
+<!-- file: src/components/common/table-types.ts -->
 ```ts
 // src/components/common/table-types.ts
 // `<script setup>`은 export할 수 없으므로 공유 타입은 SFC 밖에 둔다

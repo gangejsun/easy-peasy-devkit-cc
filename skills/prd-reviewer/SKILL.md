@@ -1,6 +1,6 @@
 ---
 name: prd-reviewer
-description: 기존 PRD 문서의 품질을 진단하고 개선안을 도출합니다. 단일 PRD와 모듈형 PRD(prd-overload + Phase Sub PRD + Shared) 모두 지원합니다. 구현과의 정합성 검증, 요구사항 명확성 진단, 내부 일관성 검증, 모듈형 구조 정합성 검증, 설계 원칙 정합성 검증(축 F)을 수행하고, 각 개선안에 "PRD 반영 위치"를 섹션별로 명시한 진단 보고서를 생성합니다. PRD 수정 후 필수 실행 (문서 의존성 카드 `.claude/rules/doc-dependency.md`가 트리거). 수동 호출도 가능 (/prd-reviewer).
+description: 기존 PRD의 품질을 진단하고 개선안을 도출합니다. 단일 PRD와 모듈형 PRD 모두 지원하며, 구현 정합성·요구사항 명확성·내부 일관성·설계 원칙을 검증해 반영 위치를 명시한 보고서를 만듭니다. PRD 수정 후 필수 (doc-dependency 카드가 트리거).
 ---
 
 # PRD Reviewer

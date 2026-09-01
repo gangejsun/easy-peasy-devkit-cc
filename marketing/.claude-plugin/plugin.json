@@ -1,0 +1,19 @@
+{
+  "name": "epcc-marketing",
+  "version": "1.0.0",
+  "displayName": "EasyPeasy Marketing Kit",
+  "description": "제품 마케팅 콘텐츠 파이프라인 — AI 프롬프트 생성 · 스크롤 드리븐 사이트 구축 · SEO 3-Mode 분석 · 웹 에셋 생성",
+  "author": {
+    "name": "gyeong"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/gangejsun/easy-peasy-devkit-cc",
+  "keywords": [
+    "claude-code",
+    "claude-code-plugin",
+    "marketing",
+    "seo",
+    "scroll-animation"
+  ],
+  "skills": "./skills/"
+}

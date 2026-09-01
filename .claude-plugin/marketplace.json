@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "EasyPeasy Claude Code Devkit — AI Native Dev Harness (되돌림 축 + 자기검증 훅 + 그래프 계측)",
-    "version": "3.20.0"
+    "version": "3.22.0"
   },
   "plugins": [
     {
       "name": "epcc-devkit",
       "source": "./",
-      "description": "AI Native Dev Harness — 되돌림 가능성 축 워크플로우, 자기검증 훅 5종, 그래프 계측(doctor). 30개 스킬 + 축 가이드 팩(프론트 4 · 백엔드 8), 2축 프리셋(프론트 5 · 백엔드 9).",
-      "version": "3.20.0",
+      "description": "AI Native Dev Harness — 되돌림 가능성 축 워크플로우, 자기검증 훅 5종, 그래프 계측(doctor). 27개 스킬 + 축 가이드 팩(프론트 4 · 백엔드 8), 2축 프리셋(프론트 5 · 백엔드 9).",
+      "version": "3.22.0",
       "author": {
         "name": "gangejsun"
       },
@@ -40,6 +40,33 @@
         "aws",
         "postgresql",
         "drizzle"
+      ]
+    },
+    {
+      "name": "epcc-marketing",
+      "source": "./marketing/",
+      "description": "제품 마케팅 콘텐츠 파이프라인 — AI 프롬프트 생성 → 스크롤 드리븐 사이트 구축 → SEO 3-Mode 분석, 웹 에셋 생성. 마케팅 스킬 5종. 개발 하네스와 독립 버전이다.",
+      "version": "1.0.0",
+      "author": {
+        "name": "gangejsun"
+      },
+      "license": "MIT",
+      "homepage": "https://github.com/gangejsun/easy-peasy-devkit-cc",
+      "repository": "https://github.com/gangejsun/easy-peasy-devkit-cc",
+      "keywords": [
+        "claude-code",
+        "marketing",
+        "seo",
+        "scroll-animation",
+        "og-image"
+      ],
+      "category": "productivity",
+      "tags": [
+        "marketing",
+        "seo",
+        "content",
+        "favicon",
+        "landing-page"
       ]
     }
   ]

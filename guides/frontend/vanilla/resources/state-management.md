@@ -29,6 +29,7 @@
 `@template T`가 이 파일의 전부다. **빠뜨리면 스토어에 담긴 값이 전부 `any`가 되고**,
 `checkJs`가 켜져 있어도 오탈자 하나 잡지 못한다.
 
+<!-- file: src/store/create.js -->
 ```js
 // src/store/create.js
 /**
@@ -55,6 +56,29 @@ export function createStore(initial) {
       listeners.add(fn);
       fn(value);
       return () => listeners.delete(fn);
+    },
+  };
+}
+
+/**
+ * @template T, U
+ * @param {{ get(): T, subscribe(fn: (value: T) => void): () => void }} store
+ * @param {(value: T) => U} selector
+ * @returns {{ get(): U, subscribe(fn: (value: U) => void): () => void }}
+ */
+export function derive(store, selector) {
+  return {
+    get: () => selector(store.get()),
+    subscribe(fn) {
+      let prev = /** @type {U | undefined} */ (undefined);
+      let primed = false;
+      return store.subscribe((value) => {
+        const next = selector(value);
+        if (primed && Object.is(next, prev)) return;
+        prev = next;
+        primed = true;
+        fn(next);
+      });
     },
   };
 }
@@ -104,34 +128,8 @@ return () => offs.forEach((off) => off());
 
 ## 4. 파생 값 (`src/store/create.js`)
 
-파생은 **읽기 전용이다.** `set`을 만들지 않는 것이 설계다 — 만들면 같은 진실이 두 곳에
-생기고, 둘이 갈라진 순간 어느 쪽이 맞는지 판정할 근거가 없다.
-
-```js
-// src/store/create.js
-/**
- * @template T, U
- * @param {{ get(): T, subscribe(fn: (value: T) => void): () => void }} store
- * @param {(value: T) => U} selector
- * @returns {{ get(): U, subscribe(fn: (value: U) => void): () => void }}
- */
-export function derive(store, selector) {
-  return {
-    get: () => selector(store.get()),
-    subscribe(fn) {
-      let prev = /** @type {U | undefined} */ (undefined);
-      let primed = false;
-      return store.subscribe((value) => {
-        const next = selector(value);
-        if (primed && Object.is(next, prev)) return;
-        prev = next;
-        primed = true;
-        fn(next);
-      });
-    },
-  };
-}
-```
+전문은 2절이 싣는다. 파생은 **읽기 전용이다** — `set`을 만들지 않는 것이 설계다. 만들면 같은
+진실이 두 곳에 생기고, 둘이 갈라진 순간 어느 쪽이 맞는지 판정할 근거가 없다.
 
 `derive`의 해지 함수는 **원본 스토어의 해지 함수를 그대로 돌려준다.** 파생을 해지하면
 원본 구독도 함께 풀린다 — 파생마다 별도의 수명을 관리할 필요가 없다.
@@ -156,6 +154,7 @@ const openCount = derive(tasksStore, (s) => s.items.filter((t) => t.status === '
 것이고, 그 대가로 **두 필드가 항상 같은 `set` 안에서 바뀌어야 한다.** 나눠서 두 번 부르면
 그 사이에 구독자가 반쪽 상태를 렌더한다.
 
+<!-- file: src/store/tasks.js -->
 ```js
 // src/store/tasks.js
 import { createStore } from './create.js';
@@ -163,15 +162,7 @@ import { createStore } from './create.js';
 /** @typedef {{ items: Task[], byId: Record<string, Task> }} TasksState */
 
 export const tasksStore = createStore(/** @type {TasksState} */ ({ items: [], byId: {} }));
-```
 
-갱신은 같은 모듈 안의 이름 있는 함수로 감싼다 — 호출처마다 `set`의 형태를 다시 쓰면
-`byId` 갱신을 빠뜨리는 곳이 반드시 하나 생긴다. **이 둘이 스토어의 공개 쓰기 표면이다**:
-컴포넌트도, 이음매의 `fetchTasks`·`createTask` 결과도 여기로 들어온다. `tasksStore.set`을
-모듈 밖에서 직접 부르는 자리가 생기면 그 자리가 다음 결함이다.
-
-```js
-// src/store/tasks.js — 목록 교체와 단건 upsert
 /** @param {Task[]} tasks @returns {void} */
 export const replaceTasks = (tasks) => tasksStore.set({
   items: tasks,
@@ -187,6 +178,11 @@ export const upsertTask = (task) => tasksStore.set((prev) => {
   };
 });
 ```
+
+갱신은 같은 모듈 안의 이름 있는 함수로 감싼다 — 호출처마다 `set`의 형태를 다시 쓰면
+`byId` 갱신을 빠뜨리는 곳이 반드시 하나 생긴다. **이 둘이 스토어의 공개 쓰기 표면이다**:
+컴포넌트도, 이음매의 `fetchTasks`·`createTask` 결과도 여기로 들어온다. `tasksStore.set`을
+모듈 밖에서 직접 부르는 자리가 생기면 그 자리가 다음 결함이다.
 
 - **스토어에 들어가는 것은 이미 파싱된 `Task`다.** 경계 파서(`parseTask`)를 통과하지 않은
   값을 넣으면 `TasksState`의 타입 주장이 그 순간 거짓이 된다
