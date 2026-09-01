@@ -2,7 +2,7 @@
 
 AI Native Dev Harness for Claude Code — 되돌림 가능성 축 워크플로우, 자기검증 훅, 그래프 계측.
 
-![version](https://img.shields.io/badge/version-3.19.0-blue)
+![version](https://img.shields.io/badge/version-3.20.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 ## 무엇인가
@@ -26,9 +26,9 @@ v2에서 훅 11개 중 10개가 경로 계산 오류와 출력 규격 불일치�
 claude plugin install epcc-devkit
 ```
 
-> **주의 — 현재 마켓플레이스 배포본은 v2.0.0입니다.** 위 명령은 `origin/main`에서 받으므로
-> v3 하네스를 쓰려면 릴리스 태그가 올라간 뒤여야 합니다(`claude plugin tag --push` → main 병합).
-> 그 전까지는 저장소를 직접 등록해 설치하세요:
+> **설치 전 확인** — 마켓플레이스가 읽는 것은 **`origin/main`**입니다. 릴리스 태그
+> (`epcc-devkit--v{version}`)와 main 병합이 끝난 버전만 소비자에게 도달합니다.
+> 아직 병합되지 않은 브랜치를 쓰려면 저장소를 직접 등록하세요:
 >
 > ```bash
 > claude plugin marketplace add <이 저장소 경로>
