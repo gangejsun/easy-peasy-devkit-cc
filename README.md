@@ -14,6 +14,10 @@ Claude Code 플러그인입니다. 코드 작업을 **되돌림 가능성**으�
 v2에서 훅 11개 중 10개가 경로 계산 오류와 출력 규격 불일치로 4개월간 조용히 죽어 있었고,
 아무도 그것을 알아채지 못했습니다. v3는 그 실패가 구조적으로 불가능하도록 다시 만들었습니다.
 
+> **각 장치가 왜 그 자리에 그 형태로 있는지**는 [하네스 해부](docs/harness-anatomy.md)에
+> 정리되어 있습니다 — 훅 5종·규칙 3계층·루프 5종·그래프 엔지니어링을 각각이 막는 실패에서
+> 출발해 설명하고, 작업 1건을 끝까지 추적하는 워크스루로 넷을 한 번에 보여줍니다.
+
 ## Quick Start
 
 ### 1. Install the Plugin
@@ -84,7 +88,7 @@ Phase 번호는 순서 표시일 뿐 의무가 아닙니다 — 진입 조건 4�
 | 계층 | 수 | 내용 |
 |------|-----|------|
 | **훅** | 5 스크립트 / 6 등록 | SessionStart · PreToolUse · Stop · PreCompact · SessionEnd · PostToolUse |
-| **규칙** | T0 26줄 + T1 8개 959줄 | T0는 훅이 상시 주입(플러그인 소유). T1은 `workflow-routing`이 **매 세션 상시**, 나머지는 경로 매칭 시 조건부 로드 |
+| **규칙** | T0 36줄 + T1 8개 1,038줄 | T0는 훅이 상시 주입(플러그인 소유). T1은 `workflow-routing`이 **매 세션 상시**, 나머지는 경로 매칭 시 조건부 로드 |
 | **에이전트** | 2 | `epcc-planner`(쓰기 없음) · `epcc-reviewer`(읽기 전용) |
 | **스킬** | 29 | 기획·구현·검증·보안·마케팅 워크플로우 + 스택 가이드 생성기 + 스킬 강화기 |
 | **프리셋** | 2축 5+9 | 프론트엔드: nextjs·react-vite·vue·vanilla·none / 백엔드: supabase·firebase·aws-serverless·aws-container·gcp-serverless·fastapi·node-api·node-nest·none |
@@ -93,7 +97,7 @@ Phase 번호는 순서 표시일 뿐 의무가 아닙니다 — 진입 조건 4�
 
 | 훅 | 이벤트 | 역할 |
 |----|--------|------|
-| `session-brief` | SessionStart | 운영 계약 주입 + **T1 카드 누락분 자동 설치** + HEAD·미커밋·열린 작업 + **훅 생존 현황** |
+| `session-brief` | SessionStart | 운영 규칙 주입 + **T1 카드 누락분 자동 설치** + HEAD·미커밋·열린 작업 + **훅 생존 현황** |
 | `security-check` | PreToolUse | 시크릿 하드코딩 차단 (exit 2) |
 | `build-gate` | Stop | 소스 수정 후 빌드/테스트 미실행 시 차단 |
 | `handoff` | PreCompact · SessionEnd | 컴팩트·종료 시 작업 상태 보존 |
@@ -176,8 +180,8 @@ bash scripts/doctor.sh --all        # 전체
 프리셋은 백엔드를 고정하지 않습니다. `/epcc-init`이 백엔드 유형(BaaS·클라우드 자체
 구축·프레임워크 내장)·클라우드·DB(PostgreSQL·MongoDB 등)·데이터 액세스·인증을 확인하고,
 확정된 조합에 맞는 `frontend-guide`·`backend-guide` 스킬을 프로젝트 `.claude/skills/`에
-생성합니다 (`stack-guide-generator`). 사전 제작본이 있는 두 조합(`nextjs`×`supabase`,
-`react-vite`×`aws-container`)만 플러그인 원본을 그대로 씁니다. 사전 제작본을 쓸지
+생성합니다 (`stack-guide-generator`). 사전 제작본이 있는 세 조합(`nextjs`×`supabase`,
+`react-vite`×`aws-container`, `vue`×`node-api`)만 플러그인 원본을 그대로 씁니다. 사전 제작본을 쓸지
 생성할지는 **시스템이 조합을 보고 정하며 묻지 않습니다.** 스택이 바뀌면
 `/stack-guide-generator`로 재생성합니다.
 
@@ -187,6 +191,7 @@ bash scripts/doctor.sh --all        # 전체
 |--------|-------|--------|
 | `nextjs` × `supabase` | Next.js 15 + Supabase + Tailwind + shadcn/ui | 사전 제작본 사용 |
 | `react-vite` × `aws-container` | React+Vite SPA + ECS/Fargate + RDS PostgreSQL + Drizzle | 사전 제작본 사용 |
+| `vue` × `node-api` | Vue 3 SPA + Express 5 + PostgreSQL + Prisma | 사전 제작본 사용 |
 | `none` × `none` | Custom | 가이드 없음 (Core만) |
 | 그 외 모든 조합 | 두 축의 조합 | 가이드 **생성** (검증 루프 포함) |
 
@@ -222,7 +227,7 @@ mkdir -p .claude/skills/my-brainstorming
 | 항목 | v2 | v3 |
 |------|-----|-----|
 | 훅 | 11개 (Stop의 `decision`/`reason` 등 출력 규격 위반으로 다수가 무효) | **5개, 전부 자기검증** |
-| 규칙 | generator가 `.claude/rules/`에 복사 (무조건 로드 3장 + 조건부 11장) | **T0 26줄 + T1 959줄, `install-rules.sh`로 설치 실증. 상시/조건부 구분 유지** |
+| 규칙 | generator가 `.claude/rules/`에 복사 (무조건 로드 3장 + 조건부 11장) | **T0 36줄 + T1 1,038줄, `install-rules.sh`로 설치 실증. 상시/조건부 구분 유지** |
 | 검증 강도 | S/M/L 규모 판단 | **되돌림 가능성 축 (경로 판정)** |
 | Phase | P0~P6 (`.claude/rules/task-workflow.md` 상시 로드) | **P0~P6 유지** — `workflow-routing.md`로 이관, 상시 로드 성질 보존 |
 | 에이전트 | frontmatter 없음, 전체 도구 접근 | **계약 완비 + 최소 권한** |
@@ -249,6 +254,7 @@ PostToolUse 추적기 3종
 
 ## Next Steps
 
+- [하네스 해부](docs/harness-anatomy.md) — 훅·규칙 3계층·루프·그래프가 **왜 그렇게 구현됐는가**
 - [Configuration Reference](docs/configuration.md) — `epcc.config.json` 전체 옵션
 - [Presets Guide](docs/presets.md) — 프리셋 상세
 

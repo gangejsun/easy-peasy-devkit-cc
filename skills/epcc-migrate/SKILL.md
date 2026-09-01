@@ -39,7 +39,7 @@ grep -c 'hooks' .claude/settings.json 2>/dev/null
 ### 죽은 훅 — `.claude/hooks/`
 
 아래는 v2에서 **경로 계산 오류로 작동하지 않았거나** 출력 규격이 무효였던 훅입니다.
-v3의 4개 훅이 플러그인에서 자동 제공되므로 프로젝트 사본은 제거합니다.
+v3의 5개 훅이 플러그인에서 자동 제공되므로 프로젝트 사본은 제거합니다.
 
 | 파일 | 제거 사유 |
 | --- | --- |
@@ -65,7 +65,7 @@ v3의 4개 훅이 플러그인에서 자동 제공되므로 프로젝트 사본�
 | `modification-guardrails.md` | → `code-change.md` + `harness-change.md`로 분할 |
 | `self-improvement.md` | → `lessons.md` (Act 루프는 `doctor --lessons`가 수행) |
 | `agent-governance.md` | → 삭제. 규범이 에이전트 프롬프트로 이관됨 |
-| `decision-autopilot.md` · `-detail.md` | → 삭제. 핵심만 T0 운영 계약으로 축약 |
+| `decision-autopilot.md` · `-detail.md` | → 삭제. 핵심만 T0 운영 규칙으로 축약 |
 | `claude-md-authoring.md` | → 삭제 |
 | `execution-transparency.md` | → 삭제 |
 
@@ -102,7 +102,7 @@ ls -1 .claude/rules/
 
 v2 CLAUDE.md는 삭제된 파일을 참조하고 있을 가능성이 높습니다.
 
-1. `.claude/rules/task-workflow.md` 참조 → 제거 (운영 계약이 세션 시작 시 자동 주입됨)
+1. `.claude/rules/task-workflow.md` 참조 → 제거 (운영 규칙이 세션 시작 시 자동 주입됨)
 2. **P0~P6 Phase 테이블은 유지**하되, `templates/CLAUDE.md.hbs`의 「작업 라우팅」 섹션과
    대조해 갱신한다 — 호출 대상이 `planning-agent`/`review-agent`에서
    `epcc-planner`/`epcc-reviewer`로 바뀌었고, P5의 강도는 되돌림 클래스가 정한다

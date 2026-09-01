@@ -2,7 +2,7 @@
 # scripts/session-brief.sh — SessionStart
 #
 # 두 가지를 한다:
-#   1. T0 운영 계약 출력 (플러그인 소유 → 자동 갱신, 프로젝트가 못 고침)
+#   1. T0 운영 규칙 출력 (플러그인 소유 → 자동 갱신, 프로젝트가 못 고침)
 #   2. 세션 브리핑 — HEAD, 미커밋, 열린 워크스페이스, **훅 생존 현황**
 #
 # v2의 session-start-validator를 대체한다. 그 훅은 루트를 잘못 계산해
@@ -18,13 +18,13 @@ epcc_begin "session-brief" "$INPUT"
 
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
-# ── 1. T0 운영 계약 ──────────────────────────────────────────────────
+# ── 1. T0 운영 규칙 ──────────────────────────────────────────────────
 CONTRACT="$PLUGIN_ROOT/templates/operating-contract.md"
 if [ -f "$CONTRACT" ]; then
   # HTML 주석 블록 전체를 제거한다 ('^<!--'만 지우면 여러 줄 주석의 본문이 샌다)
   sed '/<!--/,/-->/d' "$CONTRACT" | sed '/./,$!d'
 else
-  printf '[epcc] 경고: 운영 계약 파일 없음 (%s)\n' "$CONTRACT"
+  printf '[epcc] 경고: 운영 규칙 파일 없음 (%s)\n' "$CONTRACT"
 fi
 
 # ── 2. 세션 브리핑 ───────────────────────────────────────────────────

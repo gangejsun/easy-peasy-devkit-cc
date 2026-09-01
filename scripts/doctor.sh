@@ -81,8 +81,38 @@ _fx_static_tree() {
     > "$T/skills/sample/SKILL.md"
 
   # 카드 표는 rules/ 실물 수(2)와 맞춘다
-  printf -- '---\nname: epcc-init\ndescription: x\n---\ninstall-rules\n\n| 파일 | 로드 조건 |\n| --- | --- |\n| `workflow-routing.md` | 상시 |\n| `code-change.md` | src |\n' \
+  printf -- '---\nname: epcc-init\ndescription: x\n---\ninstall-rules\n\n| 파일 | 로드 조건 |\n| --- | --- |\n| `workflow-routing.md` | 상시 |\n| `code-change.md` | src |\n\n프리셋: alpha · beta · none\n' \
     > "$T/skills/epcc-init/SKILL.md"
+
+  # 이름 목록 대조용 최소 자산. 프리셋 2축 + 사전 제작 이음매 1쌍이 문서에 다 실린 상태가
+  # 기준선이다. seam.json은 두지 않는다 — 두면 "이음매의 팩 참조 실재" 검사가 없는 팩을
+  # 가리켜 기준선이 빨개진다. _seams_in은 디렉토리명만 보므로 이것으로 충분하다.
+  mkdir -p "$T/presets/frontend" "$T/presets/backend" "$T/guides/seams/alpha+beta" \
+           "$T/docs" "$T/skills/stack-guide-generator/assets" || return 1
+  printf -- '{"axis":"frontend","name":"alpha"}\n' > "$T/presets/frontend/alpha.json"
+  printf -- '{"axis":"frontend","name":"none"}\n'  > "$T/presets/frontend/none.json"
+  printf -- '{"axis":"backend","name":"beta"}\n'   > "$T/presets/backend/beta.json"
+  printf -- '{"axis":"backend","name":"none"}\n'   > "$T/presets/backend/none.json"
+  printf -- '# fx\n\n프리셋: alpha · beta · none\n\n사전 제작본: `alpha` × `beta`\n' \
+    > "$T/README.md"
+  printf -- '# 프리셋\n\nalpha · beta · none\n' > "$T/docs/presets.md"
+  printf -- '# Getting Started\n\nalpha / beta / none\n\nShips `alpha` × `beta`.\n' \
+    > "$T/docs/getting-started.md"
+  printf -- '# 규격서\n\n사전 제작본은 현재 1쌍이다(`alpha`×`beta`).\n' \
+    > "$T/skills/stack-guide-generator/assets/guide-skeleton.md"
+
+  # 선언↔실물 대조 대상 2곳. 이 트리의 **실물**과 맞는 수를 적어둔 것이 기준선이다
+  # (훅 1 · 규칙 2 · 스킬 3 · 노드 2 · 엣지 0 · 프리셋 2+2 · 팩 0+0).
+  # 훅 수의 실물은 hooks.json에서 나오므로 그 파일도 있어야 대조가 실제로 돈다 —
+  # 없으면 '판정 불가'로 건너뛰고, 건너뛴 검사는 증명된 검사가 아니다.
+  mkdir -p "$T/hooks" "$T/.claude-plugin" || return 1
+  printf -- '{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"bash ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh"}]}]}}\n' \
+    > "$T/hooks/hooks.json"
+  printf -- '#!/bin/bash\nexit 0\n' > "$T/scripts/x.sh"
+  printf -- '{"plugins":[{"name":"fx","description":"자기검증 훅 1종. 3개 스킬 + 축 가이드 팩(프론트 0 · 백엔드 0), 2축 프리셋(프론트 2 · 백엔드 2)."}]}\n' \
+    > "$T/.claude-plugin/marketplace.json"
+  printf -- '# 해부\n\n실물 대조 — 훅 1 · T1 규칙 카드 2 · 스킬 3 · 그래프 노드 2 · 엣지 0\n' \
+    > "$T/docs/harness-anatomy.md"
 
   # 그래프: 스킬 2개를 노드로 선언 (manual로 인바운드 면제)
   cat > "$T/workflow.graph.json" <<'FXG'
@@ -358,17 +388,30 @@ run_fast() {
     ok "Phase 표 정본 단일 (rules/workflow-routing.md)"
   fi
 
-  # T0 예산 — operating-contract.md 주석이 약속한 40줄 상한을 기계가 지킨다
+  # T0 예산 — operating-contract.md 주석이 약속한 40줄 상한을 기계가 지킨다.
+  # 초과는 「삭제하라」가 아니라 분기점이다 — 선택지와 선택 간 실질 차이를 제시하고 사람이 고른다.
   local t0="templates/operating-contract.md"
   if [ -f "$t0" ]; then
     local t0n; t0n=$(num "$(wc -l < "$t0")")
     if [ "$t0n" -le 40 ]; then
-      ok "T0 운영 계약 ${t0n}/40줄"
+      ok "T0 운영 규칙 ${t0n}/40줄"
     else
-      bad "T0 운영 계약 ${t0n}줄 — 예산 40줄 초과" "매 세션 상시 주입 비용. 줄이거나 T1 카드로 내리세요"
+      bad "T0 운영 규칙 ${t0n}줄 — 예산 40줄 초과" "$(printf '규범을 지우지 마세요. 아래 셋 중 하나를 고릅니다 — 잃는 것이 서로 다릅니다.\n      1) T1 카드로 내린다  — 도달은 유지, 상시성 상실 (그 경로를 만질 때만 뜬다)\n      2) 더 짧게 고쳐 쓴다  — 상시성 유지, 정보가 깎일 위험\n      3) 예산을 올린다      — 둘 다 유지, 매 세션 비용이 는다 (이 검사의 40을 함께 올린다)')"
+    fi
+
+    # T0에서 규범 절이 사라지면 조용히 전파된다 — 줄 수만 보는 검사는 삭제를 오히려 통과시킨다.
+    # 이 절들을 「정본」이라 선언하고 인용하는 곳: epcc-planner · reversibility · harness-anatomy(2)
+    local t0miss=""
+    for _a in '되돌림 분류' '작업 진입' '최소 수정' '검증' '분기점' '언어'; do
+      grep -qF -- "**${_a}**" "$t0" 2>/dev/null || t0miss="$t0miss ${_a}"
+    done
+    if [ -n "$t0miss" ]; then
+      bad "T0에서 규범 절이 사라졌다:$t0miss" "이 절을 정본이라 선언하고 인용하는 곳이 있습니다 — 지우려면 인용처부터 함께 고치세요"
+    else
+      ok "T0 규범 절 6개 실재"
     fi
   else
-    bad "T0 운영 계약 파일 없음: $t0"
+    bad "T0 운영 규칙 파일 없음: $t0"
   fi
 
   # 규칙 카드 버전 스탬프 — 없으면 install-rules가 0.0.0으로 읽어 갱신을 영영 건너뛴다
@@ -591,13 +634,35 @@ run_fast() {
     bad "$4: $1 주장 $2 ≠ 실물 $3"; wrong=$((wrong+1))
   }
 
+  # 실물은 한 번만 센다. 대조하는 문서가 셋(README · marketplace.json · 해부 문서)으로
+  # 늘었는데 각자 세면 **검사 자신이 사본을 셋 갖는 꼴**이 된다.
+  # 판정 불가(jq 부재·파일 부재)는 빈 문자열로 두고 그 항목만 건너뛴다 — 3상태 규율.
+  local real_sk real_ru real_fe real_be
+  local real_nd="" real_ed="" real_hk=""
+  real_sk=$(num "$(find skills -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')")
+  real_ru=$(num "$({ ls -1 rules/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')")
+  real_fe=$(num "$({ ls -1 presets/frontend/*.json 2>/dev/null || true; } | wc -l | tr -d ' ')")
+  real_be=$(num "$({ ls -1 presets/backend/*.json 2>/dev/null || true; } | wc -l | tr -d ' ')")
+  # 팩 수만은 **부재를 0으로 접지 않는다.** --consumer의 캐시 복사는 guides/를 제외하므로
+  # 거기서 0으로 세면 정상 트리를 오탐한다 — 없는 것과 0개인 것은 다르다 (3상태 규율).
+  local real_fp="" real_bp=""
+  if [ -d guides/frontend ] && [ -d guides/backend ]; then
+    real_fp=$(num "$(find guides/frontend -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')")
+    real_bp=$(num "$(find guides/backend -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')")
+  fi
+  if command -v jq >/dev/null 2>&1 && [ -f workflow.graph.json ]; then
+    real_nd=$(num "$(jq -r '.nodes|length' workflow.graph.json 2>/dev/null)")
+    real_ed=$(num "$(jq -r '.edges|length' workflow.graph.json 2>/dev/null)")
+  fi
+  # 훅 수의 분모는 **고유 스크립트 수**다. 등록 엔트리 수를 쓰면 handoff.sh 하나가 두
+  # 이벤트에 걸린 것 때문에 영원히 미달이 된다 — session-brief·--usage와 같은 식을 쓴다.
+  if [ -f hooks/hooks.json ] && command -v jq >/dev/null 2>&1; then
+    real_hk=$(num "$(jq -r '[.hooks|to_entries[].value[]?.hooks[]?.command
+                    | capture("(?<f>[a-z0-9-]+)\\.sh").f] | unique | length' hooks/hooks.json 2>/dev/null)")
+  fi
+
   if [ -f README.md ]; then
-    local real_sk real_ru real_nd real_ed
-    real_sk=$(num "$(find skills -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')")
-    real_ru=$(num "$({ ls -1 rules/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')")
-    if command -v jq >/dev/null 2>&1 && [ -f workflow.graph.json ]; then
-      real_nd=$(num "$(jq -r '.nodes|length' workflow.graph.json 2>/dev/null)")
-      real_ed=$(num "$(jq -r '.edges|length' workflow.graph.json 2>/dev/null)")
+    if [ -n "$real_nd" ]; then
       _claim "그래프 노드" "$(grep -oE '노드 [0-9]+' README.md | head -1 | sed -E 's/[^0-9]*([0-9]+)/\1/')" "$real_nd" "README.md"
       _claim "그래프 엣지" "$(grep -oE '엣지 [0-9]+' README.md | head -1 | sed -E 's/[^0-9]*([0-9]+)/\1/')" "$real_ed" "README.md"
     fi
@@ -606,13 +671,109 @@ run_fast() {
     # 프리셋 축 개수. vue 축이 프리셋·팩·이음매·init 메뉴에 실재하는데 소비자 문서 3곳에
     # 한 번도 안 나왔고, README는 프론트를 4개라 주장했다. 검사가 같은 표의 옆 행에서
     # 멈춰 있었다 — 축을 늘리는 경로와 문서를 잇는 자리가 여기다 (평가 v5 · E-15).
-    local real_fe real_be
-    real_fe=$(num "$({ ls -1 presets/frontend/*.json 2>/dev/null || true; } | wc -l | tr -d ' ')")
-    real_be=$(num "$({ ls -1 presets/backend/*.json 2>/dev/null || true; } | wc -l | tr -d ' ')")
     _claim "프론트 프리셋 수" "$(grep -oE '2축 [0-9]+\+[0-9]+' README.md | head -1 | sed -E 's/2축 ([0-9]+)\+([0-9]+)/\1/')" "$real_fe" "README.md"
     _claim "백엔드 프리셋 수" "$(grep -oE '2축 [0-9]+\+[0-9]+' README.md | head -1 | sed -E 's/2축 ([0-9]+)\+([0-9]+)/\2/')" "$real_be" "README.md"
   fi
+
+  # marketplace.json은 **설치 전에** 소비자가 읽는 유일한 설명이다. 그런데 대조가
+  # README에서 멈춰 있는 동안 여기는 "훅 4종 · 백엔드 팩 7 · 백엔드 프리셋 8"에 멈춰
+  # 있었다(실물 5 · 8 · 9). 낡은 수가 가장 오래 사는 곳이 가장 늦게 검사받고 있었다.
+  local MP=".claude-plugin/marketplace.json"
+  if [ -f "$MP" ]; then
+    local mp_pack mp_pre
+    mp_pack=$(grep -oE '팩\(프론트 [0-9]+ · 백엔드 [0-9]+\)' "$MP" 2>/dev/null | head -1)
+    mp_pre=$(grep -oE '프리셋\(프론트 [0-9]+ · 백엔드 [0-9]+\)' "$MP" 2>/dev/null | head -1)
+    [ -n "$real_hk" ] && _claim "훅 수" \
+      "$(grep -oE '훅 [0-9]+종' "$MP" 2>/dev/null | head -1 | grep -oE '[0-9]+')" "$real_hk" "$MP"
+    _claim "스킬 수" "$(grep -oE '[0-9]+개 스킬' "$MP" 2>/dev/null | head -1 | grep -oE '[0-9]+')" "$real_sk" "$MP"
+    if [ -n "$real_fp" ]; then
+      _claim "프론트 팩 수" "$(printf '%s' "$mp_pack" | grep -oE '[0-9]+' | head -1)" "$real_fp" "$MP"
+      _claim "백엔드 팩 수" "$(printf '%s' "$mp_pack" | grep -oE '[0-9]+' | tail -1)" "$real_bp" "$MP"
+    fi
+    _claim "프론트 프리셋 수" "$(printf '%s' "$mp_pre"  | grep -oE '[0-9]+' | head -1)" "$real_fe" "$MP"
+    _claim "백엔드 프리셋 수" "$(printf '%s' "$mp_pre"  | grep -oE '[0-9]+' | tail -1)" "$real_be" "$MP"
+  fi
+
+  # 해부 문서는 하네스의 수를 본문에 적는다 — 즉 **이 저장소가 스스로 만든 사본**이다.
+  # 사본을 만들었으면 대조 경로도 같이 만든다. 형식이 깨지면 침묵하지 않고 경고한다:
+  # 조용히 건너뛰면 "검사받는 줄 알았는데 안 받던" 상태가 되고, 그게 이 검사의 원래 병이다.
+  local AN="docs/harness-anatomy.md"
+  if [ -f "$AN" ]; then
+    local anl
+    anl=$(grep -m1 -oE '훅 [0-9]+ · T1 규칙 카드 [0-9]+ · 스킬 [0-9]+ · 그래프 노드 [0-9]+ · 엣지 [0-9]+' "$AN" 2>/dev/null)
+    if [ -z "$anl" ]; then
+      warn "$AN에 실물 대조 줄 없음" "형식: '훅 N · T1 규칙 카드 N · 스킬 N · 그래프 노드 N · 엣지 N'"
+    else
+      # 캡처 그룹으로 뽑는다. `grep -oE '[0-9]+'`로 훑으면 **라벨 안의 숫자**가 섞인다 —
+      # "T1"의 1이 값으로 들어와 다섯 자리가 한 칸씩 밀렸다 (이 검사가 자기 자신에게서 잡았다).
+      local a_hk a_ru a_sk a_nd a_ed
+      read -r a_hk a_ru a_sk a_nd a_ed <<< "$(printf '%s' "$anl" \
+        | sed -E 's/^훅 ([0-9]+) · T1 규칙 카드 ([0-9]+) · 스킬 ([0-9]+) · 그래프 노드 ([0-9]+) · 엣지 ([0-9]+)$/\1 \2 \3 \4 \5/')"
+      [ -n "$real_hk" ] && _claim "훅 수" "$a_hk" "$real_hk" "$AN"
+      _claim "T1 카드 수" "$a_ru" "$real_ru" "$AN"
+      _claim "스킬 수" "$a_sk" "$real_sk" "$AN"
+      if [ -n "$real_nd" ]; then
+        _claim "그래프 노드" "$a_nd" "$real_nd" "$AN"
+        _claim "그래프 엣지" "$a_ed" "$real_ed" "$AN"
+      fi
+    fi
+  fi
   [ "$wrong" -eq 0 ] && [ "$claims" -gt 0 ] && ok "문서 수치 주장 ${claims}건 실물과 일치"
+
+  # ── 이름 목록 대조 ──
+  # 위 _claim은 **수**만 본다. 수가 맞아도 이름이 안 실리는 부류는 못 잡는다.
+  # 같은 실패가 두 번 관측됐다: ① vue 축이 프리셋·팩·init 메뉴에 실재하는데 소비자 문서
+  # 3곳에 없었다(평가 v5 · E-15 — 그때 수 대조만 넣었다) ② 그 뒤 사전 제작 이음매
+  # 3번째(vue+node-api)가 출하됐는데 또 같은 3곳에 안 실렸다.
+  # 열거를 담는 파일을 하드코딩하는 것이 이 검사의 의미다 — 그 파일들이 곧 열거 지점이다.
+  # 파일 부재는 차단하지 않는다 (harness-change 「차단 장치는 3상태다」 — 판정 불가).
+  local nm_bad=0 nm_chk=0
+
+  _names_in() {  # $1 문서  $2 라벨  $3 이름들(공백 구분)
+    local doc="$1" label="$2" names="$3" n miss=""
+    [ -f "$doc" ] || return 0
+    [ -n "$names" ] || return 0
+    for n in $names; do
+      grep -qF -- "$n" "$doc" || miss="$miss $n"
+    done
+    nm_chk=$((nm_chk+1))
+    [ -z "$miss" ] && return 0
+    bad "$doc: $label 누락 —$miss" "축을 늘린 경로가 이 문서를 지나지 않았다"
+    nm_bad=$((nm_bad+1)); return 0
+  }
+
+  # 이음매는 디렉토리명이 `vue+node-api`인데 문서에는 `vue` × `node-api`로 적힌다.
+  # 완전일치를 요구하면 정상 문서를 FAIL시킨다. 그렇다고 `fe.*be`로 느슨하게 두면
+  # **프리셋 나열 줄이 우연히 충족시킨다** — 한 줄에 프론트 목록과 백엔드 목록이 같이
+  # 있어서 `vue.*node-api`가 걸린다(실측: README:43·getting-started:29에서 미탐).
+  # 그래서 **두 이름이 구분자 하나로 인접**한 것만 인정한다.
+  _seams_in() {  # $1 문서  $2 이음매 디렉토리명들(공백 구분)
+    local doc="$1" seams="$2" s fe be miss=""
+    [ -f "$doc" ] || return 0
+    [ -n "$seams" ] || return 0
+    for s in $seams; do
+      fe=${s%%+*}; be=${s##*+}
+      grep -qE -- "$fe\`?[[:space:]]*(×|\+)[[:space:]]*\`?$be" "$doc" || miss="$miss $s"
+    done
+    nm_chk=$((nm_chk+1))
+    [ -z "$miss" ] && return 0
+    bad "$doc: 사전 제작 이음매 누락 —$miss" "이 조합은 출하되는데 문서가 모른다"
+    nm_bad=$((nm_bad+1)); return 0
+  }
+
+  local pnames snames doc
+  pnames=$({ ls -1 presets/frontend/*.json presets/backend/*.json 2>/dev/null || true; } \
+           | sed -E 's|.*/||; s|\.json$||' | sort -u | tr '\n' ' ')
+  snames=$({ ls -1d guides/seams/*/ 2>/dev/null || true; } \
+           | sed -E 's|.*/([^/]+)/$|\1|' | sort -u | tr '\n' ' ')
+
+  for doc in README.md docs/presets.md docs/getting-started.md skills/epcc-init/SKILL.md; do
+    _names_in "$doc" "프리셋 이름" "$pnames"
+  done
+  for doc in README.md docs/getting-started.md skills/stack-guide-generator/assets/guide-skeleton.md; do
+    _seams_in "$doc" "$snames"
+  done
+  [ "$nm_bad" -eq 0 ] && [ "$nm_chk" -gt 0 ] && ok "문서 이름 목록 ${nm_chk}건 실물과 일치 (프리셋·이음매)"
 
   # 고아 자산 — templates/ 중 아무도 참조하지 않는 파일.
   # CLAUDE.md.hbs가 그 상태였다 (epcc-init이 인라인 사본을 쓰고 있어 아무도 안 읽었다).
@@ -832,7 +993,8 @@ run_self_test() {
       local msg
       for msg in "상시 로드 규칙 카드 없음" "치환되지 않는 스크립트 경로 표기" \
                  "Phase 표 재출현" "카드 표 .* ≠" "그래프 미선언 스킬" \
-                 "미선언" "읽는 노드 없는 저장소" "미배포"; do
+                 "미선언" "읽는 노드 없는 저장소" "미배포" \
+                 "프리셋 이름 누락" "사전 제작 이음매 누락"; do
         printf '%s' "$base_out" | grep -q "$msg" \
           && bad "기준선 오탐: '$msg'" "결함이 없는데 검출됐다 — 검사가 못 쓰게 된다"
       done
@@ -861,6 +1023,23 @@ run_self_test() {
 
       # 버전은 올렸는데 릴리스 태그가 없는 상태 (E-08·E-12). git 저장소일 때만 판정하므로
       # 픽스처도 git init을 해야 한다 — 하지 않으면 '검출됨'이 아니라 '검사가 안 돎'이다.
+      # 프리셋을 늘리고 소비자 문서에 안 적은 상태 — vue 축이 실제로 그랬다.
+      _fx_static_case "$sfx" preset-unlisted 'presets/backend/gamma.json' 'gamma' \
+        "프리셋 이름 누락" 'printf -- "{\"axis\":\"backend\",\"name\":\"gamma\"}\n" > "$T/presets/backend/gamma.json"'
+
+      # 이음매를 출하하고 문서에 안 적은 상태 — vue+node-api가 실제로 그랬다.
+      _fx_static_case "$sfx" seam-unlisted 'guides/seams/alpha+gamma/contract.md' 'alpha' \
+        "사전 제작 이음매 누락" 'mkdir -p "$T/guides/seams/alpha+gamma" && printf -- "# alpha x gamma\n" > "$T/guides/seams/alpha+gamma/contract.md"'
+
+      # 문서가 실물과 다른 수를 주장하는 상태. 대조 대상을 README에서 둘 더 늘렸으므로
+      # **늘린 경로 각각이** 실제로 잡는지 본다 — 한쪽 grep이 틀리면 주장이 빈 문자열이 되어
+      # 조용히 건너뛰고, 그것은 통과와 구분되지 않는다.
+      _fx_static_case "$sfx" anatomy-drift 'docs/harness-anatomy.md' '스킬 9' \
+        "스킬 수 주장 9 ≠ 실물 3" 'sed "s/스킬 3/스킬 9/" "$T/docs/harness-anatomy.md" > "$T/a.tmp" && mv "$T/a.tmp" "$T/docs/harness-anatomy.md"'
+
+      _fx_static_case "$sfx" marketplace-drift '.claude-plugin/marketplace.json' '훅 9종' \
+        "훅 수 주장 9 ≠ 실물 1" 'sed "s/훅 1종/훅 9종/" "$T/.claude-plugin/marketplace.json" > "$T/m.tmp" && mv "$T/m.tmp" "$T/.claude-plugin/marketplace.json"'
+
       _fx_static_case "$sfx" release-untagged 'package.json' '"version"' \
         "미배포" 'mkdir -p "$T/.claude-plugin" && printf "{\"version\":\"9.9.9\"}\n" > "$T/package.json" && printf "{\"name\":\"fx-plugin\",\"version\":\"9.9.9\"}\n" > "$T/.claude-plugin/plugin.json" && (cd "$T" && git init -q .)'
     fi
@@ -1201,7 +1380,7 @@ run_usage() {
     c_desc=$((c_desc + $(num "$(awk '/^---$/{n++; next} n==1 && /^(name|description):/{p=1} n==1 && /^[a-z_]+:/ && !/^(name|description):/{p=0} n==1 && p{print} n>=2{exit}' "$sfile" | wc -c | tr -d ' ')")))
   done
   c_sum=$((c_t0 + c_route + c_desc))
-  printf "    %-32s %8s자\n" "T0 운영 계약" "$c_t0"
+  printf "    %-32s %8s자\n" "T0 운영 규칙" "$c_t0"
   printf "    %-32s %8s자\n" "workflow-routing (상시 로드)" "$c_route"
   printf "    %-32s %8s자\n" "스킬 description 총합" "$c_desc"
   printf "    %-32s %8s자\n" "── 상주 합계" "$c_sum"

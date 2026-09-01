@@ -11,14 +11,14 @@
 | 언제 | 읽을 것 |
 | --- | --- |
 | 훅·규칙·스킬·에이전트·스크립트를 건드릴 때 | `rules/harness-change.md` |
-| 모든 작업의 기본 계약 | `templates/operating-contract.md` |
+| 모든 작업의 기본 규칙 | `templates/operating-contract.md` |
 | 코드 변경 일반 | `rules/code-change.md` |
 | 되돌림 클래스 판정과 5단계 | `rules/reversibility.md` |
 | 결함·교훈 기록 | `rules/lessons.md` |
 
 ## 이 저장소 고유 사실
 
-**버전은 4곳을 동시에 올린다** — `plugin.json` · `package.json` · `README.md` 배지 · `marketplace.json`(2군데). doctor가 대조한다.
+**버전은 4곳을 동시에 올린다** — `plugin.json` · `package.json` · `README.md` 배지 · `marketplace.json`(2군데). doctor가 대조한다. 4곳은 전부 로컬 파일이라 **거기서 끝나면 소비자는 아무것도 받지 못한다** — 커밋 → `claude plugin validate .` → `claude plugin tag --push` → main 병합까지가 인상이다(`rules/harness-change.md`의 「릴리스 도달」).
 
 **스크립트 배치** — 스킬 전용이면 `skills/<스킬>/scripts/`에 두고 **`${CLAUDE_SKILL_DIR}`**로 호출한다 (자작 표기는 치환되지 않아 소비자에서 실패 — doctor가 검출).
 루트 `scripts/`는 훅·doctor·**설치기**(`install-rules.sh`·`install-guide.sh`) 전용이다. 여기

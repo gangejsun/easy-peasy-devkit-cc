@@ -10,7 +10,7 @@ paths:
   - "docs/lessons.md"
   - "docs/lessons-archive.md"
 ---
-<!-- epcc-rule-version: 3.15.0 -->
+<!-- epcc-rule-version: 3.18.0 -->
 <!-- paths는 "교훈 파일을 편집할 때"가 아니라 "지적이 나올 만한 작업을 할 때" 걸려야 한다.
      lessons.md만 걸어두면 이미 기록하러 간 뒤에야 로드된다 — 트리거가 뒤집힌다. -->
 
@@ -35,7 +35,12 @@ paths:
 집계가 무의미해진다.
 
 예시: `validation` `tdd` `architecture` `security` `naming` `scope`
-`workflow` `skill` `rule` `agent` `infra` `tooling`
+`workflow` `skill` `rule` `agent` `infra` `tooling` `false-positive`
+
+**`false-positive`는 승격이 아니라 수축이 답이다.** 차단 장치가 잘못 걸린 사건을
+같은 형식으로 기록하되, 같은 장치에서 2건 이상이면 규칙을 만드는 게 아니라
+**조건을 좁히거나 그 장치를 폐기한다.** 오탐은 사용자가 훅을 꺼버리게 만들고,
+꺼진 훅의 차단력은 0이다.
 
 ## 반복 요청
 

@@ -8,7 +8,7 @@
       "path": "scripts/session-brief.sh",
       "event": "SessionStart",
       "entry": true,
-      "emits": "T0 운영 계약 + 세션 브리핑 + 훅 생존 현황",
+      "emits": "T0 운영 규칙 + 세션 브리핑 + 훅 생존 현황",
       "on_error": [
         "user-report"
       ]
@@ -445,7 +445,7 @@
     {
       "from": "session-start",
       "to": "doctor",
-      "cond": "훅 생존 N/4 미달 보고",
+      "cond": "훅 생존 N/M 미달 보고",
       "instrumented": true
     },
     {
