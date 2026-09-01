@@ -100,10 +100,20 @@ CLS
   command -v tsc >/dev/null 2>&1 && tsc="tsc"
   [ -z "$tsc" ] && [ -x "$OUT/node_modules/.bin/tsc" ] && tsc="$OUT/node_modules/.bin/tsc"
 
-  # 완전 파일만 실제 트리로 옮긴다 (조각은 타입체크 대상이 아니다)
-  local dst
+  # 완전 파일만 실제 트리로 옮긴다 (조각은 타입체크 대상이 아니다).
+  # **strip-only 모드가 거부한 단위도 옮긴다.** 그 UNSUP은 「이 팩이 틀렸다」가 아니라
+  # 「Node의 타입 스트리퍼가 못 지운다」는 뜻이고(enum · namespace · 파라미터 프로퍼티),
+  # 위 skip 문구 자체가 "정상 TypeScript일 수 있다 — tsc가 있는 환경에서만 판정된다"고
+  # 적고 있다. 그런데 옮기지 않으면 tsc가 있어도 **영영 판정되지 않는다** —
+  # NestJS 팩에서는 생성자 주입이 곧 파라미터 프로퍼티라 서비스·컨트롤러가 통째로
+  # 타입체크 밖으로 빠졌다 (node-nest 실측 — 미탐). 형식 미지원(JSX·yaml 등)은 그대로 뺀다.
+  local dst promoted=0
   while IFS=$'\t' read -r v u msg; do
-    [ "$v" = "FILE" ] || continue
+    case "$v" in
+      FILE) ;;
+      UNSUP) case "$msg" in *"not supported in strip-only mode"*) promoted=$((promoted+1)) ;; *) continue ;; esac ;;
+      *) continue ;;
+    esac
     dst=$(awk -F'\t' -v u="$u" '$1==u {print $2}' "$OUT/.units.tsv")
     [ -n "$dst" ] || continue
     mkdir -p "$OUT/$(dirname "$dst")" 2>/dev/null
@@ -122,8 +132,23 @@ CLS
   # `types: []`는 **암묵 전역까지 지운다** — @types/node가 설치돼 있어도 Buffer·process가
   # 「없는 이름」이 되어 정상 팩이 FAIL한다 (aws-serverless 실측 — 오탐 2건).
   # 설치돼 있으면 넣고, 없으면 그때만 비운다.
-  local types='[]'
-  [ -d "$OUT/node_modules/@types/node" ] && types='["node"]'
+  # **설치된 @types 를 전부 싣는다.** 하나만 고정하면 팩이 선언한 나머지가 시야 밖이 된다 —
+  # `@types/jest` 가 설치돼 있는데 `["node"]` 로 못박혀 있어서 팩이 배송한 테스트 파일이
+  # `Cannot find name 'describe'` 로 실패했다 (node-nest 실측 — 오탐). 실프로젝트의
+  # tsconfig 는 types 를 생략해 전부 싣는 것이 기본값이고, 여기서 목록을 만드는 이유는
+  # 하나도 설치되지 않았을 때 `[]` 로 눌러 두기 위해서다.
+  local types='[]' tnames
+  tnames=$(ls "$OUT/node_modules/@types" 2>/dev/null | sed 's/^/"/; s/$/"/' | tr '\n' ',' | sed 's/,$//')
+  [ -n "$tnames" ] && types="[$tnames]"
+  # **데코레이터를 쓰는 팩은 그것을 켠 tsconfig 로만 검사할 수 있다.** TypeScript 5는
+  # experimentalDecorators 가 꺼져 있으면 데코레이터를 ES 표준(Stage 3)으로 읽는데,
+  # 그 문법에는 **파라미터 데코레이터가 없고** 프로퍼티 데코레이터의 시그니처도 다르다 —
+  # 정상 NestJS 팩이 TS1240 으로 통째로 실패한다 (node-nest 실측 — 오탐).
+  # 복원된 단위에서 도출한다: 줄 머리의 `@Pascal(` 과 인자 자리의 `(@Pascal(` 둘 다 본다.
+  local deco='false'
+  if grep -rqE '(^|\()[[:space:]]*@[A-Z][A-Za-z0-9_]*[[:space:]]*[({]' "$OUT/units" 2>/dev/null; then
+    deco='true'
+  fi
   # **`include`를 하드코딩하지 않는다.** 팩마다 최상위 배치가 다르다 — firebase는 전부
   # `functions/` 아래에 있어서 고정 목록으로는 **tsc가 팩 코드를 한 줄도 보지 않았다**
   # (`TS18003: No inputs were found`가 나도 판정이 초록이었다). 복원된 유닛의 최상위
@@ -142,11 +167,18 @@ CLS
   local hasts checkjs='false'
   hasts=$(num "$(cut -f2 "$OUT/.units.tsv" 2>/dev/null | grep -cE '\.(ts|tsx|mts|cts)$' | tr -d ' ')")
   [ "$hasts" -eq 0 ] && checkjs='true'
+  # **스텁이 있으면 `noImplicitAny`를 끈다.** 스텁은 정의상 `any`이므로 그것을 소비하는
+  # 콜백의 인자가 전부 암묵 any가 된다 — 그 TS7006은 **스텁을 측정한 것이지 팩을 측정한
+  # 것이 아니다**(vanilla 실측: 실프로젝트에서는 같은 파일이 무오류로 통과한다).
+  # 나머지 strict 항목(strictNullChecks 등)은 그대로 켠다. 생략은 **명시 보고**한다.
+  local nia='true'
+  if [ -s "$OUT/.stubbed.txt" ]; then nia='false'; fi
   cat > "$OUT/tsconfig.json" <<TSC
 {
   "compilerOptions": {
     "target": "ES2022", "module": "ESNext", "moduleResolution": "bundler",
-    "strict": true, "noEmit": true, "skipLibCheck": true,
+    "strict": true, "noImplicitAny": $nia, "noEmit": true, "skipLibCheck": true,
+    "experimentalDecorators": $deco, "emitDecoratorMetadata": $deco,
     "jsx": "preserve", "allowJs": true, "checkJs": $checkjs,
     "paths": { "@/*": ["./src/*", "./*"] },
     "types": $types
@@ -155,6 +187,11 @@ CLS
 }
 TSC
   [ "$checkjs" = "true" ] && ok "JS 팩으로 판정 — checkJs 를 켠다 (JSDoc 타입이 검사된다)"
+  [ "$deco" = "true" ] && ok "데코레이터 팩으로 판정 — experimentalDecorators·emitDecoratorMetadata 를 켠다" \
+      "끄면 TypeScript 가 데코레이터를 ES 표준으로 읽어 파라미터 데코레이터가 전부 오류가 된다"
+  [ "$nia" = "false" ] && warn "noImplicitAny 끔 — 이음매 스텁 $(wc -l < "$OUT/.stubbed.txt" | tr -d ' ')개가 any다" "스텁을 소비하는 콜백 인자의 암묵 any는 팩 결함이 아니다. **이 항목만 미검사**이고 나머지 strict 는 켜져 있다"
+  [ "$promoted" -gt 0 ] && ok "구문 미검사 ${promoted}개를 타입체크 대상에 넣는다" \
+      "strip-only 모드가 거부한 것은 정상 TypeScript일 수 있다 — tsc 가 판정한다"
   if [ -z "$tsc" ]; then
     skip "tsc 없음 — 타입체크 생략" "오프라인이면 정상이다. 감사 A가 이 작업 디렉토리에서 'npm i -D typescript' 후 tsconfig.json 그대로 돌린다 — 이 항목은 **미검사**이지 통과가 아니다"
     return 0

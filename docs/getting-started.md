@@ -69,14 +69,15 @@ Presets are chosen on two axes — pick one from each.
 | `aws-serverless` | Lambda + API Gateway + DynamoDB + Cognito |
 | `aws-container` | ECS/Fargate + ALB + RDS PostgreSQL + Drizzle + Cognito (portable to on-prem) |
 | `gcp-serverless` | Cloud Run/Functions + Firestore + Identity Platform |
-| `fastapi` | FastAPI + SQLAlchemy 2.0 + Pydantic v2 + Alembic (self-hosted) |
+| `fastapi` | **Python** · FastAPI + SQLAlchemy 2.0 + Pydantic v2 + Alembic (self-hosted) |
 | `node-api` | Express 5 + PostgreSQL + Prisma (self-hosted) |
 | `node-nest` | NestJS 11 + PostgreSQL + TypeORM 1 + class-validator (self-hosted) |
 | `none` | No backend / external REST API |
 
-The **combination** decides the guides. Two combinations ship pre-built guides —
-`nextjs` × `supabase` and `react-vite` × `aws-container` — and every other combination
-generates project-owned guides. The system picks without asking. See `docs/presets.md`.
+The **combination** decides the guides. Three combinations ship pre-built guides —
+`nextjs` × `supabase`, `react-vite` × `aws-container` and `vue` × `node-api` — and every
+other combination generates project-owned guides. The system picks without asking.
+See `docs/presets.md`.
 
 ## Project Override
 

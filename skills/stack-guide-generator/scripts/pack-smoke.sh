@@ -125,6 +125,21 @@ _any_required() { # $1=출력디렉토리 $2=import한 이름 목록 → 하나�
   return 1
 }
 
+# ── 원장 provides 의 소스 경로 ─────────────────────────────────────
+# **팩이 소유한 파일은 스텁으로 대체돼선 안 된다.** 대체되면 그 파일은 타입체크도
+# 실행도 **한 번도 받지 않은 채** 통과로 보고된다 — gcp 실측에서 이 축의 보안 경계
+# 전부(`src/firestore/tasks.ts`의 소유권 검사 6함수)가 정확히 그 상태였다.
+# 원인은 코드펜스에 `<!-- file: -->` 표시가 없어 유닛으로 복원되지 않은 것이고,
+# 게이트도 smoke도 그것을 **WARN조차 내지 않았다**.
+provides_paths() { # $1=팩디렉토리 → 소스 경로 목록
+  local led="$1/ledger.md"
+  [ -f "$led" ] || return 0
+  awk '/^## provides/{f=1;next} f&&/^## /{f=0} f' "$led" \
+    | grep -oE '`[A-Za-z0-9_./-]+\.(ts|tsx|js|jsx|mts|py)`' \
+    | tr -d '`' | sort -u
+  return 0
+}
+
 requires_syms() { # $1=팩디렉토리 → 심볼 이름 목록(줄바꿈 구분)
   local led="$1/ledger.md"
   [ -f "$led" ] || return 0
@@ -161,6 +176,7 @@ make_stubs() {
   : > "$OUT/.orphan.txt"
   : > "$OUT/.stubbed.txt"
   requires_syms "$PACK" > "$OUT/.requires.txt" 2>/dev/null || : > "$OUT/.requires.txt"
+  provides_paths "$PACK" > "$OUT/.provides.txt" 2>/dev/null || : > "$OUT/.provides.txt"
   [ -s "$OUT/.units.tsv" ] || { printf '0'; return 0; }
 
   # 별칭(@/…)과 **상대 경로**를 모두 본다. 상대 경로만 쓰는 팩에서 스텁이 하나도 만들어지지
@@ -175,6 +191,18 @@ make_stubs() {
       | while IFS= read -r uspec; do printf '.\t%s\n' "$uspec"; done >> "$OUT/.imports.txt"
     grep -ohE "import( type)? \{[^}]*\} from '\.[^']*'" "$OUT/units/$uid" 2>/dev/null \
       | while IFS= read -r uspec; do printf '%s\t%s\n' "$(dirname "$upath")" "$uspec"; done >> "$OUT/.imports.txt"
+    # **JSDoc의 타입 import는 `import { }` 문이 아니다.** JS 팩은 타입을
+    # `/** @typedef {import('../x.js').Task} Task */` 로 끌어온다 — 이 형태를 안 보면
+    # 그 심볼이 스텁에 들어가지 않아 TS2694가 난다 (vanilla 실측: task-list.test.js).
+    # `import { A } from '경로'` 꼴로 정규화해 아래 스텁 로직이 그대로 쓰게 한다.
+    grep -ohE "import\('[^']+'\)\.[A-Za-z_][A-Za-z0-9_]*" "$OUT/units/$uid" 2>/dev/null \
+      | sed -E "s#import\('([^']+)'\)\.([A-Za-z_][A-Za-z0-9_]*)#import { \2 } from '\1'#" \
+      | while IFS= read -r uspec; do
+          case "$uspec" in
+            *"from '@/"*) printf '.\t%s\n' "$uspec" ;;
+            *"from '."*)  printf '%s\t%s\n' "$(dirname "$upath")" "$uspec" ;;
+          esac
+        done >> "$OUT/.imports.txt"
   done < "$OUT/.units.tsv"
   sort -u -o "$OUT/.imports.txt" "$OUT/.imports.txt"
 
@@ -258,13 +286,22 @@ make_stubs() {
     # 실재하는 형제 모듈을 `any`로 덮어 **파일 간 정합성 오류를 통째로 가린다** —
     # firebase 감사 A 실측: tsc 통과가 정합성의 증거가 아니었고, 실경로로 다시 조립해서야
     # TS2307·TS2459가 드러났다. fastapi의 `app/db/models.py`와 같은 부류의 두 번째 재발이다.
-    case "$target" in
-      *.js)  target="${target%.js}.ts" ;;
-      *.mjs) target="${target%.mjs}.mts" ;;
-      *.ts|*.tsx|*.mts) ;;
-      *) target="$target.ts" ;;
-    esac
-    [ -f "$OUT/$target" ] && continue
+    # **팩이 그 경로를 그대로 배송하면 확장자를 바꾸지 않는다.** 위 관용구는 TS 팩의 것이고,
+    # JavaScript 팩에서는 `./resource.js`가 **문자 그대로** `resource.js`로 해소된다.
+    # 무조건 바꾸면 유닛 경로(`src/state/resource.js`)와 어긋나 고아로 판정돼 스텁을 못 받고,
+    # 완전 파일로 주장한 테스트 하네스가 **전부 TS2307**을 받는다 (vanilla 실측: 전 테스트 파일).
+    if ! cut -f2 "$OUT/.units.tsv" | grep -qxF "$target"; then
+      case "$target" in
+        *.js)  target="${target%.js}.ts" ;;
+        *.mjs) target="${target%.mjs}.mts" ;;
+        *.ts|*.tsx|*.mts) ;;
+        *) target="$target.ts" ;;
+      esac
+    fi
+    # **우리가 만든 스텁이면 건너뛰지 않고 빠진 이름만 덧붙인다.** 존재만으로 건너뛰면
+    # 첫 import 문의 이름만 들어가고 다른 파일이 쓰는 심볼은 영영 없다 — TS2305가 난다
+    # (vanilla 실측: `store.test.js`의 `derive`). 우리 것이 아닌 실파일은 그대로 건너뛴다.
+    if [ -f "$OUT/$target" ] && ! grep -qxF "$target" "$OUT/.stubbed.txt" 2>/dev/null; then continue; fi
     # **팩이 그 경로를 「완전 파일」로 주장했으면 스텁하지 않는다.** 유닛은 아직 units/
     # 아래에 있어 파일 존재 검사로는 걸리지 않는다 — 스텁을 얹으면 프로필이 실파일로
     # 옮길 때 같은 심볼이 두 번 선언돼 TS2451이 난다 (aws-serverless 실측 — 오탐).
@@ -280,16 +317,25 @@ make_stubs() {
       orphan=$((orphan+1)); continue
     fi
     mkdir -p "$OUT/$(dirname "$target")" 2>/dev/null
-    {
-      printf '// pack-smoke 스텁 — 원장 requires(이음매 소유). 팩만으로는 해소되지 않는다.\n'
-      printf '%s\n' "$names" | tr ',' '\n' | sed -E 's/^[[:space:]]*//; s/[[:space:]]*$//; s/^type[[:space:]]+//; s/[[:space:]]+as[[:space:]]+.*//' \
-        | grep -E '^[A-Za-z_][A-Za-z0-9_]*$' | sort -u | while read -r nm; do
+    if [ ! -f "$OUT/$target" ]; then
+      printf '// pack-smoke 스텁 — 원장 requires(이음매 소유). 팩만으로는 해소되지 않는다.\n' > "$OUT/$target"
+      printf '%s\n' "$target" >> "$OUT/.stubbed.txt"
+      made=$((made+1))
+    fi
+    # **`.js` 대상에 TS 문법을 쓰지 않는다.** `export type X = any;`는 checkJs 를 켠
+    # JavaScript 파일에서 구문 오류이고, 그 오류가 팩 결함으로 보고된다.
+    local isjs=0; case "$target" in *.js|*.mjs|*.jsx) isjs=1 ;; esac
+    printf '%s\n' "$names" | tr ',' '\n' | sed -E 's/^[[:space:]]*//; s/[[:space:]]*$//; s/^type[[:space:]]+//; s/[[:space:]]+as[[:space:]]+.*//' \
+      | grep -E '^[A-Za-z_][A-Za-z0-9_]*$' | sort -u | while read -r nm; do
+          grep -qE "^export const $nm[ =:]" "$OUT/$target" && continue
+          if [ "$isjs" -eq 1 ]; then
+            printf '/** @typedef {any} %s */\n' "$nm"
+            printf 'export const %s = /** @type {any} */ (undefined);\n' "$nm"
+          else
             printf 'export type %s = any;\n' "$nm"
             printf 'export const %s: any = undefined as any;\n' "$nm"
-          done
-    } >> "$OUT/$target"
-    printf '%s\n' "$target" >> "$OUT/.stubbed.txt"
-    made=$((made+1))
+          fi >> "$OUT/$target"
+        done
   done < "$OUT/.imports.txt"
   printf '%s' "$made"
 }
@@ -487,6 +533,26 @@ run_smoke() {
   else
     ok "미해소 로컬 import 없음"
   fi
+
+  # **팩이 소유한 파일이 스텁으로 대체됐으면 그것은 통과가 아니라 미검사다.**
+  # 원장 provides가 배정한 소스 경로는 팩이 배송하는 것이므로 스텁이 덮어선 안 된다.
+  # 덮이면 그 파일의 코드는 타입체크도 실행도 **한 번도 받지 않고** 초록으로 보고된다 —
+  # gcp 실측에서 이 축의 보안 경계 전부(`src/firestore/tasks.ts`의 소유권 검사 6함수)가
+  # 그 상태였고, 원인은 코드펜스에 `<!-- file: -->` 표시가 없어 유닛으로 복원되지
+  # 않은 것이었다. 게이트도 smoke도 WARN조차 내지 않았다.
+  local ownstub=0 pp
+  if [ -s "$OUT_DIR/.provides.txt" ] && [ -s "$OUT_DIR/.stubbed.txt" ]; then
+    while IFS= read -r pp; do
+      [ -z "$pp" ] && continue
+      case "$pp" in *.d.ts) continue ;; esac        # 라이브러리 타입 선언은 팩 소유가 아니다
+      if grep -qxF "$pp" "$OUT_DIR/.stubbed.txt"; then
+        bad "팩이 소유한 파일이 스텁으로 대체됨: $pp" \
+            "원장 provides가 배정한 경로다. 그 코드펜스에 <!-- file: $pp --> 를 달아 유닛으로 복원시켜라 — 지금 이 파일은 타입체크도 실행도 받지 않았다"
+        ownstub=$((ownstub+1))
+      fi
+    done < "$OUT_DIR/.provides.txt"
+  fi
+  [ "$ownstub" -eq 0 ] && [ -s "$OUT_DIR/.provides.txt" ] && ok "팩 소유 파일이 스텁으로 대체되지 않음"
   # **원장 requires에 없는데 해소되지 않는 로컬 import는 팩의 결함이다.**
   # 스텁으로 덮으면 경로 오기가 사라진다 — 두 번 재발한 부류다(fastapi `app/db/models.py`,
   # firebase `./model.js`). 둘 다 타입체크를 「통과」시켰고 감사가 실경로로 다시
@@ -686,6 +752,60 @@ export const answer = 'not a number'
 ```
 FXJSM
 
+  # ── JS 팩 스텁 픽스처 — 라벨 소스 + 완전 파일 테스트 ──────────────
+  # vanilla(첫 JavaScript 축)에서 pack-smoke의 JS 결함 4종이 실물로만 드러났다:
+  # ⓐ `./x.js`를 무조건 `x.ts`로 바꿔 유닛 경로와 어긋나 스텁을 못 받았고(TS2307)
+  # ⓑ `.js` 스텁에 TS 문법을 써서 checkJs가 구문 오류를 냈고
+  # ⓒ 파일 존재만으로 건너뛰어 두 번째 import 문의 이름이 빠졌고(TS2305)
+  # ⓓ JSDoc `import('...').Type`을 import로 보지 않아 타입이 빠졌다(TS2694).
+  # 넷 다 **tsc 없이** 산출물(스텁 파일)로 판정할 수 있다 — 오프라인에서도 도는 픽스처다.
+  mkdir -p "$fx/js-stub/resources" || { bad "JS 스텁 픽스처 생성 실패"; return; }
+  printf '<!-- epcc-pack: frontend/fxjs v0 -->\n# fxjs 팩\n' > "$fx/js-stub/PACK.md"
+  printf '{ "axis": "frontend", "name": "fxjs", "pkgs": ["typescript@7"] }\n' > "$fx/js-stub/pack.json"
+  # 원장이 소스 경로를 선언하면 그 경로가 스텁으로 덮이는 것은 **미검사**다 — FAIL 이어야 한다.
+  # gcp 의 소유권 검사 6함수와 vanilla 의 6모듈이 정확히 이 상태로 초록이었다.
+  cat > "$fx/js-stub/ledger.md" <<'FXJSL'
+## provides — 이 팩이 정의한다
+
+| 심볼 | 정의 파일 | 형태 | 성격 |
+| --- | --- | --- | --- |
+| `createStore` | store.md | **`src/store/create.js`** — `(initial) => store` | 스토어 |
+
+## requires — 이음매가 제공해야 한다
+
+| 심볼 | 종류 | 형태 | 이유 |
+| --- | --- | --- | --- |
+| `Task` | 프로젝트 | 도메인 타입 | 이음매 소유 |
+FXJSL
+  cat > "$fx/js-stub/resources/store.md" <<'FXJSS'
+# 스토어
+
+```js
+// src/store/create.js
+export function createStore(initial) { return initial }
+export function derive(store, fn) { return fn(store) }
+```
+
+```js
+// src/schemas/task.js
+/** @typedef {{ id: string }} Task */
+export const TASK_KEY = 'task'
+```
+
+<!-- file: test/a.test.js -->
+```js
+import { createStore } from '../src/store/create.js'
+/** @typedef {import('../src/schemas/task.js').Task} Task */
+export const a = createStore(1)
+```
+
+<!-- file: test/b.test.js -->
+```js
+import { derive } from '../src/store/create.js'
+export const b = derive(1, (x) => x)
+```
+FXJSS
+
   local out code
   sec "양성 픽스처 (차단해야 한다)"
   out=$(bash "$0" --pack "$fx/broken" --no-vectors 2>&1); code=$?
@@ -752,6 +872,80 @@ FXJSM
     ok "TS 팩 → checkJs 꺼짐 (전역으로 켜면 TS 팩이 배송하는 설정 조각이 오탐된다)"
   else
     bad "TS 팩에서 checkJs 가 켜졌다" "설정 조각(vite.config.js 류)이 새로 검사 대상이 되어 오탐이 난다"
+  fi
+
+  # ── 데코레이터 팩 (node-nest 실측) ─────────────────────────────────
+  # 두 가지를 단언한다. 판정 자체가 아니라 **판정의 전제**다 — tsc 는 오프라인에서 없다.
+  #   ⓐ experimentalDecorators 가 켜지는가. 꺼져 있으면 TypeScript 가 데코레이터를
+  #     ES 표준으로 읽어 **파라미터 데코레이터가 전부 오류**가 된다 (TS1240 — 오탐)
+  #   ⓑ strip-only 모드가 거부한 단위가 실트리에 놓이는가. 놓이지 않으면 tsc 가 있어도
+  #     그 파일은 **영영 검사되지 않는다** — NestJS 는 생성자 주입이 곧 파라미터
+  #     프로퍼티라 서비스·컨트롤러가 통째로 빠졌다 (미탐)
+  mkdir -p "$fx/deco/resources" || { bad "데코레이터 픽스처 생성 실패"; return; }
+  printf '<!-- epcc-pack: backend/fx v0 -->\n# fx 팩\n' > "$fx/deco/PACK.md"
+  printf '{ "axis": "backend", "name": "fx", "pkgs": ["typescript@5"] }\n' > "$fx/deco/pack.json"
+  cat > "$fx/deco/resources/a.md" <<'FXDECO'
+# 서비스
+
+<!-- file: src/tasks.service.ts -->
+```ts
+import { Injectable } from '@nestjs/common';
+import { Repo } from './repo';
+
+@Injectable()
+export class TasksService {
+  constructor(private readonly repo: Repo) {}
+
+  find(id: string): string {
+    return this.repo.get(id);
+  }
+}
+```
+FXDECO
+
+  code=0; out=$(bash "$0" --pack "$fx/deco" --no-vectors --keep --out "$fx/out-deco" 2>&1) || code=$?
+  if [ -f "$fx/out-deco/tsconfig.json" ] && grep -q '"experimentalDecorators": true' "$fx/out-deco/tsconfig.json"; then
+    ok "데코레이터 팩 → experimentalDecorators 켜짐 (꺼지면 정상 Nest 코드가 TS1240으로 전부 실패한다)"
+  else
+    bad "데코레이터 팩인데 experimentalDecorators 가 꺼져 있다" "$(grep -o 'experimentalDecorators[^,]*' "$fx/out-deco/tsconfig.json" 2>/dev/null)"
+  fi
+  if [ -f "$fx/out-deco/src/tasks.service.ts" ]; then
+    ok "strip-only 가 거부한 단위도 실트리에 놓인다 (파라미터 프로퍼티가 타입체크 밖으로 새지 않는다)"
+  else
+    bad "파라미터 프로퍼티 파일이 실트리에 없다" "복원은 됐는데 타입체크 대상 트리에 놓이지 않았다 — tsc 가 있어도 영영 검사되지 않는다"
+  fi
+  if [ -f "$fx/out-ts/tsconfig.json" ] && grep -q '"experimentalDecorators": false' "$fx/out-ts/tsconfig.json"; then
+    ok "데코레이터 없는 TS 팩 → experimentalDecorators 꺼짐 (감지가 항상-켬이 아니다)"
+  else
+    bad "데코레이터가 없는데 experimentalDecorators 가 켜졌다" "감지가 무조건 참이면 그 검사는 아무것도 가르지 않는다"
+  fi
+
+
+  code=0; out=$(bash "$0" --pack "$fx/js-stub" --no-vectors --keep --out "$fx/out-jsstub" 2>&1) || code=$?
+  local stub="$fx/out-jsstub/src/store/create.js"
+  if [ -f "$stub" ]; then
+    ok "JS 팩의 라벨 소스가 .js 로 스텁된다 (.ts 로 바꾸면 유닛과 어긋나 TS2307)"
+    grep -q '@typedef' "$stub" && ok "스텁이 JSDoc 문법이다 (.js 에 export type 을 쓰면 checkJs 가 구문 오류를 낸다)" \
+      || bad "JS 스텁에 TS 문법을 썼다" "$(head -3 "$stub" | tr '\n' ';')"
+    if grep -q 'createStore' "$stub" && grep -q 'derive' "$stub"; then
+      ok "스텁이 여러 import 문의 이름을 합친다 (첫 문만 넣으면 TS2305)"
+    else
+      bad "스텁이 두 번째 import 문의 이름을 빠뜨렸다" "$(grep -c 'export const' "$stub") 개만 선언됨"
+    fi
+  else
+    bad "JS 팩의 라벨 소스에 스텁이 생기지 않았다" "$stub 없음 — 완전 파일 테스트가 전부 TS2307을 받는다"
+  fi
+  # 팩 소유 파일이 스텁으로 대체되면 FAIL 이어야 한다 (양성) — 위 --pack 실행의 exit 를 본다
+  if printf '%s' "$out" | grep -q '팩이 소유한 파일이 스텁으로 대체됨'; then
+    ok "팩 소유 파일이 스텁으로 덮이면 잡는다 (미검사가 초록으로 보고되던 자리)"
+  else
+    bad "팩 소유 파일이 스텁으로 덮였는데 통과시킨다" "원장 provides 가 배정한 경로다 — 그 코드는 타입체크도 실행도 받지 않는다"
+  fi
+
+  if [ -f "$fx/out-jsstub/src/schemas/task.js" ] && grep -q 'Task' "$fx/out-jsstub/src/schemas/task.js"; then
+    ok "JSDoc import('...').Type 도 스텁 대상이다 (안 보면 TS2694)"
+  else
+    bad "JSDoc 타입 import 가 스텁에 반영되지 않았다" "JS 팩은 타입을 import { } 로 끌어오지 않는다"
   fi
 
   code=0; out=$(bash "$0" --pack "$fx/fixed" 2>&1) || code=$?

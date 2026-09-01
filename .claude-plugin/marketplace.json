@@ -12,7 +12,7 @@
     {
       "name": "epcc-devkit",
       "source": "./",
-      "description": "AI Native Dev Harness — 되돌림 가능성 축 워크플로우, 자기검증 훅 4종, 그래프 계측(doctor). 29개 스킬 + 축 가이드 팩(프론트 4 · 백엔드 7), 2축 프리셋(프론트 5 · 백엔드 8).",
+      "description": "AI Native Dev Harness — 되돌림 가능성 축 워크플로우, 자기검증 훅 5종, 그래프 계측(doctor). 29개 스킬 + 축 가이드 팩(프론트 4 · 백엔드 8), 2축 프리셋(프론트 5 · 백엔드 9).",
       "version": "3.19.0",
       "author": {
         "name": "gangejsun"

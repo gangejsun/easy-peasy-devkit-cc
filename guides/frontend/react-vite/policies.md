@@ -12,14 +12,14 @@
 **검사 대상은 `codelines()`가 추출한 행뿐이다** — 코드펜스 안 · 주석 아님 · ❌/Bad 구간
 아님. 산문과 안티패턴 예시를 세면 전부 위양성이 된다 (추출 시점에 5건 확인).
 
-| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
-| --- | --- | --- | --- | --- | --- | --- |
-| `env-single-reader` | forbid | guide | `import\.meta\.env\.[A-Z_]+` | `types-and-testing.md` | `import.meta.env.VITE_FEATURE_FLAGS` | 환경 값은 `src/config.ts` 한 곳에서만 읽는다. 다른 파일이 직접 읽으면 타입도 검증도 우회된다. **정규식이 실제 키 접근(`.VITE_X`)까지 요구하는 이유**: 맨 `import.meta.env`는 규칙을 설명하는 산문·주석에 등장해 위양성이 된다 (게이트 최초 실행에서 2건 확인) |
-| `http-only-in-api-layer` | forbid | guide | `\bfetch\(` | `data-fetching.md` | `const res = await fetch('/api/tasks')` | 원시 `fetch`는 HTTP 클라이언트 모듈에만. 화면이 직접 부르면 인증 헤더·에러 정규화·베이스 URL이 갈라진다 |
-| `no-secret-env-prefix` | forbid | guide | `VITE_[A-Z_]*(SECRET\|PASSWORD\|PRIVATE\|CREDENTIAL)` | — | `VITE_SESSION_SECRET` | `VITE_*`는 빌드 시점에 번들로 인라인된다. 접두사는 보호가 아니다 |
-| `no-server-data-in-store` | forbid | guide | `set\(\{[^}]*\b(tasks\|items\|rows)\b` | — | `set({ tasks: data })` | 서버 응답을 Zustand에 복제하면 캐시가 둘이 된다. 서버 상태는 쿼리 캐시가 단독 소유 |
-| `return-to-validated` | require | guide | `safeReturnTo` | — | `navigate(safeReturnTo(params.get('returnTo')))` | 복귀 경로를 `navigate`에 넘기기 전에 반드시 통과시킨다. `//host`·`/\host`는 prefix 검사로 막히지 않는다 |
-| `three-states` | require | guide | `isPending` | — | `if (isPending) return <ListSkeleton />` | 데이터 화면은 로딩·빈·에러 3상태를 모두 렌더링한다 |
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 반례 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `env-single-reader` | forbid | guide | `import\.meta\.env[.\[]` | `types-and-testing.md` | `import.meta.env.VITE_FEATURE_FLAGS` | `import.meta.env['VITE_API_BASE']` | 환경 값은 `src/config.ts` 한 곳에서만 읽는다. 다른 파일이 직접 읽으면 타입도 검증도 우회된다. **정규식이 실제 키 접근(`.VITE_X`)까지 요구하는 이유**: 맨 `import.meta.env`는 규칙을 설명하는 산문·주석에 등장해 위양성이 된다 (게이트 최초 실행에서 2건 확인) |
+| `http-only-in-api-layer` | forbid | guide | `\bfetch\(` | `data-fetching.md` | `const res = await fetch('/api/tasks')` | `const res = await window.fetch(url)` | 원시 `fetch`는 HTTP 클라이언트 모듈에만. 화면이 직접 부르면 인증 헤더·에러 정규화·베이스 URL이 갈라진다 |
+| `no-secret-env-prefix` | forbid | guide | `VITE_[A-Z_]*(SECRET\|PASSWORD\|PRIVATE\|CREDENTIAL)` | — | `VITE_SESSION_SECRET` | `VITE_STRIPE_PRIVATE_KEY` | `VITE_*`는 빌드 시점에 번들로 인라인된다. 접두사는 보호가 아니다 |
+| `no-server-data-in-store` | forbid | guide | `set\(\{[^}]*\b(tasks\|items\|rows)\b` | — | `set({ tasks: data })` | `set({ list: rows })` | 서버 응답을 Zustand에 복제하면 캐시가 둘이 된다. 서버 상태는 쿼리 캐시가 단독 소유 |
+| `return-to-validated` | require | guide | `navigate\(safeReturnTo\(` | — | `navigate(safeReturnTo(params.get('returnTo')))` | `export function safeReturnTo(raw: unknown)` | 복귀 경로를 `navigate`에 넘기기 전에 반드시 통과시킨다. `//host`·`/\host`는 prefix 검사로 막히지 않는다 |
+| `three-states` | require | guide | `if \(isPending` | — | `if (isPending) return <ListSkeleton />` | `const { data, isPending } = useQuery(opts)` | 데이터 화면은 로딩·빈·에러 3상태를 모두 렌더링한다 |
 
 `대상`이 `guide`면 조립된 가이드 전체(팩 + 이음매)에서 판정한다. `seam`이면 이음매
 파일만 본다. `require`는 조립 후 최소 1회 등장이면 충족이다.

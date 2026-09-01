@@ -1,7 +1,7 @@
 {
   "axis": "backend",
   "name": "fastapi",
-  "displayName": "FastAPI (자체 서버)",
+  "displayName": "FastAPI · Python (자체 서버)",
   "description": "FastAPI + SQLAlchemy 2.0 + Pydantic v2 + Alembic + pytest. 자체 운영하는 Python API 서버.",
   "techStack": {
     "backend": {

@@ -11,12 +11,12 @@
 **검사 대상은 `codelines()`가 추출한 행뿐이다** — 코드펜스 안 · 주석 아님 · ❌/Bad 구간
 아님. 아래는 전부 **추출 시점에 사전 제작 이음매로 시험해 위반 0을 확인**했다.
 
-| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
-| --- | --- | --- | --- | --- | --- | --- |
-| `no-inline-style` | forbid | guide | `style=\{\{` | — | `style={{ marginTop: 8 }}` | 스타일은 Tailwind 유틸리티 + `cn()`. 인라인 `style`은 디자인 토큰 밖으로 새는 통로다 |
-| `cn-for-classnames` | require | guide | `\bcn\(` | — | `cn('px-4 py-2', className)` | 조건부 클래스는 문자열 접합이 아니라 `cn()`으로 병합한다 |
-| `await-request-apis` | require | guide | `await (params\|searchParams\|cookies\(\))` | — | `const { id } = await params` | Next 15에서 `params`·`searchParams`·`cookies()`는 Promise다. await 없이 쓰면 런타임에 조용히 undefined가 흐른다 |
-| `no-data-client-in-pack` | forbid | pack | `createClient\(` | — | `const db = createClient(url, key)` | **팩 자신을 검사한다.** 프론트엔드 축 팩은 데이터 클라이언트를 직접 만들지 않는다 — 만들면 그 순간 백엔드 축에 묶여 다른 조합에서 틀린 지침이 된다 (추출 시 4곳을 이 규칙으로 걷어냈다) |
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 반례 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `no-inline-style` | forbid | guide | `style=\{[[:space:]]*\{` | — | `style={{ marginTop: 8 }}` | `style={ { marginTop: 8 } }` | 스타일은 Tailwind 유틸리티 + `cn()`. 인라인 `style`은 디자인 토큰 밖으로 새는 통로다 |
+| `cn-for-classnames` | require | guide | `className=\{cn\(` | — | `className={cn('px-4 py-2', className)}` | `export function cn(...inputs: ClassValue[])` | 조건부 클래스는 문자열 접합이 아니라 `cn()`으로 병합한다 |
+| `await-request-apis` | require | guide | `await (params\|searchParams\|cookies\(\))` | — | `const { id } = await params` | `const h = headers()` | Next 15에서 `params`·`searchParams`·`cookies()`는 Promise다. await 없이 쓰면 런타임에 조용히 undefined가 흐른다 |
+| `no-data-client-in-pack` | forbid | pack | `create[A-Za-z]*Client\(` | — | `const db = createClient(url, key)` | `const db = createBrowserClient(url, key)` | **팩 자신을 검사한다.** 프론트엔드 축 팩은 데이터 클라이언트를 직접 만들지 않는다 — 만들면 그 순간 백엔드 축에 묶여 다른 조합에서 틀린 지침이 된다 (추출 시 4곳을 이 규칙으로 걷어냈다) |
 
 `대상`: `guide`=조립된 가이드 전체 · `seam`=이음매 파일만 · `pack`=이 팩의 리소스만 ·
 `file:<이름>`=그 파일만. `require`는 최소 1회 등장이면 충족이다.

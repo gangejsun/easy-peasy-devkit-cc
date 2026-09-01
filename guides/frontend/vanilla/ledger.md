@@ -31,26 +31,39 @@
 
 | 심볼 | 정의 파일 | 형태 | 성격 |
 | --- | --- | --- | --- |
-| `config` | types-and-testing.md | **`src/config.js`** **여기가 유일한 정의다** — `import.meta.env`를 zod로 파싱한 결과. `VITE_API_BASE`(URL) · `VITE_ENV`. **모듈 최상위에서 파싱한다** — 실패가 부팅 실패여야 한다(첫 요청 시점에 터지면 화면 절반이 살아 있다). **환경을 읽는 유일한 파일이다** | 검증된 환경 값 |
+| `config` | types-and-testing.md | **`src/config.js`** **여기가 유일한 정의다** — `import.meta.env`를 zod로 파싱한 결과. `VITE_API_BASE`(URL) · `VITE_ENV`(`'development'|'staging'|'production'`). **결과 객체의 필드명은 환경 키 그대로다** — `config.VITE_API_BASE`이지 `config.apiBase`가 아니다. 이 칸을 비워 두면 허브와 리소스가 다른 이름을 쓰는데 게이트는 심볼 `config`만 보므로 잡지 못한다. **모듈 최상위에서 파싱한다** — 실패가 부팅 실패여야 한다(첫 요청 시점에 터지면 화면 절반이 살아 있다). **환경을 읽는 유일한 파일이다** | 검증된 환경 값 |
 | `TaskStatus` | types-and-testing.md | **`src/schemas/task.js`** — `z.enum(['open', 'done'])`. **값은 소문자 `'open'`·`'done'`이다.** 와이어·DOM 속성·테스트 단언에 쓰는 것은 **값**이지 이름이 아니다 — 이 칸을 비워 두었더니 형제 클러스터가 대문자로 추측해 차단 증명 테스트가 항상 빨갰다(fastapi 실측) | 상태 열거 |
 | `TaskSchema` | types-and-testing.md | **`src/schemas/task.js`** — `z.object({ id, ownerId, title, status, createdAt })`. `createdAt`은 **문자열(ISO)로 받고 `Date`로 바꾸지 않는다** — 직렬화 경계를 하나로 둔다. `.strict()` | 도메인 스키마 |
-| `Task` (타입) | types-and-testing.md | **`src/schemas/task.js`** — `/** @typedef {import('zod').z.infer<typeof TaskSchema>} Task */`. **손으로 쓴 `@typedef`를 스키마와 나란히 두지 않는다** — 두 벌이 되면 반드시 갈라진다. 스키마에서 도출한다 | 도메인 타입 |
+| `Task` | types-and-testing.md | **`src/schemas/task.js`** — `/** @typedef {import('zod').z.infer<typeof TaskSchema>} Task */`. **손으로 쓴 `@typedef`를 스키마와 나란히 두지 않는다** — 두 벌이 되면 반드시 갈라진다. 스키마에서 도출한다 | 도메인 타입 |
 | `TaskCreateSchema` | types-and-testing.md | **`src/schemas/task.js`** — `title`(1~200) · `status`(기본 `'open'`). `.strict()` | 생성 입력 |
-| `TaskUpdateSchema` | types-and-testing.md | **`src/schemas/task.js`** — `TaskCreateSchema`의 부분형. **선택 필드에 기본값을 두지 않는다** — 두면 부분 수정이 보내지 않은 필드를 덮어쓴다 | 수정 입력 |
+| `TaskCreate` | types-and-testing.md | **`src/schemas/task.js`** — `/** @typedef {import('zod').infer<typeof TaskCreateSchema>} TaskCreate */`. **`requires`의 `createTask`가 이 이름을 참조하므로 `provides`에 있어야 한다** — 없으면 이음매가 참조할 곳이 계약에 없다 | 생성 입력 타입 |
+| `TaskUpdateSchema` | types-and-testing.md | **`src/schemas/task.js`** — **`TaskCreateSchema.partial()`로 만들지 않는다.** zod 4에서 `.partial()`은 `.default()`를 벗기지 않아 `status`를 보내지 않은 부분 수정이 `{ status: 'open' }`이 된다 — 완료 처리한 작업이 조용히 되살아난다(파일럿 실행 확인, zod@4.4.3). **기본값 없는 필드 묶음(`taskInputFields`)에서 Create와 Update를 각각 파생시킨다.** `.strict()` | 수정 입력 |
 | `parseTask` | types-and-testing.md | **`src/schemas/task.js`** — `(raw: unknown) => Task` — `TaskSchema.safeParse`를 쓰고 실패하면 **던진다**. **경계에서 부르는 것이 계약이다**(응답·`localStorage`·URL). 성공 경로에서 `@type` 주석만 붙이는 것은 검증이 아니다 | 경계 파서 |
-| `createStore` | state-management.md | **`src/store/create.js`** — `/** @template T */ (initial: T) => { get(): T, set(next: T \| ((prev: T) => T)): void, subscribe(fn: (value: T) => void): () => void }` — **`subscribe`는 해지 함수를 반환한다**(호출자가 그것을 보관·호출해야 한다). `set`은 얕은 동일성으로 비교해 같으면 통지하지 않는다. **`@template`이 없으면 스토어 값이 전부 `any`가 된다** | 스토어 팩토리 |
+| `createStore` | state-management.md | **`src/store/create.js`** — `/** @template T */ (initial: T) => { get(): T, set(next: T \| ((prev: T) => T)): void, subscribe(fn: (value: T) => void): () => void }` — **`subscribe`는 해지 함수를 반환하고, 등록 즉시 현재 값으로 1회 방출한다**(구독이 곧 첫 렌더다 — 반대로 가정하면 첫 렌더가 빠지거나 두 번 그려진다). 호출자가 해지 함수를 보관·호출해야 한다. `set`은 **참조 동일성(`Object.is`)**으로 비교해 같으면 통지하지 않는다 — 필드 단위 얕은 비교가 아니다(그렇게 읽으면 `{items, byId}` 교체가 통지되지 않는 정반대 구현이 나온다). **`@template`이 없으면 스토어 값이 전부 `any`가 된다** | 스토어 팩토리 |
 | `tasksStore` | state-management.md | **`src/store/tasks.js`** — `createStore`로 만든 인스턴스. 상태는 `{ items: Task[], byId: Record<string, Task> }`. **`byId`를 따로 두는 이유는 갱신이 목록 순회를 요구하지 않게 하는 것**이고, 두 필드가 **같은 `set` 안에서** 함께 바뀌어야 한다 — 나누면 구독자가 반쪽 상태를 본다 | 도메인 스토어 |
+| `replaceTasks` | state-management.md | **`src/store/tasks.js`** — `(tasks: Task[]) => void` — 목록 전체 교체. `items`와 `byId`를 **같은 `set` 안에서** 함께 바꾼다. 이음매의 `fetchTasks` 결과가 여기로 들어온다 | 갱신 |
+| `upsertTask` | state-management.md | **`src/store/tasks.js`** — `(task: Task) => void` — 단건 삽입·갱신. 갱신 함수 형태(`set((prev) => …)`)를 쓴다 — `get()` 후 `set()`을 따로 부르면 그 사이의 갱신을 덮어쓴다. 이음매의 `createTask` 결과가 여기로 들어온다 | 갱신 |
 | `derive` | state-management.md | **`src/store/create.js`** — `/** @template T,U */ (store, selector: (value: T) => U) => { get(): U, subscribe(fn: (value: U) => void): () => void }` — 파생 값. `set`이 **없다**(파생은 쓰기 대상이 아니다) | 파생 |
 | `el` | component-patterns.md | **`src/dom/el.js`** — `(tag: string, props?: Record<string, unknown>, children?: (Node \| string)[]) => HTMLElement` — 문자열 자식은 **`textContent`로 넣는다**(절대 `innerHTML`이 아니다). `props`의 `on*` 키는 리스너로, `class`·`data-*`는 속성으로 배선한다 | 요소 생성 |
 | `fromTemplate` | component-patterns.md | **`src/dom/el.js`** — `(id: string) => DocumentFragment` — `<template id>`를 복제한다. 반복 렌더의 기본 수단이고, 마크업이 HTML에 남아 검색·검토가 된다 | 템플릿 복제 |
 | `delegate` | component-patterns.md | **`src/dom/delegate.js`** — `(root: Element, type: string, selector: string, handler: (event: Event, target: Element) => void) => () => void` — **인자 순서: 뿌리 → 이벤트 종류 → 선택자 → 핸들러.** `type`과 `selector`가 **둘 다 문자열이라 순서가 생명이다.** 반환은 **해지 함수**다. 목록 항목마다 리스너를 다는 대신 뿌리 하나에 단다 | 이벤트 위임 |
 | `mountTaskList` | component-patterns.md | **`src/components/task-list.js`** — `(root: Element, store: typeof tasksStore) => () => void` — 대표 컴포넌트. **반환은 정리 함수**이고 구독 해지 + 위임 해지를 모두 부른다. 프레임워크가 없으므로 이 반환값이 유일한 언마운트 경로다 | 대표 컴포넌트 |
-| `createRouter` | routing.md | **`src/router/index.js`** — `(routes: { path: string, render: (params: Record<string, string>) => (() => void) }[]) => { start(): () => void, navigate(path: string): void }` — 각 라우트의 `render`는 **정리 함수를 반환한다**. `start()`는 `popstate`를 걸고 첫 렌더를 수행하며 **자신의 해지 함수를 반환한다** | 라우터 |
+| `createRouter` | routing.md | **`src/router/index.js`** — `(routes: { path: string, render: (params: Record<string, string>) => (() => void) }[]) => { start(): () => void, navigate(path: string): void }` — 각 라우트의 `render`는 **정리 함수를 반환한다**. `start()`는 `popstate`를 걸고 첫 렌더를 수행하며 **자신의 해지 함수를 반환한다**. **`navigate`는 그 해지 이후 아무것도 하지 않는다** — 정지 뒤의 호출이 떼어낸 컨테이너에 다시 그리는 것을 실측했다(C3, happy-dom). 라우트 표기는 **배열 순서가 우선순위**이고 catch-all은 `path: '*'`다 — 404가 계약에 없으면 이음매의 완전 예제가 다른 표기를 가정한다 | 라우터 |
 | `interceptLinks` | routing.md | **`src/router/links.js`** — `(root: Element, navigate: (path: string) => void) => () => void` — 내부 링크 클릭을 가로챈다. **가로채지 않을 것을 명시한다**: 수정자 키(⌘·Ctrl·Shift·Alt) · 가운데 클릭 · `target` 속성 · 외부 출처 · `download`. 하나라도 빠지면 새 탭으로 열기가 깨진다 | 링크 인터셉트 |
 | `safeReturnTo` | routing.md | **`src/router/return-to.js`** — `(raw: unknown) => string` — 로그인 후 복귀 경로를 검증해 **내부 경로만** 돌려주고, 아니면 `'/'`를 돌려준다(던지지 않는다). **이 저장소에서 오픈 리다이렉트가 세 번 재발한 자리다**: `//host` · `/\host` · 제어문자 삽입 · 백슬래시 · 인코딩된 스킴이 브라우저에서 외부 URL로 파싱된다. `startsWith('/')`나 origin 비교만으로는 **부족하다**. `assets/security-vectors.md`의 벡터 12건을 전부 통과시키고 결과를 보고에 싣는다 | 보안 원시함수 |
-| `createResource` | loading-error-states.md | **`src/state/resource.js`** — `/** @template T */ (fetcher: (signal: AbortSignal) => Promise<T>) => { subscribe(fn: (state: { status: 'idle' \| 'loading' \| 'empty' \| 'error' \| 'ready', data?: T, error?: Error }) => void): () => void, load(): void, abort(): void }` — **`fetcher`가 `AbortSignal`을 받는 것이 계약이다.** 새 `load()`는 진행 중인 것을 먼저 취소한다 — 취소하지 않으면 늦게 온 앞 응답이 뒤 응답을 덮어쓴다. `'empty'`는 성공했고 결과가 0건인 상태이며 `'error'`와 **다르게** 렌더된다 | 3상태 기계 |
-| `renderState` | loading-error-states.md | **`src/state/render.js`** — `(container: Element, state: Parameters<…>, views: { loading: () => Node, empty: () => Node, error: (e: Error) => Node, ready: (d: unknown) => Node }) => void` — 컨테이너를 비우고 상태에 맞는 뷰를 넣는다. **에러 뷰에 `error.message`를 그대로 싣지 않는다** — 서버 메시지에 내부 경로가 들어 있다 | 3상태 렌더 |
-| `taskListStyles` | styling.md | **`src/components/task-list.css`** — 대표 컴포넌트의 CSS. **컴포넌트가 소유하는 토큰(높이·여백·타이포)은 이 파일 한 곳에서만 정의**하고 사용처는 커스텀 프로퍼티로만 제어한다 | 컴포넌트 스타일 |
+| `createResource` | loading-error-states.md | **`src/state/resource.js`** — `/** @template T */ (fetcher: (signal: AbortSignal) => Promise<T>) => { subscribe(fn: (state: { status: 'idle' } \| { status: 'loading' } \| { status: 'empty' } \| { status: 'error', error: Error } \| { status: 'ready', data: T }) => void): () => void, load(): void, abort(): void }` — **`fetcher`가 `AbortSignal`을 받는 것이 계약이다.** 새 `load()`는 진행 중인 것을 먼저 취소한다 — 취소하지 않으면 늦게 온 앞 응답이 뒤 응답을 덮어쓴다. `'empty'`는 성공했고 결과가 0건인 상태이며 `'error'`와 **다르게** 렌더된다 | 3상태 기계 |
+| `renderState` | loading-error-states.md | **`src/state/render.js`** — `(container: Element, state: ResourceState<T>, views: { idle?: () => Node, loading: () => Node, empty: () => Node, error: (e: Error) => Node, ready: (d: unknown) => Node }) => void` — 컨테이너를 비우고 상태에 맞는 뷰를 넣는다. **`idle`은 선택이고 없으면 비운 채로 둔다** — `createResource`의 상태는 다섯인데 뷰를 넷만 받으면 첫 상태에서 무엇을 그릴지가 계약에 없다. **에러 뷰에 `error.message`를 그대로 싣지 않는다** — 서버 메시지에 내부 경로가 들어 있다 | 3상태 렌더 |
+
+> **CSS 파일은 `provides`에 올리지 않는다.** `provides`는 형제 클러스터가 **시그니처를 추측하는 것**을
+> 막는 장치인데 CSS에는 시그니처가 없고, 게이트의 정의 검사(`function|const|@typedef` 계열)를
+> 통과할 방법도 없다 — `taskListStyles`가 그래서 FAIL이었다(C2 보고). 정규식을 만족시키려고 가짜
+> 상수를 심는 것은 계약이 아니라 우회다.
+>
+> **대신 진짜 계약을 아래 「예제에 등장하는 앱 심볼」 표가 소유한다**: `src/components/task-list.css`는
+> `styling.md`가 소유하고, **파일 이름 = 마운트 함수 이름 = 클래스 접두사**가 규약이다
+> (`.task-list` · `.task-list__row` · `.task-list__title` …). 스코프드 스타일이 없으므로
+> **접두사가 유일한 스코프**다. 컴포넌트가 소유하는 토큰(높이·여백·타이포)은 그 CSS 한 곳에서만
+> 정의하고 사용처는 커스텀 프로퍼티로만 제어한다.
 
 ## requires — 이음매가 제공해야 한다
 
@@ -63,7 +76,7 @@
 | `fetchTasks` | 프로젝트 | `(signal: AbortSignal) => Promise<Task[]>` — **`signal`을 받아 `fetch`에 넘기는 것이 계약이다**(`createResource`가 그것을 준다). 응답은 신뢰 입력이 아니므로 **`parseTask`(팩 제공)로 항목마다 파싱한다**. 실패는 `Error`를 던진다. `src/api/tasks.js`에 둔다 | 봉투·엔드포인트·인증 헤더가 조합의 함수 |
 | `createTask` | 프로젝트 | `(input: import('../schemas/task.js').TaskCreate, signal?: AbortSignal) => Promise<Task>` — **입력을 보내기 전에 `TaskCreateSchema`로 파싱한다.** 성공은 **생성된 `Task`**를 돌려준다(204가 아니다 — 스토어가 그것을 넣는다) | 위와 같다 |
 | `session` | 프로젝트 | `{ get(): { userId: string } \| null, subscribe(fn): () => void }` — 보호 라우트가 `get()`으로 판정한다. **`subscribe`는 해지 함수를 반환한다**(팩의 정리 계약과 같다). `src/auth/session.js`에 둔다 | 토큰 보관 위치와 갱신이 백엔드 축의 함수 |
-| `requireSession` | 프로젝트 | `(navigate: (path: string) => void, returnTo: string) => boolean` — 미인증이면 **`safeReturnTo`(팩 제공)를 통과시킨 `returnTo`**를 실어 로그인으로 보내고 `false`를 돌려준다. **복귀 경로를 검증하지 않고 실으면 오픈 리다이렉트가 된다** | 로그인 경로와 흐름이 조합의 함수 |
+| `requireSession` | 프로젝트 | `(navigate: (path: string) => void, returnTo: string) => boolean` — 미인증이면 `returnTo`를 실어 로그인으로 보내고 `false`를 돌려준다. **`safeReturnTo`(팩 제공)를 통과시키는 것은 호출자다** — 팩의 보호 라우트가 `requireSession(navigate, safeReturnTo(raw))`로 부른다. 강제 지점을 팩 안에 두기 위한 결정이다(이음매에 맡기면 정책 `safe-return-to`가 그것을 볼 수 없다). **복귀 경로를 검증하지 않고 실으면 오픈 리다이렉트가 된다** | 로그인 경로와 흐름이 조합의 함수 |
 
 ## 알려진 공백
 
@@ -80,3 +93,4 @@
 | --- | --- | --- |
 | `--task-row-height` | styling.md · component-patterns.md | 컴포넌트가 소유하는 토큰 예시 |
 | `data-task-id` | component-patterns.md (이벤트 위임의 대상 식별) | 위임 핸들러가 읽는 데이터 속성 |
+| `.task-list__*` | styling.md · component-patterns.md | **클래스 접두사 규약.** 파일 이름 = 마운트 함수 이름 = 접두사이고, 두 파일이 같은 이름을 쓴다 |

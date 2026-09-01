@@ -15,14 +15,14 @@
 **검사 대상은 `codelines()`가 추출한 행뿐이다** — 코드펜스 안 · 주석 아님 · ❌/Bad 구간
 아님. 아래 항목은 전부 **추출 시점에 사전 제작 이음매로 시험해 위반 0을 확인**했다.
 
-| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
-| --- | --- | --- | --- | --- | --- | --- |
-| `env-single-entry` | forbid | seam | `process\.env` | `SKILL.md` | `const url = process.env.DATABASE_URL` | 앱 코드는 `process.env`를 직접 읽지 않는다. 검증된 `env` 모듈만 import한다 — 누락이 첫 요청이 아니라 부팅에서 죽어야 한다. **허브(`SKILL.md`)는 예외다** — env 모듈 자신의 정의를 ✅ 예시로 싣기 때문이고, 이는 정책의 반례가 아니라 정책이 가리키는 그 지점이다 (게이트 최초 실행에서 위양성으로 확인) |
-| `boot-time-env-validation` | require | guide | `safeParse\(process\.env\)` | — | `const parsed = EnvSchema.safeParse(process.env)` | 부팅 검증은 `safeParse` + `process.exit(1)` 한 형태만. `parse`의 예외는 어느 키가 빠졌는지를 로그에서 잃는다 |
-| `no-vendor-sdk-in-app` | forbid | guide | `aws-jwt-verify\|CognitoJwtVerifier` | `portability-boundaries.md`, `deployment-and-operations.md` | `import { CognitoJwtVerifier } from 'aws-jwt-verify'` | 벤더 전용 검증 라이브러리는 이관을 코드 재작성으로 만든다. 표준 OIDC/JWKS(`jose`)를 쓴다 |
-| `db-layer-knows-no-http` | forbid | file:`data-access.md` | `\bContext\b\|\bc\.req\b` | — | `export function listTasks(c: Context) {` | `db/queries/`는 Hono `Context`를 모른다. 역방향 import는 계층을 무너뜨린다 |
-| `ownership-in-query` | require | guide | `eq\([a-z]+\.ownerId` | — | `eq(tasks.ownerId, userId)` | 조회·변이 모든 쿼리에 소유자 조건을 넣는다. 데이터 계층이 백업해 주지 않는다 |
-| `mutation-returning` | require | guide | `\.returning\(\)` | — | `const [row] = await db.update(tasks).set(patch).returning()` | 0행 변이를 성공으로 응답하지 않는다 — "지웠다는데 남아 있는" 버그의 원천 |
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 반례 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `env-single-entry` | forbid | seam | `process\.env` | `SKILL.md` | `const url = process.env.DATABASE_URL` | `process.env['DATABASE_URL']` | 앱 코드는 `process.env`를 직접 읽지 않는다. 검증된 `env` 모듈만 import한다 — 누락이 첫 요청이 아니라 부팅에서 죽어야 한다. **허브(`SKILL.md`)는 예외다** — env 모듈 자신의 정의를 ✅ 예시로 싣기 때문이고, 이는 정책의 반례가 아니라 정책이 가리키는 그 지점이다 (게이트 최초 실행에서 위양성으로 확인) |
+| `boot-time-env-validation` | require | guide | `safeParse\(process\.env\)` | — | `const parsed = EnvSchema.safeParse(process.env)` | `EnvSchema.parse(process.env)` | 부팅 검증은 `safeParse` + `process.exit(1)` 한 형태만. `parse`의 예외는 어느 키가 빠졌는지를 로그에서 잃는다 |
+| `no-vendor-sdk-in-app` | forbid | guide | `aws-jwt-verify\|CognitoJwtVerifier` | `portability-boundaries.md`, `deployment-and-operations.md` | `import { CognitoJwtVerifier } from 'aws-jwt-verify'` | `import { CognitoJwtVerifier } from "aws-jwt-verify/cognito-verifier"` | 벤더 전용 검증 라이브러리는 이관을 코드 재작성으로 만든다. 표준 OIDC/JWKS(`jose`)를 쓴다 |
+| `db-layer-knows-no-http` | forbid | file:`data-access.md` | `\bContext\b\|\bc\.req\b` | — | `export function listTasks(c: Context) {` | `const body = await c.req.json()` | `db/queries/`는 Hono `Context`를 모른다. 역방향 import는 계층을 무너뜨린다 |
+| `ownership-in-query` | require | guide | `eq\([a-z]+\.ownerId` | — | `eq(tasks.ownerId, userId)` | `where(eq(tasks.id, taskId))` | 조회·변이 모든 쿼리에 소유자 조건을 넣는다. 데이터 계층이 백업해 주지 않는다 |
+| `mutation-returning` | require | guide | `\.returning\(\)` | — | `const [row] = await db.update(tasks).set(patch).returning()` | `const returning = true` | 0행 변이를 성공으로 응답하지 않는다 — "지웠다는데 남아 있는" 버그의 원천 |
 
 `대상`이 `guide`면 조립된 가이드 전체(팩 + 이음매), `seam`이면 이음매 파일만,
 `file:<이름>`이면 그 파일만 본다. `require`는 조립 후 최소 1회 등장이면 충족이다.

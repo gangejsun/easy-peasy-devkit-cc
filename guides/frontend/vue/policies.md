@@ -17,23 +17,23 @@
 펜스 전체를 제외시킨다. 이 규약이 깨지면 아래 forbid 규칙들이 자기 자신의 나쁜 예를
 잡는다 (선언 시점에 8건 전부 실측 확인).
 
-| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
-| --- | --- | --- | --- | --- | --- | --- |
-| `env-single-reader` | forbid | guide | `import\.meta\.env\.[A-Z_]+` | `types-and-testing.md` | `import.meta.env.VITE_FEATURE_FLAGS` | 환경 값은 `src/config.ts` 한 곳에서만 읽는다. 다른 파일이 직접 읽으면 타입도 검증도 우회된다. **정규식이 실제 키 접근까지 요구하는 이유**: 맨 `import.meta.env`는 규칙을 설명하는 산문·주석에 등장해 위양성이 된다 |
-| `http-in-api-layer` | forbid | pack | `\bfetch\(` | — | `const res = await fetch('/api/tasks')` | 원시 `fetch`는 이음매의 HTTP 클라이언트 모듈에만 둔다. 화면이 직접 부르면 인증 헤더·에러 정규화·베이스 URL이 갈라진다. **대상이 `pack`인 이유**: 이음매의 클라이언트 파일은 정당하게 `fetch(`를 쓴다 — `guide` 전체에 걸면 이음매를 잡는 위양성이 된다 |
-| `no-secret-env-prefix` | forbid | guide | `VITE_[A-Z_]*(SECRET\|PASSWORD\|PRIVATE\|CREDENTIAL)` | — | `VITE_SESSION_SECRET` | `VITE_*`는 빌드 시점에 번들로 인라인된다. 접두사는 보호가 아니다 |
-| `no-server-data-in-store` | forbid | guide | `state:[[:space:]]*\(\)[[:space:]]*=>[[:space:]]*\(\{[^}]*\b(tasks\|items\|rows)\b` | — | `state: () => ({ tasks: [] as Task[] })` | 서버 컬렉션을 Pinia state에 담으면 캐시가 둘이 된다. 서버 상태는 쿼리 캐시가 단독 소유한다. setup 스토어의 `ref<Task[]>([])`는 컴포넌트의 같은 표현과 정규식으로 구분되지 않아 기계 검사에 올리지 않았다 — 아래 사람 검사에 있다 |
-| `no-scoped-style` | forbid | guide | `<style[^>]*(scoped\|module)` | — | `<style scoped>` | Tailwind가 유일한 스타일 체계다. scoped CSS를 허용하면 같은 여백이 클래스에도 CSS에도 존재하게 되고 디자인 토큰 대조가 불가능해진다 |
-| `no-dynamic-class-string` | forbid | guide | `:class=.{0,80}(\$\{\|['\"][a-z-]+['\"][[:space:]]*\+)` | — | `:class="'text-' + tone"` | Tailwind는 소스를 문자열로 훑는다. 조립한 클래스명은 빌드된 CSS에 없어 스타일이 조용히 사라진다. **템플릿 리터럴과 문자열 연결을 모두 본다** — 연결형(`'text-' + tone`)만 잡히지 않던 것을 감사가 실측으로 찾았다 |
-| `no-options-api` | forbid | guide | `export default[[:space:]]+defineComponent` | — | `export default defineComponent({` | 이 스택의 컴포넌트는 전부 `<script setup lang="ts">`다. 두 작성 방식이 섞이면 props 선언·반응성 규칙·테스트 접근법이 파일마다 달라진다. **`export default { setup() {} }` 형태는 여기서 잡지 않는다** — `export default {`로 넓히면 `tailwind.config.js`가 걸린다(실측 확인). 설정 파일과 컴포넌트를 줄 단위로 구분할 수 없어 사람 검사로 내렸다 |
-| `no-v-html` | forbid | guide | `v-html` | — | `<div v-html="task.description" />` | Vue의 보간(`{{ }}`)은 자동 이스케이프하지만 `v-html`은 그 방어를 통째로 끈다. 신뢰할 수 없는 문자열이 한 번이라도 들어오면 XSS다 |
-| `return-to-validated` | require | **seam** | `safeReturnTo` | — | `router.replace(safeReturnTo(route.query.returnTo))` | 복귀 경로를 `router.replace`에 넘기기 전에 반드시 통과시킨다. **대상이 `seam`인 이유**: 이 함수는 팩이 정의하므로 `guide`로 걸면 팩이 배포되는 한 절대 실패하지 않는다 — 정작 검증해야 할 이음매의 로그인 화면은 검사되지 않는다 (감사 지적) |
-| `three-states` | require | **seam** | `isPending` | — | `const { data, isPending, isError } = useTasksQuery()` | 데이터 화면은 로딩·빈·에러 3상태를 모두 렌더링한다. 위와 같은 이유로 이음매를 겨눈다 |
-| `storetorefs-required` | require | guide | `storeToRefs` | — | `const { density } = storeToRefs(useUiStore())` | 스토어 상태를 꺼내는 정본 통로다. 이 이름이 조립본에서 사라졌다면 누군가 스토어를 그냥 구조 분해하는 예제로 바꿨다는 뜻이다 |
-| `no-react-query` | forbid | guide | `@tanstack/react-query` | — | `import { useQuery } from '@tanstack/react-query'` | **이 축의 최대 위험**: React 팩을 형식 참조로 볼 때 가장 먼저 새어 들어오는 것이 이 import다. Vue는 `@tanstack/vue-query`를 쓴다. 산문 경고만 있고 기계 방어가 없던 자리다 |
-| `no-fullpath-key` | forbid | guide | `:key="route\.fullPath"` | — | `<RouterView :key="route.fullPath" />` | `fullPath`는 쿼리·해시를 포함하므로 필터 변경·앵커 이동마다 페이지가 재마운트되어 입력 중이던 폼이 날아간다. `route.path`를 쓴다 (감사가 실행으로 확인한 결함) |
-| `no-hash-history` | forbid | guide | `createWebHashHistory` | — | `history: createWebHashHistory()` | 산문 금지(§routing)에 기계 방어를 붙인다 |
-| `no-vue-shim` | forbid | guide | `declare module '\*\.vue'` | — | `declare module '*.vue' {` | 도구에 따라 전 컴포넌트 타입을 `any`로 덮는다. 산문 금지에 기계 방어를 붙인다 |
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 반례 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `env-single-reader` | forbid | guide | `import\.meta\.env[.\[]` | `types-and-testing.md` | `import.meta.env.VITE_FEATURE_FLAGS` | `import.meta.env['VITE_API_BASE']` | 환경 값은 `src/config.ts` 한 곳에서만 읽는다. 다른 파일이 직접 읽으면 타입도 검증도 우회된다. **정규식이 실제 키 접근까지 요구하는 이유**: 맨 `import.meta.env`는 규칙을 설명하는 산문·주석에 등장해 위양성이 된다 |
+| `http-in-api-layer` | forbid | pack | `\bfetch\(` | — | `const res = await fetch('/api/tasks')` | `const res = await window.fetch(url)` | 원시 `fetch`는 이음매의 HTTP 클라이언트 모듈에만 둔다. 화면이 직접 부르면 인증 헤더·에러 정규화·베이스 URL이 갈라진다. **대상이 `pack`인 이유**: 이음매의 클라이언트 파일은 정당하게 `fetch(`를 쓴다 — `guide` 전체에 걸면 이음매를 잡는 위양성이 된다 |
+| `no-secret-env-prefix` | forbid | guide | `VITE_[A-Z_]*(SECRET\|PASSWORD\|PRIVATE\|CREDENTIAL)` | — | `VITE_SESSION_SECRET` | `VITE_DB_PASSWORD_HASH` | `VITE_*`는 빌드 시점에 번들로 인라인된다. 접두사는 보호가 아니다 |
+| `no-server-data-in-store` | forbid | guide | `state:[[:space:]]*\(\)[[:space:]]*=>[[:space:]]*\(\{[^}]*\b(tasks\|items\|rows)\b` | — | `state: () => ({ tasks: [] as Task[] })` | `state: () => ({ items: [] as Task[] })` | 서버 컬렉션을 Pinia state에 담으면 캐시가 둘이 된다. 서버 상태는 쿼리 캐시가 단독 소유한다. setup 스토어의 `ref<Task[]>([])`는 컴포넌트의 같은 표현과 정규식으로 구분되지 않아 기계 검사에 올리지 않았다 — 아래 사람 검사에 있다 |
+| `no-scoped-style` | forbid | guide | `<style[^>]*(scoped\|module)` | — | `<style scoped>` | `<style module lang="postcss">` | Tailwind가 유일한 스타일 체계다. scoped CSS를 허용하면 같은 여백이 클래스에도 CSS에도 존재하게 되고 디자인 토큰 대조가 불가능해진다 |
+| `no-dynamic-class-string` | forbid | guide | `:class=.{0,80}(\$\{\|['\"][a-z-]+['\"][[:space:]]*\+)` | — | `:class="'text-' + tone"` | `:class="`text-${tone}`"` | Tailwind는 소스를 문자열로 훑는다. 조립한 클래스명은 빌드된 CSS에 없어 스타일이 조용히 사라진다. **템플릿 리터럴과 문자열 연결을 모두 본다** — 연결형(`'text-' + tone`)만 잡히지 않던 것을 감사가 실측으로 찾았다 |
+| `no-options-api` | forbid | guide | `export default[[:space:]]+defineComponent` | — | `export default defineComponent({` | `export default  defineComponent({` | 이 스택의 컴포넌트는 전부 `<script setup lang="ts">`다. 두 작성 방식이 섞이면 props 선언·반응성 규칙·테스트 접근법이 파일마다 달라진다. **`export default { setup() {} }` 형태는 여기서 잡지 않는다** — `export default {`로 넓히면 `tailwind.config.js`가 걸린다(실측 확인). 설정 파일과 컴포넌트를 줄 단위로 구분할 수 없어 사람 검사로 내렸다 |
+| `no-v-html` | forbid | guide | `v-html` | — | `<div v-html="task.description" />` | `<span v-html="html" />` | Vue의 보간(`{{ }}`)은 자동 이스케이프하지만 `v-html`은 그 방어를 통째로 끈다. 신뢰할 수 없는 문자열이 한 번이라도 들어오면 XSS다 |
+| `return-to-validated` | require | seam | `router\.replace\(safeReturnTo\(` | — | `router.replace(safeReturnTo(route.query.returnTo))` | `export function safeReturnTo(raw: unknown)` | 복귀 경로를 `router.replace`에 넘기기 전에 반드시 통과시킨다. **대상이 `seam`인 이유**: 이 함수는 팩이 정의하므로 `guide`로 걸면 팩이 배포되는 한 절대 실패하지 않는다 — 정작 검증해야 할 이음매의 로그인 화면은 검사되지 않는다 (감사 지적) |
+| `three-states` | require | seam | `\{[^}]*isPending[^}]*\}[[:space:]]*=` | — | `const { data, isPending, isError } = useTasksQuery()` | `const isPending = false` | 데이터 화면은 로딩·빈·에러 3상태를 모두 렌더링한다. 위와 같은 이유로 이음매를 겨눈다 |
+| `storetorefs-required` | require | guide | `=[[:space:]]*storeToRefs\(` | — | `const { density } = storeToRefs(useUiStore())` | `import { storeToRefs } from "pinia"` | 스토어 상태를 꺼내는 정본 통로다. 이 이름이 조립본에서 사라졌다면 누군가 스토어를 그냥 구조 분해하는 예제로 바꿨다는 뜻이다 |
+| `no-react-query` | forbid | guide | `@tanstack/react-query` | — | `import { useQuery } from '@tanstack/react-query'` | `import { useQuery } from '@tanstack/react-query/build/modern'` | **이 축의 최대 위험**: React 팩을 형식 참조로 볼 때 가장 먼저 새어 들어오는 것이 이 import다. Vue는 `@tanstack/vue-query`를 쓴다. 산문 경고만 있고 기계 방어가 없던 자리다 |
+| `no-fullpath-key` | forbid | guide | `:key="\$?route\.fullPath"` | — | `<RouterView :key="route.fullPath" />` | `:key="$route.fullPath"` | `fullPath`는 쿼리·해시를 포함하므로 필터 변경·앵커 이동마다 페이지가 재마운트되어 입력 중이던 폼이 날아간다. `route.path`를 쓴다 (감사가 실행으로 확인한 결함) |
+| `no-hash-history` | forbid | guide | `createWebHashHistory` | — | `history: createWebHashHistory()` | `history: createWebHashHistory(import.meta.env.BASE_URL)` | 산문 금지(§routing)에 기계 방어를 붙인다 |
+| `no-vue-shim` | forbid | guide | `declare module ['\"]\*\.vue['\"]` | — | `declare module '*.vue' {` | `declare module "*.vue" {` | 도구에 따라 전 컴포넌트 타입을 `any`로 덮는다. 산문 금지에 기계 방어를 붙인다 |
 
 `대상`이 `guide`면 조립된 가이드 전체(팩 + 이음매)에서 판정한다. `pack`이면 팩 파일만,
 `seam`이면 이음매 파일만 본다. `require`는 조립 후 최소 1회 등장이면 충족이다.

@@ -30,6 +30,40 @@ description: 프로젝트의 기술 스택 조합(프론트엔드·백엔드 유
 | 6 | **감사 보고도 재확인 대상** | 감사자의 지적 일부가 오판이었다(규격 준수를 위반으로 판정) |
 | 7 | **예산 상한에 붙이지 않는다** | 300줄에 도달한 파일은 다음 변경 때 저자가 아니라 예산이 삭제 대상을 고른다 |
 
+## Step 0: 넘겨받은 작업이 있는가 (있으면 그것이 입력이다)
+
+`install-guide.sh`가 남긴 `.epcc/guide-job.json`이 있으면 **차원 확정의 입력이자 범위
+지시서**다. 없으면 Step 1로 간다.
+
+```bash
+cat .epcc/guide-job.json 2>/dev/null
+```
+
+| 필드 | 쓰임 |
+| --- | --- |
+| `combo` | 확정된 조합. Step 1의 축 질문을 **하지 않는다** |
+| `need` | 만들 것. 아래 어휘가 Step 2 분기 표의 행과 1:1로 대응한다 |
+| `packs` | 조립된 팩 경로. 그 축은 「팩이 있는 축」이므로 Step 2의 세 파일을 읽는다 |
+| `notes` | 프리셋 notes(serverCode·securityBoundary·policyEngine·language). 조합 의존성의 입력 전부 |
+
+| `need` 항목 | 뜻 | 만들 것 |
+| --- | --- | --- |
+| `seam:frontend` · `seam:backend` | 팩은 조립됐고 이음매만 없다 | 그 축의 이음매 + 허브 (축당 3파일) |
+| `frontend` · `backend` | 팩이 없거나 미완이다 | 그 축 전체 (허브 + 전 리소스) |
+
+**시작할 때 `status`를 `running`으로 쓴다.** 세션이 죽으면 그 상태가 남고
+`session-brief` 훅이 다음 세션에 알린다 — 20분이 조용히 사라지지 않게 하는 장치다.
+
+```bash
+python3 - <<'PY'
+import json; p='.epcc/guide-job.json'; j=json.load(open(p))
+j['status']='running'; json.dump(j, open(p,'w'), ensure_ascii=False, indent=2)
+PY
+```
+
+> **닫는 것도 이 스킬의 책임이다** (Step 7). 쓰는 곳만 있고 닫는 곳이 없으면 그 알림은
+> 영구 소음이 된다 — 실제로 그랬다.
+
 ## Step 1: 차원 확정
 
 우선순위: `epcc.config.json`의 `techStack` → 부족한 차원만 인터뷰.
@@ -51,8 +85,8 @@ epcc-init을 거쳤으면 `techStack.presets`(2축 선택)과 `techStack.fronten
 
 ## Step 2: 생성 범위와 분기 — 축 팩을 먼저 조회한다
 
-**사전 제작 단위는 조합이 아니라 축이다.** 조합은 40가지지만 축은 13가지(프론트 5 ·
-백엔드 8)이고, 가이드 내용의 대부분은 한 축만의 함수다. 그러니 **없는 것만 만든다.**
+**사전 제작 단위는 조합이 아니라 축이다.** 조합은 45가지지만 축은 14가지(프론트 5 ·
+백엔드 9)이고, 가이드 내용의 대부분은 한 축만의 함수다. 그러니 **없는 것만 만든다.**
 
 ```bash
 ls "${CLAUDE_PLUGIN_ROOT}/guides/frontend/" "${CLAUDE_PLUGIN_ROOT}/guides/backend/"
@@ -95,7 +129,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/guide-freshness.sh" --pack "${CLAUDE_PLUGIN_
 
 **팩을 쓰기 전에 `pack.json`의 `fixesVariants`를 프로젝트의 확정 차원과 대조한다.**
 축 팩은 프레임워크·ORM 같은 변형을 못박는다(`aws-container`는 Hono + Drizzle,
-`node-api`는 Express + Prisma). 확정 조합이 그와 다르면 **없는 것이 아니라 틀린 것을
+`node-api`는 Express + Prisma, `node-nest`는 NestJS + TypeORM). 확정 조합이 그와 다르면 **없는 것이 아니라 틀린 것을
 받는다** — 조립하지 말고 생성 경로로 보내거나 사용자에게 변형 변경 여부를 묻는다.
 `fixesVariants`가 `{}`면 못박은 변형이 없다는 선언이므로 그대로 조립한다.
 
@@ -432,6 +466,24 @@ C에게 A의 실행 리포트를 함께 준다.
   사유**·**감사 결과와 수리 내역**·**공백 슬롯 목록**(있으면)·"다음 세션부터 자동 트리거됨"
 - 재생성 요청 시: 스탬프의 stack= 값과 새 조합을 비교해 변경 차원을 보고하고,
   수동 편집이 감지되면 편집 부분 diff를 보여준 뒤 사용자 확인을 받는다
+
+### 넘겨받은 작업을 닫는다 (Step 0에서 읽었으면 필수)
+
+**게이트 FAIL 0 + 감사·수리를 마친 뒤에만** 닫는다. 순서가 있다 — 캐시에 먼저 넣고 지운다:
+
+```bash
+# 1) 감사를 통과한 이음매를 캐시에 적재 — 같은 조합의 다음 프로젝트는 생성이 0이 된다
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/install-guide.sh" --save-seam "<combo>"
+
+# 2) 작업 종결. 파일이 남아 있으면 session-brief가 계속 미완으로 알린다
+rm -f .epcc/guide-job.json
+```
+
+끝내지 못했으면 지우지 말고 사유를 남긴다 — 다음 세션이 이어받을 근거다
+(`status`를 `failed`로, `reason`에 무엇이 왜 막혔는지 한 문장).
+
+> **미검증 산출물을 캐시에 넣지 않는다.** 그 조합의 모든 후속 프로젝트가 같은 결함을
+> 물려받아 캐시가 결함의 증폭기가 된다. `--save-seam`은 감사를 통과한 뒤에만 부른다.
 
 ## 생성 이후 — 부패는 시간이 만든다
 

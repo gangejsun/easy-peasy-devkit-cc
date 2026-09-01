@@ -25,18 +25,19 @@
 정작 검증하려던 좁은 경로를 전혀 측정하지 못한다. 정규식이 **통과시키면 안 되는 문자열**로도
 확인한다 — 그것이 통과하면 그 정책은 죽은 것이다.
 
-| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
-| --- | --- | --- | --- | --- | --- | --- |
-| `env-single-entry` | forbid | guide | `process\.env` | `input-validation.md`, `testing-and-deploy.md` | `const projectId = process.env.GCP_PROJECT_ID` | 환경 값은 `settings` 한 곳에서만 읽는다. 다른 파일이 직접 읽으면 타입도 검증도 부팅 시점 실패도 우회된다. 예외는 **둘뿐**이다: 스키마를 정의하는 자리와 테스트가 에뮬레이터 호스트를 주입하는 자리 |
-| `no-firebase-admin` | forbid | guide | `firebase-admin` | — | `import { getFirestore } from 'firebase-admin/firestore'` | 이 축은 `@google-cloud/firestore`로 붙는다. `firebase-admin`을 끌어오면 **`firebase` 축 팩과 코드가 겹치고**, 두 축의 보안 경계가 섞인다 — 그쪽은 규칙이 클라이언트를 막는 전제 위에 있고 이 축은 규칙이 전면 거부다 |
-| `converter-required` | require | file:data-access.md | `withConverter\(` | — | `firestore.collection('tasks').withConverter(taskConverter)` | converter 없는 컬렉션 참조는 원시 문서를 준다 — 타입은 통과하는데 필드가 없거나 `Timestamp`가 아닌 값이 들어온다. 문서는 코드 밖에서 바뀌므로 **읽을 때 다시 파싱하는 자리**가 converter다 |
-| `ownership-in-query` | require | file:data-access.md | `where\('ownerId'` | — | `tasksRef.where('ownerId', '==', ownerId)` | 이 축에는 **동작하는 정책 엔진이 없다**(규칙은 전면 거부이고 서버는 그것을 우회한다). 소유권은 쿼리에 있어야 하고, 읽은 뒤 자바스크립트에서 거르는 형태는 남의 문서를 이미 읽은 뒤다 |
-| `mutation-in-transaction` | require | file:data-access.md | `runTransaction\(` | — | `await firestore.runTransaction(async (tx) => { … })` | 수정·삭제는 **읽고 소유권을 확인한 뒤 쓴다.** 확인과 쓰기를 나누면 그 사이에 바뀐 문서를 덮어쓰고, `delete()`는 없는 문서에도 성공하므로 확인 없이는 남의 것을 지우라는 요청도 성공으로 응답된다 |
-| `strict-schema` | require | file:input-validation.md | `\.strict\(\)` | — | `const TaskQuery = z.object({ … }).strict()` | 미지 키를 허용하면 오타 난 필터가 조용히 무시된 목록을 정상 응답으로 준다. 쿼리·본문 양쪽에 건다 |
-| `rules-deny-all` | forbid | guide | `allow read, write: if request\.auth` | — | `allow read, write: if request.auth != null;` | 이 축의 `firestore.rules`는 **전면 거부**다. 규칙에 인증 조건을 쓰면 「규칙이 지켜 준다」는 전제가 생기는데, 서버는 서비스 계정으로 붙어 규칙을 통째로 우회한다 — 그 전제는 거짓이고 애플리케이션 검사를 느슨하게 만든다 |
-| `seam-no-direct-token-parse` | forbid | seam | `jwtVerify\(` | — | `const { payload } = await jwtVerify(token, jwks)` | 이음매가 토큰을 직접 검증하면 발급자·수신자 확인이 둘로 갈리고, 그 둘은 반드시 어긋난다. 이음매는 자격 증명을 꺼내는 일만 하고 검증은 `verifyIdToken`(팩 제공)에 넘긴다 |
-| `seam-status-lookup` | forbid | seam | `ERROR_STATUS\[` | — | `const status = ERROR_STATUS[err.code]` | 첨자 접근은 코드표에 없는 코드에서 `undefined`를 내고, 그것이 상태 코드 자리에 들어가면 런타임 오류가 다시 500으로 접혀 원인이 사라진다. `ERROR_STATUS[code] ?? 500`을 쓴다 |
-| `vocab-task` | forbid | guide | `\bnotes?\b\|노트` | — | `const notes = []` | 어휘는 Task/작업 (L0 발행). 클러스터를 갈라 쓰면 어휘가 갈린다 — 실측에서 `task` 217회 ↔ `note` 166회로 벌어졌고 완전 예제가 서로 실행 불가였다 |
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 반례 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `env-single-entry` | forbid | guide | `process\.env` | `input-validation.md` | `const projectId = process.env.GCP_PROJECT_ID` | `process.env["GCP_PROJECT_ID"]` | 환경 값은 `settings` 한 곳에서만 읽는다. 다른 파일이 직접 읽으면 타입도 검증도 부팅 시점 실패도 우회된다. 예외는 **둘뿐**이다: 스키마를 정의하는 자리와 테스트 설정이 에뮬레이터 호스트를 주입하는 자리. **주입은 `vitest.config.ts`의 `env` 필드로 한다** — `settings`가 모듈 최상위에서 파싱하므로 `beforeAll`의 `process.env` 대입은 **이미 늦다**(C4 실측) |
+| `no-firebase-admin` | forbid | guide | `firebase-admin` | — | `import { getFirestore } from 'firebase-admin/firestore'` | `const { getApps } = require('firebase-admin/app')` | 이 축은 `@google-cloud/firestore`로 붙는다. `firebase-admin`을 끌어오면 **`firebase` 축 팩과 코드가 겹치고**, 두 축의 보안 경계가 섞인다 — 그쪽은 규칙이 클라이언트를 막는 전제 위에 있고 이 축은 규칙이 전면 거부다 |
+| `converter-required` | require | file:data-access.md | `withConverter\(` | — | `firestore.collection('tasks').withConverter(taskConverter)` | `firestore.collection("tasks").doc(id)` | converter 없는 컬렉션 참조는 원시 문서를 준다 — 타입은 통과하는데 필드가 없거나 `Timestamp`가 아닌 값이 들어온다. 문서는 코드 밖에서 바뀌므로 **읽을 때 다시 파싱하는 자리**가 converter다 |
+| `ownership-in-query` | require | file:data-access.md | `where\('ownerId'` | — | `tasksRef.where('ownerId', '==', ownerId)` | `tasksRef.where('status', '==', 'open')` | 이 축에는 **동작하는 정책 엔진이 없다**(규칙은 전면 거부이고 서버는 그것을 우회한다). 소유권은 쿼리에 있어야 하고, 읽은 뒤 자바스크립트에서 거르는 형태는 남의 문서를 이미 읽은 뒤다 |
+| `cursor-tiebreak` | require | file:data-access.md | `__name__` | — | `.orderBy('__name__', 'desc')` | `.orderBy('createdAt', 'desc')` | **정렬 키가 하나면 동시각 문서가 페이지 경계에서 사라진다.** C2 실측: `createdAt`이 같은 문서 7개를 `limit: 2`로 넘겼더니 `('createdAt','desc')` 하나로는 **7개 중 5개가 누락**됐고, `('__name__','desc')`를 더하니 7/7이 됐다. 누락은 예외가 아니라 **조용한 정답 손실**이라 테스트가 없으면 영영 안 보인다 |
+| `mutation-in-transaction` | require | file:data-access.md | `runTransaction\(` | — | `await firestore.runTransaction(async (tx) => { … })` | `const fn = firestore.runTransaction` | 수정·삭제는 **읽고 소유권을 확인한 뒤 쓴다.** 확인과 쓰기를 나누면 그 사이에 바뀐 문서를 덮어쓰고, `delete()`는 없는 문서에도 성공하므로 확인 없이는 남의 것을 지우라는 요청도 성공으로 응답된다 |
+| `strict-schema` | require | file:input-validation.md | `\.strict\(\)` | — | `const TaskQuery = z.object({ … }).strict()` | `z.object({ title: z.string() })` | 미지 키를 허용하면 오타 난 필터가 조용히 무시된 목록을 정상 응답으로 준다. 쿼리·본문 양쪽에 건다 |
+| `rules-deny-all` | forbid | guide | `allow[^:]*:[[:space:]]*if[[:space:]]+request\.auth` | — | `allow read, write: if request.auth != null;` | `allow update: if request.auth.uid == resource.data.ownerId;` | 이 축의 `firestore.rules`는 **전면 거부**다. 규칙에 인증 조건을 쓰면 「규칙이 지켜 준다」는 전제가 생기는데, 서버는 서비스 계정으로 붙어 규칙을 통째로 우회한다 — 그 전제는 거짓이고 애플리케이션 검사를 느슨하게 만든다 |
+| `seam-no-direct-token-parse` | forbid | seam | `jwtVerify\(` | — | `const { payload } = await jwtVerify(token, jwks)` | `await jose.jwtVerify(token, jwks)` | 이음매가 토큰을 직접 검증하면 발급자·수신자 확인이 둘로 갈리고, 그 둘은 반드시 어긋난다. 이음매는 자격 증명을 꺼내는 일만 하고 검증은 `verifyIdToken`(팩 제공)에 넘긴다 |
+| `seam-status-lookup` | forbid | seam | `ERROR_STATUS\[` | — | `const status = ERROR_STATUS[err.code]` | `ERROR_STATUS[appErr.code] ?? 500` | 첨자 접근은 코드표에 없는 코드에서 `undefined`를 내고, 그것이 상태 코드 자리에 들어가면 런타임 오류가 다시 500으로 접혀 원인이 사라진다. **이음매는 `statusFor(code)`(팩 제공)를 쓴다.** 앞서 이 칸은 「`ERROR_STATUS[code] ?? 500`을 쓴다」였는데 **그 처방 자체가 이 금지 정규식에 걸려** 이음매가 통과할 방법이 없었다(파일럿 실측) — 정규식이 안전한 형태와 위험한 형태를 구분하지 못하면 **접근자를 주고 첨자를 전면 금지하는 것**만이 강제 가능한 형태다 |
+| `vocab-task` | forbid | guide | `\bnotes?\b\|노트` | — | `const notes = []` | `노트를 만든다` | 어휘는 Task/작업 (L0 발행). 클러스터를 갈라 쓰면 어휘가 갈린다 — 실측에서 `task` 217회 ↔ `note` 166회로 벌어졌고 완전 예제가 서로 실행 불가였다 |
 
 ## 사람이 지킬 것 (기계가 판정할 수 없다)
 

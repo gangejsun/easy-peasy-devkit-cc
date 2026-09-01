@@ -17,21 +17,21 @@
 **`대상` 값에 마크다운 강조를 쓰지 않는다.** `**seam**`은 scope로 인식되지 않아 정책이
 조용히 전 파일을 겨눈다 — vue 팩에서 실제로 그랬다.
 
-| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
-| --- | --- | --- | --- | --- | --- | --- |
-| `env-single-entry` | forbid | guide | `process\.env` | `input-validation.md, testing.md` | `const url = process.env.DATABASE_URL` | 환경 값은 `env` 한 곳에서만 읽는다. 다른 파일이 직접 읽으면 타입도 검증도 부팅 시점 실패도 우회된다. 예외 둘: 스키마를 적용하는 자리와, 테스트가 격리 DB를 주입하는 자리 |
-| `boot-time-env-validation` | require | guide | `safeParse\([^)]*process\.env` | — | `EnvSchema.safeParse({ ...process.env })` | 누락·형식 오류가 첫 사용 시점이 아니라 **부팅 시점에** 실패해야 한다. 첫 사용 시점 실패는 배포 몇 시간 뒤 특정 요청에서 터진다 |
-| `prisma-single-client` | forbid | guide | `new PrismaClient\(` | `data-access.md` | `const db = new PrismaClient()` | 클라이언트가 둘이면 커넥션 풀이 둘이 된다. 싱글턴을 정의하는 자리만 예외다. **테스트도 예외가 아닌 것은 의도다** — 격리는 새 클라이언트가 아니라 URL 주입으로 한다 (C3 확인) |
-| `no-raw-sql-interpolation` | forbid | guide | `\$(queryRawUnsafe\|executeRawUnsafe)` | — | `prisma.$queryRawUnsafe(sql)` | `Unsafe` 변형은 문자열을 그대로 보낸다. 태그드 템플릿(`$queryRaw`)은 파라미터화되므로 허용이다. **테이블 이름은 파라미터화할 수 없어 이 축에서 `TRUNCATE` 기반 테스트 정리는 봉쇄된다 — 의도한 것이다**: `deleteMany()`가 느리지만 FK 순서를 타입으로 강제받는다 (C3 지적) |
-| `ownership-in-query` | require | guide | `where:[[:space:]]*\{[^}]*ownerId` | — | `where: { id, ownerId }` | **이 축의 최대 위험.** 데이터 계층 정책 엔진이 없으므로 소유권은 쿼리 조건에 걸어야 한다. 조회 후 비교는 경합에 뚫리고, 누락은 곧 데이터 유출이다. **정규식이 `where` 객체 안을 요구하는 이유**: 맨 `ownerId:`는 TypeScript 파라미터 주석(`ownerId: string`) 한 줄로 충족돼 `where`에 실렸는지를 전혀 보지 못한다 — C2가 실측으로 찾았다 |
-| `mutation-affected-rows` | require | guide | `\.count[[:space:]]*===[[:space:]]*0` | — | `if (res.count === 0) throw new AppError('NOT_FOUND')` | 소유권 필터가 걸린 변이는 남의 행에 대해 **0행 변경**으로 조용히 성공한다. 영향 행 수를 보지 않으면 200을 돌려준다 |
-| `db-layer-knows-no-http` | forbid | file:data-access.md | `\b(Request\|Response\|NextFunction)\b\|\bres\.(status\|json\|send\|sendStatus\|set\|cookie\|redirect\|end)\b` | — | `export function listTasks(req: Request) {` | 데이터 계층이 HTTP를 알면 테스트에 서버가 필요해지고 계층이 무너진다. 쿼리 함수는 평범한 인자만 받는다. **맨 `res.`를 금지하지 않는 이유**: 변이 결과의 관용적 이름이 정확히 `res`라 `mutation-affected-rows`의 `res.count === 0`과 충돌한다 — 응답 객체의 메서드만 겨눈다 (C2 실측) |
-| `no-console` | forbid | guide | `console\.(log\|error\|warn)\(` | — | `console.log(user)` | 구조적 로거만 쓴다. `console`은 요청 상관관계·레벨·직렬화가 없어 운영에서 검색되지 않는다 |
-| `graceful-shutdown` | require | guide | `SIGTERM` | — | `process.on('SIGTERM', shutdown)` | 컨테이너 종료 시 처리 중인 요청을 배수하지 않으면 배포마다 5xx가 난다 |
-| `error-status-single-table` | require | guide | `ERROR_STATUS` | — | `ERROR_STATUS[err.code] ?? 500` | 상태 코드를 파일마다 정하면 같은 실패가 자리에 따라 다른 코드로 나간다 |
-| `vocab-task` | forbid | guide | `\bnotes?\b\|노트` | — | `const notes = []` | 도메인 어휘는 `Task`/`tasks`/`작업`으로 고정한다 (L0 발행). 실측에서 프론트가 `/tasks`, 백엔드가 `/notes`를 써서 완전 예제가 서로 실행 불가였다 — 클러스터를 갈라 저작하면 그 표면이 늘어난다 |
-| `requireauth-on-router` | require | seam | `requireAuth` | — | `router.post('/', requireAuth, createTask)` | **대상이 `seam`인 이유**: `requireAuth`는 이음매가 정의하므로 `guide`로 걸면 이음매가 배포되는 한 절대 실패하지 않는다 — 정작 검증해야 할 라우터 배선이 검사되지 않는다 (vue 팩의 실측 지적) |
-| `envelope-from-error-handler` | require | seam | `errorHandler` | — | `app.use(errorHandler)` | 봉투 방출은 한 곳에서만 한다. 라우터가 직접 `res.status(400).json(...)`을 하면 봉투가 갈라진다. 위와 같은 이유로 이음매를 겨눈다 |
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 반례 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `env-single-entry` | forbid | guide | `process\.env` | `input-validation.md, testing.md` | `const url = process.env.DATABASE_URL` | `process.env["DATABASE_URL"]` | 환경 값은 `env` 한 곳에서만 읽는다. 다른 파일이 직접 읽으면 타입도 검증도 부팅 시점 실패도 우회된다. 예외 둘: 스키마를 적용하는 자리와, 테스트가 격리 DB를 주입하는 자리 |
+| `boot-time-env-validation` | require | guide | `safeParse\([^)]*process\.env` | — | `EnvSchema.safeParse({ ...process.env })` | `EnvSchema.parse(process.env)` | 누락·형식 오류가 첫 사용 시점이 아니라 **부팅 시점에** 실패해야 한다. 첫 사용 시점 실패는 배포 몇 시간 뒤 특정 요청에서 터진다 |
+| `prisma-single-client` | forbid | guide | `new[[:space:]]+PrismaClient\(` | `data-access.md` | `const db = new PrismaClient()` | `const db = new  PrismaClient()` | 클라이언트가 둘이면 커넥션 풀이 둘이 된다. 싱글턴을 정의하는 자리만 예외다. **테스트도 예외가 아닌 것은 의도다** — 격리는 새 클라이언트가 아니라 URL 주입으로 한다 (C3 확인) |
+| `no-raw-sql-interpolation` | forbid | guide | `\$(queryRawUnsafe\|executeRawUnsafe)` | — | `prisma.$queryRawUnsafe(sql)` | `prisma.$executeRawUnsafe(sql)` | `Unsafe` 변형은 문자열을 그대로 보낸다. 태그드 템플릿(`$queryRaw`)은 파라미터화되므로 허용이다. **테이블 이름은 파라미터화할 수 없어 이 축에서 `TRUNCATE` 기반 테스트 정리는 봉쇄된다 — 의도한 것이다**: `deleteMany()`가 느리지만 FK 순서를 타입으로 강제받는다 (C3 지적) |
+| `ownership-in-query` | require | guide | `where:[[:space:]]*\{[^}]*ownerId` | — | `where: { id, ownerId }` | `where: { id: taskId }` | **이 축의 최대 위험.** 데이터 계층 정책 엔진이 없으므로 소유권은 쿼리 조건에 걸어야 한다. 조회 후 비교는 경합에 뚫리고, 누락은 곧 데이터 유출이다. **정규식이 `where` 객체 안을 요구하는 이유**: 맨 `ownerId:`는 TypeScript 파라미터 주석(`ownerId: string`) 한 줄로 충족돼 `where`에 실렸는지를 전혀 보지 못한다 — C2가 실측으로 찾았다 |
+| `mutation-affected-rows` | require | guide | `\.count[[:space:]]*===[[:space:]]*0` | — | `if (res.count === 0) throw new AppError('NOT_FOUND')` | `const count = 0` | 소유권 필터가 걸린 변이는 남의 행에 대해 **0행 변경**으로 조용히 성공한다. 영향 행 수를 보지 않으면 200을 돌려준다 |
+| `db-layer-knows-no-http` | forbid | file:data-access.md | `\b(Request\|Response\|NextFunction)\b\|\bres\.(status\|json\|send\|sendStatus\|set\|cookie\|redirect\|end)\b` | — | `export function listTasks(req: Request) {` | `res.status(404).json({})` | 데이터 계층이 HTTP를 알면 테스트에 서버가 필요해지고 계층이 무너진다. 쿼리 함수는 평범한 인자만 받는다. **맨 `res.`를 금지하지 않는 이유**: 변이 결과의 관용적 이름이 정확히 `res`라 `mutation-affected-rows`의 `res.count === 0`과 충돌한다 — 응답 객체의 메서드만 겨눈다 (C2 실측) |
+| `no-console` | forbid | guide | `console\.(log\|error\|warn)\(` | — | `console.log(user)` | `console.warn(x)` | 구조적 로거만 쓴다. `console`은 요청 상관관계·레벨·직렬화가 없어 운영에서 검색되지 않는다 |
+| `graceful-shutdown` | require | guide | `on\('SIGTERM'` | — | `process.on('SIGTERM', shutdown)` | `const SIGTERM_GRACE = 10000` | 컨테이너 종료 시 처리 중인 요청을 배수하지 않으면 배포마다 5xx가 난다 |
+| `error-status-single-table` | require | guide | `ERROR_STATUS\[[^]]*\][[:space:]]*\?\?` | — | `ERROR_STATUS[err.code] ?? 500` | `export const ERROR_STATUS = {` | 상태 코드를 파일마다 정하면 같은 실패가 자리에 따라 다른 코드로 나간다 |
+| `vocab-task` | forbid | guide | `\bnotes?\b\|노트` | — | `const notes = []` | `노트를 만든다` | 도메인 어휘는 `Task`/`tasks`/`작업`으로 고정한다 (L0 발행). 실측에서 프론트가 `/tasks`, 백엔드가 `/notes`를 써서 완전 예제가 서로 실행 불가였다 — 클러스터를 갈라 저작하면 그 표면이 늘어난다 |
+| `requireauth-on-router` | require | seam | `,[[:space:]]*requireAuth[,)]` | — | `router.post('/', requireAuth, createTask)` | `export function requireAuth(req, res, next)` | **대상이 `seam`인 이유**: `requireAuth`는 이음매가 정의하므로 `guide`로 걸면 이음매가 배포되는 한 절대 실패하지 않는다 — 정작 검증해야 할 라우터 배선이 검사되지 않는다 (vue 팩의 실측 지적) |
+| `envelope-from-error-handler` | require | seam | `app\.use\(errorHandler` | — | `app.use(errorHandler)` | `export function errorHandler(err, req, res, next)` | 봉투 방출은 한 곳에서만 한다. 라우터가 직접 `res.status(400).json(...)`을 하면 봉투가 갈라진다. 위와 같은 이유로 이음매를 겨눈다 |
 
 `대상`이 `guide`면 조립된 가이드 전체(팩 + 이음매), `pack`이면 팩 파일만, `seam`이면 이음매
 파일만, `file:<이름>`이면 그 파일만 본다. `require`는 최소 1회 등장이면 충족이다.

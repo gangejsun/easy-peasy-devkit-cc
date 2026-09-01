@@ -11,16 +11,16 @@
 
 ## 기계 검사 (게이트 `check_policies` · `check_pack_policies`)
 
-| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
-| --- | --- | --- | --- | --- | --- | --- |
-| `no-console-log` | forbid | guide | `console\.log\(` | — | `console.log('created', id)` | 구조적 필드가 사라져 Cloud Logging에서 질의할 수 없다. `logger`를 쓴다 |
-| `single-app-init` | forbid | guide | `initializeApp\(` | `data-access.md` | `initializeApp()` | 두 번 부르면 예외다. 클라이언트를 만드는 자리만 예외 |
-| `owner-in-query` | require | guide | `where\(\s*'ownerId'\s*,\s*'=='` | — | `.where('ownerId', '==', ownerId)` | 문서 ID만으로는 남의 것도 읽힌다. **소유권은 쿼리에 있어야 한다** — admin SDK는 규칙을 우회하므로 이것이 함수 경로의 유일한 경계다 |
-| `tx-for-check-then-write` | require | guide | `runTransaction\(` | — | `await db.runTransaction(async (tx) => {` | 존재+소유 확인과 쓰기를 나누면 그 사이에 소유자가 바뀔 수 있다 |
-| `no-client-timestamp` | forbid | guide | `createdAt:\s*new Date\(` | — | `createdAt: new Date()` | 클라이언트·함수 인스턴스의 시각을 믿지 않는다. `FieldValue.serverTimestamp()`를 쓴다 |
-| `rules-split-write` | forbid | guide | `allow write:` | — | `allow write: if isOwner(resource);` | `write` 하나로 묶으면 생성과 수정의 불변식이 달라 둘 중 하나가 반드시 헐거워진다. `create`·`update`·`delete`를 따로 쓴다 |
-| `params-value-in-handler` | forbid | guide | `^const \w+ = \w+\.value\(\)` | — | `const key = apiKey.value()` | 모듈 최상위에서 `.value()`를 부르면 배포 분석 단계에서 터진다. 핸들러 안에서 부른다 |
-| `vocab-task` | forbid | guide | `\bnote(s)?\b\|노트` | — | `const notes = []` | 어휘는 Task/작업 (L0 발행). 클러스터를 갈라 쓰면 어휘가 갈린다 |
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 반례 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `no-console-log` | forbid | guide | `console\.log\(` | — | `console.log('created', id)` | `console.log(`created ${id}`)` | 구조적 필드가 사라져 Cloud Logging에서 질의할 수 없다. `logger`를 쓴다 |
+| `single-app-init` | forbid | guide | `initializeApp\(` | `data-access.md` | `initializeApp()` | `initializeApp(config)` | 두 번 부르면 예외다. 클라이언트를 만드는 자리만 예외 |
+| `owner-in-query` | require | guide | `where\(\s*'ownerId'\s*,\s*'=='` | — | `.where('ownerId', '==', ownerId)` | `where('id', '==', taskId)` | 문서 ID만으로는 남의 것도 읽힌다. **소유권은 쿼리에 있어야 한다** — admin SDK는 규칙을 우회하므로 이것이 함수 경로의 유일한 경계다 |
+| `tx-for-check-then-write` | require | guide | `runTransaction\(` | — | `await db.runTransaction(async (tx) => {` | `const fn = db.runTransaction` | 존재+소유 확인과 쓰기를 나누면 그 사이에 소유자가 바뀔 수 있다 |
+| `no-client-timestamp` | forbid | guide | `createdAt:\s*new Date\(` | — | `createdAt: new Date()` | `createdAt:  new Date()` | 클라이언트·함수 인스턴스의 시각을 믿지 않는다. `FieldValue.serverTimestamp()`를 쓴다 |
+| `rules-split-write` | forbid | guide | `allow[^:]*\bwrite\b[^:]*:` | — | `allow write: if isOwner(resource);` | `allow write, delete: if isOwner(resource);` | `write` 하나로 묶으면 생성과 수정의 불변식이 달라 둘 중 하나가 반드시 헐거워진다. `create`·`update`·`delete`를 따로 쓴다 |
+| `params-value-in-handler` | forbid | guide | `^[[:space:]]*const \w+ = \w+\.value\(\)` | — | `const key = apiKey.value()` | `  const key = apiKey.value()` | 모듈 최상위에서 `.value()`를 부르면 배포 분석 단계에서 터진다. 핸들러 안에서 부른다 |
+| `vocab-task` | forbid | guide | `\bnote(s)?\b\|노트` | — | `const notes = []` | `노트를 만든다` | 어휘는 Task/작업 (L0 발행). 클러스터를 갈라 쓰면 어휘가 갈린다 |
 
 ## 사람이 지킬 것 (기계가 판정할 수 없다)
 

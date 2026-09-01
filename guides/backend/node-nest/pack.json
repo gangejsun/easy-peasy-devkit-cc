@@ -1,0 +1,147 @@
+{
+  "axis": "backend",
+  "name": "node-nest",
+  "displayName": "NestJS API 서버 (NestJS 11 + TypeORM 1 + PostgreSQL)",
+  "packVersion": "3.16.0",
+  "verified": "2026-08-24",
+  "extractedFrom": "신규 생성 — 실증 원본 없음. 형식은 assets/pack-resource-template.md만 따랐고, 내용은 스크래치에 NestJS 11 + TypeORM 1.1 프로젝트를 세워 실 PostgreSQL 18.4에 붙여 얻었다",
+  "backendType": "cloud-server",
+  "dataLayerPolicyEngine": false,
+  "policyEngineNote": "행 수준 정책 엔진이 없다. 애플리케이션이 신뢰된 연결로 DB에 붙으므로 **소유권 필터 누락이 곧 데이터 유출**이다. 이 축 고유의 위험은 `where`가 **배열이면 OR**라는 점이다 — 커서 페이지네이션처럼 분기가 둘 이상인 쿼리에서 한 분기의 `ownerId`를 빠뜨리면 그 분기가 남의 행을 통째로 통과시킨다 (실측 확인). BaaS 축(supabase)의 'RLS가 백업이니 애플리케이션 검사는 이중 방어' 서술을 이 축에 옮기면 정확히 반대 지침이 된다 — 이음매 생성 시 반드시 전달할 값",
+  "symbolSurface": true,
+  "exampleDomain": {
+    "entity": "Task",
+    "collection": "tasks",
+    "route": "/api/tasks",
+    "korean": "작업",
+    "note": "모든 팩과 이음매가 같은 예제 도메인을 쓴다. L0가 이 값에서 어휘 정책(`vocab-task`)을 발행해 게이트가 분기를 차단한다 — 실측에서 프론트가 /tasks를, 백엔드가 /notes를 써서 완전 예제가 서로 실행 불가였다"
+  },
+  "fixesVariants": {
+    "framework": "nestjs",
+    "orm": "typeorm",
+    "validation": "class-validator",
+    "test": "jest"
+  },
+  "fixesVariantsNote": "**이 팩이 존재하는 이유가 첫 번째 값이다** — NestJS의 DI·데코레이터·모듈은 Express의 변형이 아니라 다른 시스템이라 backend/node-api(Express + Prisma)의 변형으로 담을 수 없다. ORM도 함께 못박는다: TypeORM의 Repository는 **DI 컨테이너에 실려** 주입되고(`@InjectRepository`), 그 배선이 모듈 경계·테스트 대역·트랜잭션 경계 전부의 전제다. Prisma를 고른 프로젝트는 backend/node-api가, Drizzle을 고른 프로젝트는 backend/aws-container가 그 형태를 소유한다. 검증도 못박는다 — class-validator는 DTO **클래스**가 곧 스키마이고, 스키마 객체를 따로 두는 Zod와 파일 배치가 다르다",
+  "pkgs": [
+    "@nestjs/common@11",
+    "@nestjs/core@11",
+    "@nestjs/platform-express@11",
+    "@nestjs/config@4",
+    "@nestjs/typeorm@11",
+    "@nestjs/mapped-types@2",
+    "typeorm@1",
+    "pg@8",
+    "class-validator@0.15",
+    "class-transformer@0.5",
+    "reflect-metadata@0.2",
+    "rxjs@7",
+    "typescript@5",
+    "@nestjs/testing@11",
+    "jest@30",
+    "ts-jest@29",
+    "supertest@7",
+    "@types/jest@30",
+    "@types/supertest@6",
+    "@types/node@22"
+  ],
+  "pkgsNote": "`@nestjs/platform-express`가 목록에 있는 것은 Express를 고른 것이 아니라 **Nest의 기본 HTTP 어댑터**다 — 팩 본문은 Express의 API(`app.use`·`Router`)를 쓰지 않는다. 로거는 의존성을 늘리지 않는다: Nest 11의 `ConsoleLogger({ json: true })`가 구조적 JSON을 낸다 (실행 확인)",
+  "runtime": {
+    "postgresql": "16",
+    "node": "22.13+ 또는 24.11+"
+  },
+  "runtimeNote": "서버·런타임 요구이지 npm 의존성이 아니다. Node 하한은 추측이 아니라 `typeorm@1.1.0`의 `engines`가 `^20.19.0 || ^22.13.0 || >=24.11.0`으로 선언한 값이다 — 그 사이 버전(예: 24.7)에서는 npm이 EBADENGINE 경고를 낸다. PostgreSQL은 16 이상을 가정하고, 실측은 18.4에서 돌렸다 (`gen_random_uuid()`는 13부터 pgcrypto 없이도 코어에 있다)",
+  "hubFragments": "PACK.md",
+  "ledger": "ledger.md",
+  "policies": "policies.md",
+  "resources": [
+    {
+      "file": "project-structure.md",
+      "nav": "모듈 경계와 DI 방향 · 부트스트랩(main.ts) · 전역 파이프 등록 순서 · 기능 모듈 조립 · 순환 의존과 배럴"
+    },
+    {
+      "file": "data-modeling.md",
+      "nav": "엔티티 정의 · 시각 컬럼 정밀도 · TaskView와 select 상수 · DataSource 옵션 조립 · 마이그레이션 작성과 실행 · synchronize 금지"
+    },
+    {
+      "file": "data-access.md",
+      "nav": "Repository는 DI로만 · 소유권을 where에 · where 배열은 OR · affected 행 수 · 커서 페이지네이션 · select와 타입의 괴리 · 트랜잭션 경계"
+    },
+    {
+      "file": "input-validation.md",
+      "nav": "DTO 클래스와 class-validator · 전역 ValidationPipe 옵션 · 쿼리 문자열 변환(@Type) · PartialType 부분 업데이트 · 환경변수 검증과 부팅 시점 실패"
+    },
+    {
+      "file": "error-handling.md",
+      "nav": "도메인 에러 → 상태 코드 표 · QueryFailedError 드라이버 코드 판별(23505·23503) · ValidationError → 필드 오류 · 존재 누설 금지 · HttpException과의 경계"
+    },
+    {
+      "file": "testing.md",
+      "nav": "Jest + ts-jest 설정 · Test.createTestingModule과 대역 주입 · 워커별 스키마 격리 · supertest e2e · 시드와 정리 · 차단 증명"
+    },
+    {
+      "file": "operations.md",
+      "nav": "종료 배수(readiness → 유예 → close → 강제) · keep-alive가 close를 막는 함정 · 헬스체크 · 커넥션 풀 사이징 · JSON 로깅 · 느린 쿼리 관측 · 마이그레이션 배포 순서"
+    }
+  ],
+  "seamSlots": [
+    "api-endpoints",
+    "auth-boundaries",
+    "complete-example"
+  ],
+  "seamSlotNotes": {
+    "api-endpoints": "컨트롤러 형태 + 요청/응답 봉투 + 에러 봉투 방출(예외 필터). 봉투는 와이어 계약의 함수이므로 축이 아니라 조합이 정한다. **Nest에서는 컨트롤러가 곧 라우팅 선언**이라 이음매가 데코레이터 경로까지 소유한다",
+    "auth-boundaries": "가드(`AuthGuard`)와 주체 주입(`CurrentUser`) · 토큰 검증 방식(JWT 자체 발급 · 세션 · 외부 IdP) · 역할/스코프 · 로그인·로그아웃 흐름. **인증 방식은 축의 함수가 아니다** — 프론트 축에 서버 런타임이 있는지에 따라 세션 쿠키냐 베어러 토큰이냐가 갈린다",
+    "complete-example": "마이그레이션 → 엔티티 → DTO → 서비스 → 컨트롤러 → e2e 테스트 관통"
+  },
+  "clusters": [
+    {
+      "id": "C1",
+      "pilot": true,
+      "files": [
+        "input-validation.md",
+        "error-handling.md"
+      ],
+      "why": "DTO 클래스가 검증 스키마이자 에러의 출처다. `ValidationError[]` → 필드 오류 봉투, 드라이버 코드 23505 → 409가 한 표에서 나온다. requires의 `AppError` 형태가 가장 많이 얽히는 자리이므로 파일럿이다"
+    },
+    {
+      "id": "C2",
+      "files": [
+        "data-modeling.md",
+        "data-access.md",
+        "project-structure.md"
+      ],
+      "why": "엔티티가 곧 테이블이고 `TypeOrmModule.forRootAsync`(루트 모듈)·`forFeature`(기능 모듈)가 한 결정의 양쪽 끝이다. `TaskView`의 열 목록과 `select` 상수가 갈리면 컴파일은 통과하고 런타임만 빈다 — 두 파일이 같은 결정을 나눠 갖는다"
+    },
+    {
+      "id": "C3",
+      "files": [
+        "testing.md",
+        "operations.md"
+      ],
+      "why": "프로세스·연결 수명(부팅·종료·풀·헬스체크)을 공유한다. 워커별 스키마 격리와 커넥션 풀 사이징이 같은 자원을 다루고, 종료 훅의 발화 시점은 테스트에서 `app.close()`로 관측된다"
+    }
+  ],
+  "knownGaps": [
+    {
+      "what": "요청 상관관계 ID(correlation id)가 없다",
+      "where": "resources/operations.md §5 (JSON 로깅)",
+      "detail": "`ConsoleLogger({ json: true })`는 구조적 출력을 내지만 **요청 스코프를 모른다** — 한 요청의 로그를 묶는 필드가 없다. 실측으로 확인한 것은 출력 형태뿐이고, `AsyncLocalStorage`로 요청 ID를 싣는 형태는 이 팩에서 검증하지 않았다. 형태를 단정하는 대신 비웠다 — '빈 슬롯이 틀린 내용보다 낫다'. 다음 팩·이음매에서 실측하면 채운다"
+    },
+    {
+      "what": "마이그레이션 자동 생성(`migration:generate`)의 산출을 검증하지 않았다",
+      "where": "resources/data-modeling.md §5 (마이그레이션)",
+      "detail": "이 팩은 마이그레이션을 **손으로 쓰는 형태**만 싣고 실행으로 확인했다(`migration:run`이 실 PostgreSQL 18.4에 테이블을 만들었다). `migration:generate`는 엔티티와 DB의 차분을 도구가 만드는데, 그 산출이 이 팩의 엔티티에서 어떤 SQL로 나오는지는 돌려보지 않았다 — 특히 `precision: 3`을 선언한 시각 컬럼의 차분이 그렇다. 확인하지 않은 것을 형태로 단정하지 않는다"
+    },
+    {
+      "what": "다중 인스턴스에서의 마이그레이션 경합을 실측하지 않았다",
+      "where": "resources/operations.md §7 (마이그레이션 배포 순서)",
+      "detail": "'부팅에서 `migrationsRun`을 켜지 않는다'는 지침의 근거는 TypeORM이 마이그레이션을 트랜잭션으로 감싼다는 점과 일반 원리이지, 인스턴스 둘을 동시에 띄워 관측한 결과가 아니다. 지침은 유지하되 그 근거의 범위를 여기 남긴다"
+    },
+    {
+      "what": "TypeScript 7에서는 이 팩의 tsconfig가 그대로 통하지 않는다",
+      "where": "resources/project-structure.md §5 (tsconfig.json)",
+      "detail": "팩은 `typescript@5`를 못박고 그 위에서 타입체크 통과를 확인했다(pack-smoke --online). **TypeScript 7.0.2로 올려 돌려 보니 `moduleResolution: \"node\"`가 TS5108로 제거됐다** — `node10`은 더 이상 없다. TS7에서는 `module`·`moduleResolution`을 함께 `node16`/`nodenext` 계열로 올려야 하는데, 그 조합은 TS5에서 다른 제약을 부르므로 **하나의 tsconfig로 두 메이저를 동시에 만족시킬 수 없다**. 그래서 검증한 쪽(TS5)을 싣고 이 사실을 여기 남긴다. `guide-freshness.sh`가 `typescript 5→7`을 부분 부패로 보고하는데 그 신호는 **정확하다** — 올릴 때 고쳐야 할 파일이 이 한 곳이다"
+    }
+  ]
+}

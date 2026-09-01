@@ -66,6 +66,25 @@ return p + url.search + url.hash;
 
 두 층이 다 필요하다. 게이트의 `check_security_shapes`가 **2차가 빠진 형태**를 FAIL로 막는다.
 
+
+### 벡터 러너가 세우는 환경 — 구현이 이 밖으로 나가면 벡터가 아예 돌지 않는다
+
+`pack-smoke.sh`가 네 함수를 부를 때의 환경이다. **저작 전에 읽어라** — 이 제약을
+모르고 쓰면 「벡터 12건 통과」가 아니라 「벡터가 한 건도 돌지 않았다」가 된다.
+
+| 러너가 주는 것 | 값 |
+| --- | --- |
+| `globalThis.window` | `{ location: { origin: 'https://app.example', href: 'https://app.example/' } }` — **그것뿐이다** |
+| 호출 형태 | `fn(input, FB)` — 두 번째 인자로 fallback 문자열을 넘긴다 |
+
+- **`window.location.pathname`·`document`·`history`를 쓰면 러너에서 터진다.** 오리진만
+  있으면 되는 형태로 써라 — `new URL(raw, window.location.origin)`이 그 관용구다
+- 시그니처가 `(raw) => string`이어도 된다(둘째 인자는 무시된다). 다만 **fallback을 인자로
+  받는 형태라면 러너의 `FB`를 그대로 돌려주게 되고, 러너는 그것을 「fallback으로 떨어졌다」로
+  읽는다** — 위 판정 규약에 따라 그것 자체는 실패가 아니다
+- 이 제약은 실측에서 드러났다(vanilla C3): 원장의 시그니처와 러너의 호출 형태가 달랐고,
+  어느 쪽 문서에도 적혀 있지 않았다
+
 ## B. 경로 정규화 · 파일 접근
 
 사용자 입력으로 경로를 만드는 함수 (업로드 키, 정적 파일, 템플릿 이름).

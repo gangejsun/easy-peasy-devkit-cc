@@ -195,6 +195,7 @@
                 "gcp-serverless",
                 "fastapi",
                 "node-api",
+                "node-nest",
                 "none"
               ],
               "description": "presets/backend/<name>.json"

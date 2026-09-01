@@ -33,7 +33,7 @@
 | `aws-serverless` | 서버리스 조립 | Lambda + API Gateway + DynamoDB + Cognito | **행 수준 정책 엔진 없음** — 애플리케이션 층 검사가 실질적 유일 경계 |
 | `aws-container` | 자체 서버 | ECS/Fargate + ALB + RDS PostgreSQL + Drizzle + Cognito(OIDC) | **행 수준 정책 엔진 없음** — 소유권 검사 누락이 곧 데이터 유출. AWS 종속을 인프라 층에만 두어 온프레미스 이식이 가능하다 |
 | `gcp-serverless` | 서버리스 조립 | Cloud Run/Functions + Firestore + Identity Platform | IAM/토큰 검증 + (직접 접근 경로가 있으면) Security Rules |
-| `fastapi` | 자체 서버 | FastAPI + SQLAlchemy 2.0 + Pydantic v2 + Alembic + pytest | 애플리케이션 층이 유일한 경계 |
+| `fastapi` | 자체 서버 | **Python** · FastAPI + SQLAlchemy 2.0 + Pydantic v2 + Alembic + pytest | 애플리케이션 층이 유일한 경계 |
 | `node-api` | 자체 서버 | Express 5 + PostgreSQL + Prisma + Zod | 애플리케이션 층이 유일한 경계 |
 | `node-nest` | 자체 서버 | NestJS 11 + PostgreSQL + TypeORM 1 + class-validator | 애플리케이션 층이 유일한 경계. `where`가 **배열이면 OR**라 분기마다 소유권을 반복해야 한다 |
 | `none` | — | 백엔드 없음 / 외부 REST API 소비 | 외부 API 토큰 보관 위치가 위험 지점 |
@@ -72,9 +72,11 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/install-guide.sh" \
 | 팩 없음 | 양쪽 전체 생성 | init은 즉시 종료 |
 | `none` × `none` | 없음 (Core 스킬만) | — |
 
-현재 보유한 축 팩은 **프론트 2개**(`nextjs` · `react-vite`)와 **백엔드 2개**
-(`supabase` · `aws-container`)이고, 사전 제작 이음매는 2쌍이다. 이 4개만으로
-40가지 선택지 중 **22가지가 적어도 한 축을 완성품으로** 받는다.
+현재 보유한 축 팩은 **프론트 4개**(`nextjs` · `react-vite` · `vue` · `vanilla`)와
+**백엔드 8개**(`supabase` · `firebase` · `aws-serverless` · `aws-container` ·
+`gcp-serverless` · `fastapi` · `node-api` · `node-nest`)이고, 사전 제작 이음매는 3쌍이다.
+이 12개로 45가지 선택지 중 **44가지가 적어도 한 축을 완성품으로** 받는다 —
+아무것도 받지 않는 것은 `none` × `none` 하나뿐이다.
 
 **init은 가이드를 기다리지 않는다.** 생성이 필요하면 `.epcc/guide-job.json`에 작업을
 남기고 끝나며, 완성·감사·수리를 마친 뒤에만 설치한다 — 미완성 반쪽 가이드는 깔지 않는다.
@@ -169,8 +171,8 @@ BaaS 축이 얇은 것은 자연스럽다 — 그 조합의 "백엔드 가이드
 사전 제작본은 부패해서 **없는 가이드보다 나쁘다** — 틀린 지침을 신뢰하게 만들기 때문이다.
 
 그래서 기준은 개수가 아니라 조건이다: **정기 감사 대상으로 등록할 수 있을 때만 사전
-제작한다.** 축 단위는 이 조건을 충족한다 — 12개는 감사 가능한 수이고, 팩 하나를 감사하면
-조합 4개(프론트) 또는 8개(백엔드)가 함께 좋아진다.
+제작한다.** 축 단위는 이 조건을 충족한다 — 12개는 감사 가능한 수이고, 프론트 팩 하나를
+감사하면 그것이 들어가는 조합 9가지가, 백엔드 팩 하나면 5가지가 함께 좋아진다.
 
 ### 구식화 점검 — 묻지 않고 대조한다
 

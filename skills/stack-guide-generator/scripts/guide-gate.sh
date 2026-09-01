@@ -19,7 +19,7 @@
 #       것(requires 충족·--pair)은 건너뛴 것을 명시 보고한다.
 #   guide-gate.sh --pair --contract <계약파일> --frontend <디렉토리> --backend <디렉토리>
 #   guide-gate.sh --self-test   합성 픽스처만 (빠르다 — 하네스를 고칠 때마다 돌린다)
-#   guide-gate.sh --regress     + 출하 팩 6개와 사전 제작 이음매 전부를 실제로 검사한다.
+#   guide-gate.sh --regress     + 출하 팩 전량과 사전 제작 이음매 전부를 실제로 검사한다.
 #       합성 픽스처는 **미탐**을 잡고 실물은 **오탐**을 잡는다. 느리므로 출하 전에 돌린다.
 #   guide-gate.sh --help
 #
@@ -277,6 +277,16 @@ _policy_rows_look_present() { # $1=정책 파일
   grep -qE '^\|[[:space:]]*`[A-Za-z0-9_-]+`[[:space:]]*\|[[:space:]]*(forbid|require)[[:space:]]*\|' "$1"
 }
 
+# 심볼이 이 파일에 정의돼 있는가. codelines()가 1차이고, JSDoc `@typedef`가 2차다.
+# **JS 팩의 타입 심볼은 JSDoc 주석으로만 선언된다** — `iscomment()`가 `*`로 시작하는 줄을
+# 버리므로 그 선언은 codelines()에 **존재할 수 없다**. vanilla(첫 JavaScript 축) 실측에서
+# `Task`가 정의돼 있는데도 「정의가 없음」 FAIL이 났다. 검사기가 한 언어만 알던 자리다.
+_has_def() { # $1=파일 $2=심볼
+  codelines "$1" | cut -f3 | grep -qE "$(_defpat "$2")" && return 0
+  grep -qE "@typedef[[:space:]]*\{.*\}[[:space:]]*$2\b|@typedef[[:space:]]+$2\b" "$1" && return 0
+  return 1
+}
+
 _defpat() { # $1=심볼 이름 → grep -E 패턴
   printf '(export[[:space:]]+)?(async[[:space:]]+)?(function|const|let|class|type|interface|enum)[[:space:]]+%s\\b|(async[[:space:]]+)?def[[:space:]]+%s\\b|^%s[[:space:]]*(:[^=]*)?=[^=]' "$1" "$1" "$1"
 }
@@ -384,8 +394,15 @@ check_env() {
 
   # 값이 `z.string()...` 형태만이 아니라 `ms(60_000)...` 같은 **헬퍼 호출**일 수 있다.
   # 점만 인정하면 헬퍼로 선언한 키가 미선언으로 잡혀 정상 코드가 FAIL한다 (node-api 실측).
-  grep -oE '^[[:space:]]*[A-Z][A-Z0-9_]{2,}:[[:space:]]*[A-Za-z_$][A-Za-z0-9_$]*[.(]' "$TMP/code.txt" \
-    | sed -E 's/^[[:space:]]*//; s/:.*//' | sort -u > "$TMP/envdecl.txt"
+  { grep -oE '^[[:space:]]*[A-Z][A-Z0-9_]{2,}:[[:space:]]*[A-Za-z_$][A-Za-z0-9_$]*[.(]' "$TMP/code.txt"
+    # **클래스 필드로 선언하는 스키마도 선언이다.** class-validator 축(node-nest)에서는
+    # 스키마가 객체가 아니라 클래스이고 값 자리에 오는 것이 **타입**이다 — 위 정규식은
+    # 값이 호출·속성 접근인 형태(z.string() 류)만 알아서 그 팩의 선언을 0건으로 봤고,
+    # env.LOG_LEVEL 사용이 「스키마에 없는 키」로 FAIL했다 (node-nest 실측 — 오탐).
+    # 객체 리터럴과 섞이지 않는 두 형태만 인정한다: `KEY!: T` / `KEY?: T` 와 `KEY: T = 기본값`.
+    grep -oE '^[[:space:]]*[A-Z][A-Z0-9_]{2,}[!?]:' "$TMP/code.txt"
+    grep -oE "^[[:space:]]*[A-Z][A-Z0-9_]{2,}:[[:space:]]*[A-Za-z_$'\"][^=;]*=" "$TMP/code.txt"
+  } | sed -E 's/^[[:space:]]*//; s/[!?]?:.*//' | sort -u > "$TMP/envdecl.txt"
   local nd; nd=$(num "$(grep -c . "$TMP/envdecl.txt" | tr -d ' ')")
   if [ "$nd" -eq 0 ]; then
     warn "검증된 env 스키마가 없음 — 커버리지 검사 생략" "규격서: 환경변수도 입력이다. 검증된 단일 모듈에서 부팅 시점에 실패시킨다"
@@ -491,7 +508,7 @@ check_ledger() {
     [ -z "$sym" ] && continue
     rf=$(_resolve "$G" "$deff")
     if [ -z "$rf" ]; then bad "원장 '$sym'의 정의 파일이 실재하지 않음: $(printf '%s' "$deff" | tr -d ' `')"; n_def=$((n_def+1)); continue; fi
-    if ! codelines "$rf" | cut -f3 | grep -qE "$(_defpat "$sym")"; then
+    if ! _has_def "$rf" "$sym"; then
       bad "원장 '$sym'의 정의가 $(basename "$rf")에 없음" "원장은 계약이다 — 정의를 넣거나 원장에서 지운다"; n_def=$((n_def+1))
     fi
     for c in $(printf '%s' "$cons" | tr ',' ' '); do
@@ -590,7 +607,7 @@ check_policies() {
   local packfiles; packfiles=$(grep -oE '"packFiles"[^]]*\]' "$ASSEMBLY" | grep -oE '"[a-z0-9.-]+\.md"' | tr -d '"' | tr '\n' ' ')
 
   local id verdict scope rx except ex has viol=0 pass=0 targets f base hits
-  while IFS=$'\t' read -r id verdict scope rx except ex has; do
+  while IFS=$'\t' read -r id verdict scope rx except ex has cx; do
     [ -z "$id" ] && continue
     # 대상 범위를 파일 목록으로 환원한다
     targets=""
@@ -631,21 +648,23 @@ check_policies() {
 }
 
 # ── 공용: 정책 표 파싱 ──────────────────────────────────────────────
-# | id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
-# 출력: id \t 판정 \t 대상 \t 정규식 \t 예외 \t 증명예 \t 증명예열있음(0/1)
+# | id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 반례 | 설명 |
+# 출력: id \t 판정 \t 대상 \t 정규식 \t 예외 \t 증명예 \t 증명예열있음(0/1) \t 반례
 # 정규식 안의 \| 는 마크다운 표의 이스케이프다 — 열 구분보다 먼저 보호한다.
 _parse_policies() {
   awk '/^## 기계 검사/{f=1;next} /^## /{f=0} f' "$1" \
     | grep -E '^\|[[:space:]]*`' \
     | sed 's/\\|/\x01/g' \
     | awk -F'|' 'NF>=7 {
-        for(i=2;i<=7;i++){ gsub(/^[[:space:]]+|[[:space:]]+$/,"",$i); gsub(/`/,"",$i); gsub(/\x01/,"|",$i) }
+        for(i=2;i<=8;i++){ gsub(/^[[:space:]]+|[[:space:]]+$/,"",$i); gsub(/`/,"",$i); gsub(/\x01/,"|",$i) }
         # 대상(scope) 열만 마크다운 강조를 벗긴다. 정규식·증명 예의 * 는 의미가 있으므로 건드리지 않는다.
         # 실측: vue 팩이 대상을 **seam**으로 적어 게이트가 scope를 인식하지 못했고,
         # 감사가 지시한 "이음매를 겨눈다"는 수리가 조용히 무효였다.
         gsub(/[*_]/,"",$4)
         ex = (NF>=9) ? $7 : ""; has = (NF>=9) ? 1 : 0
-        if ($2!="") print $2"\t"$3"\t"$4"\t"$5"\t"$6"\t"ex"\t"has }' > "$2"
+        # 8열 표(반례 열 신설)는 NF>=10 이다. 7열 표는 반례가 빈 문자열로 나온다.
+        cx = (NF>=10) ? $8 : ""
+        if ($2!="") print $2"\t"$3"\t"$4"\t"$5"\t"$6"\t"ex"\t"has"\t"cx }' > "$2"
 }
 
 # 정책 1건의 대상 파일 목록. packfiles가 비면 scope=seam은 대상 0개가 된다.
@@ -682,13 +701,13 @@ check_policy_proof() {
     if _policy_rows_look_present "$pol"; then
       bad "정책이 조용히 0건 집행: $pol" "정책 행은 있는데 파싱이 0건이다 — 표 위에 \`## 기계 검사\` 제목이 있어야 파서가 읽는다"
     else
-      warn "정책에서 항목을 읽지 못함: $pol" "형식: | id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |"
+      warn "정책에서 항목을 읽지 못함: $pol" "형식: | id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 반례 | 설명 |"
     fi
     return 0
   fi
 
   local id verdict scope rx except ex has viol=0 pass=0 skip=0 targets
-  while IFS=$'\t' read -r id verdict scope rx except ex has; do
+  while IFS=$'\t' read -r id verdict scope rx except ex has cx; do
     [ -z "$id" ] && continue
     if [ "$has" != "1" ] || [ -z "$ex" ] || [ "$ex" = "—" ] || [ "$ex" = "-" ]; then
       bad "정책 '$id' — 증명 예 없음" "차단 증명이 저자의 기억에만 남는다. 표에 '증명 예' 열을 채운다"
@@ -697,6 +716,27 @@ check_policy_proof() {
     if ! printf '%s\n' "$ex" | grep -qE "$rx" 2>/dev/null; then
       bad "정책 '$id' — 증명 예가 자기 정규식에 안 잡힌다" "예: $ex  ·  정규식: $rx — 죽은 정규식이거나 예가 틀렸다"
       viol=$((viol+1)); continue
+    fi
+    # ③ **반례 — 정규식이 판정을 그르치는 대표 형태.** 방향이 판정마다 반대다:
+    #   forbid 의 실패 모드는 **놓치는 것**이다. 반례는 「이것도 막아야 한다」이고 매치**되어야** 한다
+    #     (실측: `rules-deny-all` 이 자기 증명 예 하나만 잡고 `allow read: if request.auth != null;` 을 통과시켰다)
+    #   require 의 실패 모드는 **엉뚱한 것으로 충족되는 것**이다. 반례는 「이것은 충족이 아니다」이고
+    #     매치되면 **안 된다** (실측: `safeReturnTo` 가 소유 파일에 13번 등장하고 강제 호출은 한 줄이라,
+    #     그 줄을 지워도 정의·테스트가 정규식을 충족시켜 FAIL 0 이 났다)
+    if [ -z "$cx" ] || [ "$cx" = "—" ] || [ "$cx" = "-" ]; then
+      bad "정책 '$id' — 반례 없음" "증명 예는 「매치되어야 한다」만 단언한다. 반대 방향이 없으면 죽은 정규식과 정의 줄 충족이 둘 다 통과한다 — 표에 '반례' 열을 채운다"
+      viol=$((viol+1)); continue
+    fi
+    if [ "$verdict" = "forbid" ]; then
+      if ! printf '%s\n' "$cx" | grep -qE "$rx" 2>/dev/null; then
+        bad "정책 '$id' — 반례를 놓친다 (forbid)" "반례: $cx  ·  정규식: $rx — 이 정규식은 부류가 아니라 증명 예 하나를 겨누고 있다"
+        viol=$((viol+1)); continue
+      fi
+    else
+      if printf '%s\n' "$cx" | grep -qE "$rx" 2>/dev/null; then
+        bad "정책 '$id' — 반례가 정규식을 충족시킨다 (require)" "반례: $cx  ·  정규식: $rx — 강제 지점이 아닌 것으로 충족되므로 강제를 지워도 통과한다"
+        viol=$((viol+1)); continue
+      fi
     fi
     if [ "$verdict" = "forbid" ]; then
       targets=$(_policy_targets "$G" "$scope" "$except" "$packfiles")
@@ -734,10 +774,14 @@ END {
     hasOrig  = (s ~ /\.origin[[:space:]]*[!=]==/ || s ~ /[!=]==[[:space:]]*[A-Za-z0-9_.]*\.origin/)
     hasPath  = (index(s, "pathname") > 0)
     hasSlash = (index(s, "'//'") > 0 || index(s, "\"//\"") > 0)
-    if (hasURL && hasOrig && !(hasPath && hasSlash))
+    hasRedir = (s ~ /returnTo|redirectTo|returnPath|callbackUrl|safeReturn|safeInternal/)
+    # **복귀 경로 검증 펜스만 겨눈다.** 오리진 비교 자체는 위험 형태가 아니다 — 링크
+    # 인터셉트(외부 링크를 가로채지 않는다)에서는 정확히 옳은 판정이고, 그것까지 잡으면
+    # 정상 구현이 FAIL을 받는다 (vanilla 실측: interceptLinks 가 이 규칙에 걸렸다).
+    # 아래 prefix-only 규칙은 처음부터 이 조건을 갖고 있었다 — 둘을 맞춘다.
+    if (hasURL && hasOrig && hasRedir && !(hasPath && hasSlash))
       print "origin-only-redirect\t" loc[k]
     hasSW    = (s ~ /startsWith\('\/'\)/ || s ~ /startsWith\("\/"\)/)
-    hasRedir = (s ~ /returnTo|redirectTo|returnPath|callbackUrl|safeReturn|safeInternal/)
     if (hasSW && hasRedir && !hasSlash)
       print "prefix-only-redirect\t" loc[k]
   }
@@ -929,6 +973,26 @@ check_blocking_proof() {
 # 축 팩은 프레임워크·ORM 같은 변형을 못박는데, 지금까지 그것을 선언하지 않았고 조립
 # 시점에 대조하지도 않았다. NestJS를 고른 프로젝트가 Express 팩을 받으면 없는 것을
 # 받는 게 아니라 **틀린 것**을 받는다. fixesVariants가 그 선언이고 여기가 그 정합 검사다.
+# ── 패키지 이름 목록 · 제품 매칭 ────────────────────────────────────
+# **부분 문자열로 매칭하지 않는다.** `@nestjs/platform-express`는 Nest의 기본 HTTP
+# 어댑터이지 Express를 고른 것이 아닌데, 통짜 문자열에 grep -F "express"를 걸면
+# fixesVariants.framework=nestjs 가 「경쟁 제품 express 존재」로 FAIL한다 (node-nest 실측).
+# 같은 부류의 결함이 check_leak 에서 이미 한 번 났다 (nextCursor ↔ next).
+_pkgs_names() { # $1=pack.json → 소문자 패키지 이름(버전 제거) 한 줄에 하나
+  tr -d '\n' < "$1" 2>/dev/null | grep -oE '"pkgs"[[:space:]]*:[[:space:]]*\[[^]]*\]' \
+    | grep -oE '"[^"]+"' | tr -d '"' | grep -vx 'pkgs' \
+    | sed -E 's/@[0-9][^@]*$//' | tr 'A-Z' 'a-z' | sort -u
+}
+
+# 제품 토큰이 패키지 목록에 있는가. 이름 전체가 같거나, 스코프가 그 이름인 것만 인정한다
+# (`prisma` ↔ `@prisma/client` 는 같은 제품, `express` ↔ `@nestjs/platform-express` 는 아니다).
+_pkg_has_product() { # $1=이름목록파일 $2=토큰
+  local t="${2%/}" esc
+  grep -qxF "$t" "$1" 2>/dev/null && return 0
+  esc=$(printf '%s' "$t" | sed 's/[][\.*^$/]/\\&/g')
+  grep -qE "^@?${esc}/" "$1" 2>/dev/null
+}
+
 check_pack_meta() {
   local P="$1" j="$1/pack.json"
   sec "팩 메타 (pack.json)"
@@ -959,6 +1023,7 @@ check_pack_meta() {
     return 0
   fi
   local pkgs; pkgs=$(tr -d '\n' < "$j" | grep -oE '"pkgs"[[:space:]]*:[[:space:]]*\[[^]]*\]' | tr 'A-Z' 'a-z')
+  _pkgs_names "$j" > "$TMP/pkgnames.txt"
   local fv; fv=$(tr -d '\n' < "$j" | grep -oE '"fixesVariants"[[:space:]]*:[[:space:]]*\{[^}]*\}')
   local pairs; pairs=$(printf '%s' "$fv" | grep -oE '"[A-Za-z]+"[[:space:]]*:[[:space:]]*"[^"]+"' | sed -E 's/"([A-Za-z]+)"[[:space:]]*:[[:space:]]*"([^"]+)"/\1\t\2/')
   if [ -z "$pairs" ]; then ok "fixesVariants 비어 있음 (못박은 변형 없음을 명시)"; return 0; fi
@@ -1000,7 +1065,7 @@ VARTBL
       done
     done < "$TMP/variants.tsv"
     if [ -z "$mine" ]; then
-      printf '%s' "$pkgs" | grep -qF "$lval" && ok "fixesVariants.$dim = $val (pkgs에 등장)" \
+      _pkg_has_product "$TMP/pkgnames.txt" "$lval" && ok "fixesVariants.$dim = $val (pkgs에 등장)" \
         || warn "fixesVariants.$dim = '$val' — pkgs에서 확인 불가" "알려진 제품군이 아니고 패키지 목록에도 없다. 오타이거나 선언이 낡았다"
       continue
     fi
@@ -1009,7 +1074,7 @@ VARTBL
       [ "$g" = "$grp" ] || continue
       [ "$prod" = "$mine" ] && continue
       for t in $(printf '%s' "$toks" | tr ',' ' '); do
-        if printf '%s' "$pkgs" | grep -qF "$t"; then
+        if _pkg_has_product "$TMP/pkgnames.txt" "$t"; then
           bad "fixesVariants.$dim = '$val'인데 pkgs에 경쟁 제품 '$t'" "선언과 실물이 모순이다 — 조립 시점 대조가 거짓 통과한다"
           hit=$((hit+1))
         fi
@@ -1074,15 +1139,19 @@ check_pack_ledger() {
     [ -z "$s" ] && continue
     rf=$(_resolve "$P" "$deff")
     if [ -z "$rf" ]; then bad "팩 원장 '$s'의 정의 파일이 실재하지 않음: $deff"; n_def=$((n_def+1)); continue; fi
-    codelines "$rf" | cut -f3 | grep -qE "$(_defpat "$s")" \
+    _has_def "$rf" "$s" \
       || { bad "팩 원장 '$s'의 정의가 $(basename "$rf")에 없음" "L0가 배정한 소유 파일에 정의가 들어가지 않았다 — 넣거나 원장을 고친다"; n_def=$((n_def+1)); continue; }
 
     # 형태가 호출 시그니처를 선언했으면 실제 정의의 인자 개수와 대조한다.
     # 이름 순서까지는 기계가 못 보지만 **개수 불일치는 잡는다** — 형태를 적어 놓고
     # 정의를 다르게 쓰면 소비자가 원장을 믿고 틀린 호출을 쓴다.
+    # **시그니처를 형태의 맨 앞에서만 찾지 않는다.** 규범이 「형태 열에 소스 경로를
+    # 적는다」로 바뀌면서 실제 형태는 `src/boot.ts`. `boot(raw) => Env` 처럼 경로가
+    # 앞에 온다 — 앞머리 고정 정규식은 그때 **인자 개수 대조를 통째로 건너뛴다**
+    # (node-nest 실측: 픽스처가 인자 개수를 틀리게 해도 통과했다 — 미탐).
     local bare; bare=$(printf '%s' "$shape" | tr -d '`')
-    declared=$(printf '%s' "$bare" | sed -nE "s/^$s\(([^)]*)\).*/\1/p" | head -1)
-    if printf '%s' "$bare" | grep -qE "^$s\("; then
+    declared=$(printf '%s' "$bare" | sed -nE "s/.*(^|[^A-Za-z0-9_])$s\(([^)]*)\).*/\2/p" | head -1)
+    if printf '%s' "$bare" | grep -qE "(^|[^A-Za-z0-9_])$s\("; then
       local dn=0
       [ -n "$(printf '%s' "$declared" | tr -d ' ')" ] && dn=$(printf '%s' "$declared" | awk -F',' '{print NF}')
       actual=$(awk -F'\t' -v n="$s" '$1==n {print $2; exit}' "$TMP/defs.tsv")
@@ -1253,7 +1322,7 @@ check_pack_policies() {
 
   local packfiles; packfiles=$(_pack_basenames "$P")
   local id verdict scope rx except ex has targets hits viol=0 pass=0 defer=0
-  while IFS=$'\t' read -r id verdict scope rx except ex has; do
+  while IFS=$'\t' read -r id verdict scope rx except ex has cx; do
     [ -z "$id" ] && continue
     targets=$(_policy_targets "$P" "$scope" "$except" "$packfiles")
     if [ -z "$targets" ]; then
@@ -1303,6 +1372,168 @@ _pack_basenames() {
 # PACK.md를 갖기 때문이다. 그래서 이음매가 없는 신규 팩은 저작 직후에 검사할 방법이
 # 없었고 vue 팩 저작이 임기응변이 된 원인이기도 하다.
 # 축 안에서 닫히는 검사만 돌린다. 조합의 함수인 것(requires 충족·--pair)은 조립 후다.
+# ── 선언이 이름 붙인 산출물이 팩 안에 실재하는가 ────────────────────
+# **이 하네스에는 선언이 많고 선언과 실물을 대조하는 곳이 적다.** 그 틈에서 난 결함이
+# 2026-08-24 실측의 절반이다. `check_refs`가 리소스 참조에 대해 하던 것을 선언 넷으로 넓힌다.
+#
+#   ⓐ 원장 provides의 소스 경로 ↔ 그 경로를 주장하는 `<!-- file: -->` 펜스
+#      없으면 pack-smoke가 그 파일을 **any 스텁으로 대체**하고 타입체크·실행이 그것을 본다.
+#      gcp의 소유권 검사 6함수와 vanilla의 6모듈이 **한 번도 검사받지 않은 채** 초록이었다.
+#   ⓑ provides에 소스 경로 선언이 0건 → 그 자체가 결함. 검사가 0건으로 조용히 통과한다
+#      (「대상 0개로 건너뛴 실재 검사」 함정 — 게이트가 다른 자리에서 이미 막는 부류다)
+#   ⓒ verified 태그가 근거로 댄 test/* 파일 ↔ 같은 경로의 `<!-- file: -->` 펜스
+#      없는 파일에 붙은 verified 태그는 순환 검증보다 나쁘다 (실측: test/router.test.js)
+#   ⓓ 같은 `<!-- file: -->` 경로를 두 리소스가 주장 → 추출기가 하나를 덮어 소멸시킨다
+check_declared_artifacts() {
+  local G="$1"
+  sec "선언 ↔ 실물 (참조 실재)"
+
+  # 팩이 완전 파일로 주장한 경로 전량
+  grep -rhoE '<!-- file: [^ ]+ -->' "$G"/resources/*.md "$G"/SKILL.md 2>/dev/null \
+    | sed -E 's/<!-- file: (.*) -->/\1/' | sort > "$TMP/claimed.raw"
+  sort -u "$TMP/claimed.raw" > "$TMP/claimed.txt"
+
+  # ⓓ 중복 주장 — 뒤의 것이 앞의 것을 덮는다
+  local dup; dup=$(uniq -d "$TMP/claimed.raw" | tr '\n' ' ')
+  if [ -n "$(printf '%s' "$dup" | tr -d ' ')" ]; then
+    bad "같은 경로를 여러 펜스가 완전 파일로 주장: $dup" \
+        "추출기가 하나를 덮어 다른 하나가 소멸한다 — 두 클러스터가 같은 테스트 파일을 저작한 실측 사례다. 경로를 가르거나 한 절로 합친다"
+  else
+    ok "완전 파일 경로 중복 없음"
+  fi
+
+  # ⓐⓑ provides 소스 경로 — check_pack_ledger 가 만든 prov.tsv 를 재사용한다 (사본 금지)
+  if [ ! -s "$TMP/prov.tsv" ]; then
+    # 패턴 지식형 팩(export 0개)은 provides 가 비는 것이 정상이다 — pack.json 의
+    # symbolSurface 가 그것을 선언한다. **건너뛴 것을 말한다**(침묵 생략 금지).
+    warn "provides가 비어 소스 경로 검사를 건너뜀" "패턴 지식형 팩이면 정상이다 — pack.json의 symbolSurface로 선언했는지 확인한다"
+  else
+    cut -f3 "$TMP/prov.tsv" \
+      | grep -oE '`[A-Za-z0-9_./-]+/[A-Za-z0-9_.-]+\.(ts|tsx|js|jsx|mts|cts|py)`' | tr -d '`' \
+      | grep -v '\.d\.ts$' | sort -u > "$TMP/provpaths.txt"
+    # **디렉토리를 갖는 것만 소스 경로다.** 맨 파일명은 프레임워크 관용 이름(`page.tsx`)이거나
+    # 부정 참조(「`logging.py`가 아니다」)라 실경로가 아니다 — 실측에서 오탐 4건이 그것이었다.
+    local np; np=$(num "$(grep -c . "$TMP/provpaths.txt" | tr -d ' ')")
+    if [ "$np" -eq 0 ]; then
+      bad "provides 형태 열에 소스 경로 선언이 0건" \
+          "원장 머리말이 이미 규범으로 적고 있다 — 「정의 파일」은 문서의 소유이지 코드의 경로가 아니다. 경로가 없으면 아래 검사가 0건으로 조용히 통과한다"
+    else
+      local unclaimed; unclaimed=$(comm -23 "$TMP/provpaths.txt" "$TMP/claimed.txt" | tr '\n' ' ')
+      if [ -n "$(printf '%s' "$unclaimed" | tr -d ' ')" ]; then
+        bad "팩이 소유한다고 선언한 경로에 완전 파일 주장이 없음: $unclaimed" \
+            "그 코드는 pack-smoke 에서 any 스텁으로 대체돼 **타입체크도 실행도 받지 않는다**. 정의 펜스 앞에 <!-- file: 경로 --> 를 단다"
+      else
+        ok "provides 소스 경로 ${np}건 전부 완전 파일로 주장됨"
+      fi
+    fi
+  fi
+
+  # ⓒ verified 태그가 근거로 댄 테스트 파일
+  local t miss=0 seen=0
+  for t in $({ grep -rhoE '<!--[[:space:]]*(un)?verified[^>]*(test|tests)/[A-Za-z0-9_./-]+\.[a-z]+' "$G"/resources/*.md "$G"/PACK.md 2>/dev/null || true; } \
+             | grep -oE '(test|tests)/[A-Za-z0-9_./-]+\.[a-z]+' | sort -u); do
+    seen=$((seen+1))
+    grep -qxF "$t" "$TMP/claimed.txt" || { bad "verified 태그가 근거로 댄 테스트가 팩에 없음: $t" \
+        "없는 파일에 붙은 검증 태그는 순환 검증보다 나쁘다 — 다음 사람이 「이미 증명됐다」고 믿고 지나간다. 그 파일을 <!-- file: --> 펜스로 싣거나 태그에서 그 근거를 뺀다"; miss=$((miss+1)); }
+  done
+  [ "$seen" -gt 0 ] && [ "$miss" -eq 0 ] && ok "verified 태그의 테스트 근거 ${seen}건 실재"
+  return 0
+}
+
+# ── 허브 ↔ 리소스·원장 대조 ─────────────────────────────────────────
+# **L2(허브 조각)는 L1(리소스)과 무관하게 병렬로 쓰인다.** 그래서 허브가 리소스와 어긋나는
+# 것이 이 구조의 고유 결함이고, 2026-08-24 감사가 그 경계에서만 다섯 건을 찾았다.
+# 값 전체를 기계로 대조하는 것은 스택마다 형태가 달라 비싸지만, **정확히 판정 가능하고
+# 실제로 사고를 낸 자리 둘**이 있다:
+#
+#   ⓐ 허브의 `## Common Imports` 가 **프로젝트 지역 경로**(`@/` · 상대 경로)에서 import 한
+#      심볼이 원장(provides/requires)에 있는가. 라이브러리 심볼(`useState`·`cookies`)은
+#      원장에 등재하지 않으므로 겨누지 않는다 — 겨누면 전 팩이 오탐으로 걸린다.
+#      실측: 복사용 블록이 `statusFor` 를 빠뜨리고 **정책이 금지한 `ERROR_STATUS` 를**
+#      손에 쥐여 줬다. `isInvalidArgument` 도 빠져 그대로 쓰면 컴파일되지 않았다.
+#   ⓑ 원장 requires 의 처방 문자열이 자기 팩의 forbid 정규식에 걸리는가.
+#      실측: 원장이 이음매에게 「`ERROR_STATUS` 로 상태를 정한다」를 지시했는데 정책이
+#      그 형태를 seam 에서 FAIL 로 막고 있었다 — **원장을 따른 이음매가 반드시 떨어진다.**
+check_hub_contract() {
+  local G="$1" led="$2" pol="$3"
+  sec "허브 ↔ 원장·정책 대조"
+  [ -f "$led" ] || { warn "원장 없음 — 대조 생략" "$led"; return 0; }
+
+  # 원장에 등재된 심볼 전량 (provides + requires)
+  { awk '/^## provides/{f=1;next} f&&/^## /{f=0} f' "$led"
+    awk '/^## requires/{f=1;next} f&&/^## /{f=0} f' "$led"
+    awk '/^## 예제에 등장하는/{f=1;next} f&&/^## /{f=0} f' "$led"
+  } | grep -oE '^\|[[:space:]]*`[^`]+`' | grep -oE '`[^`]+`' | tr -d '`' \
+    | tr '·' '\n' | tr -d ' ' | grep -E '^[A-Za-z_][A-Za-z0-9_]*$' | sort -u > "$TMP/ledgersyms.txt"
+
+  # ⓐ 허브 Common Imports 의 심볼
+  local hub="$G/PACK.md"; [ -f "$G/SKILL.md" ] && hub="$G/SKILL.md"
+  awk '/<!-- pack-slot: common-imports/{f=1;m=1;next} m&&/<!-- \/pack-slot/{f=0;m=0;next} !m&&/^## Common Imports/{f=1;next} !m&&/^## /{f=0} f' "$hub" 2>/dev/null \
+    | grep -oE "^import[[:space:]]+(type[[:space:]]+)?\{[^}]*\}[[:space:]]+from[[:space:]]+['\"][^'\"]+['\"]" \
+    | grep -E "from[[:space:]]+['\"](@/|~/|\\./|\\.\\./)" \
+    | sed -E "s/[[:space:]]+from[[:space:]]+['\"].*//" \
+    | sed -E 's/^import[[:space:]]+(type[[:space:]]+)?\{//; s/\}//' \
+    | tr ',' '\n' | sed -E 's/^[[:space:]]*//; s/[[:space:]]*$//; s/^type[[:space:]]+//; s/[[:space:]]+as[[:space:]]+.*//' \
+    | grep -E '^[A-Za-z_][A-Za-z0-9_]*$' | sort -u > "$TMP/hubimports.txt"
+
+  # **Python 팩은 `import { }` 를 쓰지 않는다.** 지역 판정은 provides 소스 경로의 최상위
+  # 디렉토리로 한다 — `app/obs/logging.py` 가 있으면 `from app.… import x` 가 지역이다.
+  local proot=""
+  [ -s "$TMP/provpaths.txt" ] && proot=$(cut -d/ -f1 "$TMP/provpaths.txt" | sort -u | grep -E '^[a-z_]+$' | head -1)
+  if [ -n "$proot" ]; then
+    awk '/<!-- pack-slot: common-imports/{f=1;m=1;next} m&&/<!-- \/pack-slot/{f=0;m=0;next} !m&&/^## Common Imports/{f=1;next} !m&&/^## /{f=0} f' "$hub" 2>/dev/null \
+      | grep -oE "^from[[:space:]]+$proot[A-Za-z0-9_.]*[[:space:]]+import[[:space:]]+.*" \
+      | sed -E 's/^from[[:space:]]+[A-Za-z0-9_.]+[[:space:]]+import[[:space:]]+//' \
+      | tr ',' '\n' | sed -E 's/^[[:space:]]*//; s/[[:space:]]*$//; s/[[:space:]]+as[[:space:]]+.*//' \
+      | grep -E '^[A-Za-z_][A-Za-z0-9_]*$' | sort -u >> "$TMP/hubimports.txt"
+    sort -u -o "$TMP/hubimports.txt" "$TMP/hubimports.txt"
+  fi
+
+  # **「블록을 못 읽었다」와 「지역 import 가 0이다」는 다르다.** 라이브러리만 쥐여 주는
+  # 블록은 정상이고(fastapi), 블록 자체가 없는 것은 대조 불가다. 침묵 생략 금지.
+  local nimp; nimp=$(num "$(awk '/<!-- pack-slot: common-imports/{f=1;m=1;next} m&&/<!-- \/pack-slot/{f=0;m=0;next} !m&&/^## Common Imports/{f=1;next} !m&&/^## /{f=0} f' "$hub" 2>/dev/null | grep -cE '^(import|from)[[:space:]]' | tr -d ' ')")
+  local nh; nh=$(num "$(grep -c . "$TMP/hubimports.txt" | tr -d ' ')")
+  if [ "$nh" -eq 0 ] && [ "$nimp" -gt 0 ]; then
+    ok "허브 import ${nimp}건 — 전부 라이브러리다 (원장 대조 대상 없음)"
+  elif [ "$nh" -eq 0 ]; then
+    warn "허브 Common Imports 에서 심볼을 읽지 못함" "복사용 블록이 없거나 형태가 다르다 — 조립본이 어떤 import 를 손에 쥐는지 대조할 수 없다"
+  else
+    local ghost; ghost=$(comm -23 "$TMP/hubimports.txt" "$TMP/ledgersyms.txt" | tr '\n' ' ')
+    if [ -n "$(printf '%s' "$ghost" | tr -d ' ')" ]; then
+      bad "허브가 원장에 없는 심볼을 import 한다: $ghost" \
+          "복사용 블록이다 — 독자가 그대로 쓰면 조달처가 없다. 원장에 등재하거나 블록에서 뺀다"
+    else
+      ok "허브 import ${nh}건 전부 원장에 등재됨"
+    fi
+  fi
+
+  # 자리표시자만 든 슬롯 — 출하되면 조립본에 그대로 들어간다. 실측: aws-serverless 의
+  # `common-imports-axis` 가 `<!-- L2가 채운다 -->` 인 채로 출하돼 있었고 아무도 몰랐다.
+  local ph
+  ph=$(awk '/<!-- pack-slot:/{n=$0; c=0; body=""; next} /<!-- \/pack-slot/{ if (body ~ /L2가 채운다|TODO|채울 것|<!-- *채/ && c<=3) { sub(/.*pack-slot:[[:space:]]*/,"",n); sub(/[[:space:]]*-->.*/,"",n); print n } ; next } { if ($0 ~ /[^[:space:]]/) { c++; body=body" "$0 } }' "$hub" 2>/dev/null | tr '\n' ' ')
+  if [ -n "$(printf '%s' "$ph" | tr -d ' ')" ]; then
+    bad "허브 슬롯이 자리표시자인 채로 출하됨: $ph" "조립하면 그 문구가 SKILL.md 에 그대로 들어간다 — L2 가 채우거나 슬롯을 지운다"
+  fi
+
+  # ⓑ 원장 requires 의 처방이 자기 팩의 forbid 에 걸리는가
+  [ -f "$pol" ] || return 0
+  _parse_policies "$pol" "$TMP/hubpol.tsv"
+  awk '/^## requires/{f=1;next} f&&/^## /{f=0} f' "$led" | grep -E '^\|[[:space:]]*`' > "$TMP/reqrows.txt" || true
+  local id verdict scope rx except ex has cx hit=0
+  while IFS=$'\t' read -r id verdict scope rx except ex has cx; do
+    [ -z "$id" ] && continue
+    [ "$verdict" = "forbid" ] || continue
+    case "$scope" in seam|guide) ;; *) continue ;; esac
+    if grep -qE "$rx" "$TMP/reqrows.txt" 2>/dev/null; then
+      bad "원장 requires 의 처방이 자기 금지 '$id' 에 걸린다" \
+          "정규식: $rx — 원장을 따른 이음매는 조립 후 --assembly 에서 반드시 떨어진다. 처방을 팩이 제공하는 안전한 형태로 바꾼다"
+      hit=$((hit+1))
+    fi
+  done < "$TMP/hubpol.tsv"
+  [ "$hit" -eq 0 ] && ok "원장 requires 처방이 자기 금지와 충돌하지 않음"
+  return 0
+}
+
 run_pack() {
   local P="$1"
   printf "\n${C_D}guide-gate --pack${C_0}  %s\n" "$P"
@@ -1321,6 +1552,8 @@ run_pack() {
   check_fences "$P"
   check_symbols "$P"
   check_pack_ledger "$P"
+  check_declared_artifacts "$P"
+  check_hub_contract "$P" "$P/$PACK_LEDGER_NAME" "$P/$PACK_POLICIES_NAME"
   check_env "$P"
   check_leak "$P"
   check_pm "$P"
@@ -1525,6 +1758,10 @@ run_self_test() {
   _fx_assert_pack "$fx/pk/jsonfence/fxpack2" 0 "데이터 파일의 문자열 리터럴은 심볼 사용이 아니다"
   _fx_assert_pack "$fx/pk/secok/fxpack2"     0 "수리된 복귀 경로 검증이 오탐되지 않음"
   _fx_assert_pack "$fx/pk/dupfence/fxpack2"  0 "파일 간 동일 펜스는 REVIEW이지 FAIL 아님"
+  _fx_assert_pack "$fx/pk/jstypedef/fxpack2" 0 "JSDoc @typedef 로만 선언된 타입 심볼도 정의로 인정"
+  _fx_assert_pack "$fx/pk/secintercept/fxpack2" 0 "링크 인터셉트의 오리진 비교는 위험 형태가 아니다"
+  _fx_assert_pack "$fx/pk/fvscope/fxpack2"      0 "스코프 패키지가 경쟁 제품으로 오인되지 않는다"
+  _fx_assert_pack "$fx/pk/envclass/fxpack2"     0 "클래스 필드로 선언한 env 스키마를 인정한다"
 
   sec "양성 팩 픽스처 (차단해야 한다)"
   _fx_assert_pack "$fx/pk/polnoex/fxpack2"   1 "정책 증명 예 열 없음"
@@ -1544,6 +1781,10 @@ run_self_test() {
   _fx_assert_pack "$fx/pk/badarity/fxpack2"  1 "형태의 인자 개수 ≠ 실제 정의"
   _fx_assert_pack "$fx/pk/noimport/fxpack2"  1 "완전 파일이 원장 심볼을 조달 없이 사용"
   _fx_assert_pack "$fx/pk/reqnosig/fxpack2"  1 "requires 심볼을 호출하나 시그니처 미선언"
+  _fx_assert_pack "$fx/pk/ghostres/fxpack2" 1 "선언한 리소스가 실파일로 없다 (미완 팩)"
+  _fx_assert_pack "$fx/pk/jstypedefgone/fxpack2" 1 "@typedef 가 진짜로 없으면 여전히 잡는다"
+  _fx_assert_pack "$fx/pk/fvscopebad/fxpack2"   1 "진짜 경쟁 제품(express)은 여전히 모순으로 잡는다"
+  _fx_assert_pack "$fx/pk/envclassbad/fxpack2"  1 "클래스에 없는 env 키는 여전히 잡는다"
 
   [ "$REGRESS" -eq 0 ] && { sec "회귀 코퍼스"; skip_note; }
 
@@ -1697,6 +1938,7 @@ FXPYM
   cat > "$b/resources/a.md" <<'FXPYA'
 # 환경 검증
 
+<!-- file: app/config.py -->
 ```python
 from pydantic_settings import BaseSettings
 
@@ -1730,10 +1972,10 @@ FXPYB
 
 | 심볼 | 정의 파일 | 형태 | 성격 |
 | --- | --- | --- | --- |
-| `Settings` | a.md | `class Settings(BaseSettings)` — DATABASE_URL | env 스키마 |
-| `settings` | a.md | `Settings` 인스턴스 — 모듈 최상위에서 만든다 | 검증된 환경 값 |
-| `ERROR_STATUS` | b.md | `dict[str, int]` — 도메인 코드 → HTTP 상태 | 상태 매핑 |
-| `to_app_error` | b.md | `to_app_error(exc: BaseException) -> str` — 모르는 것은 INTERNAL | 정규화 |
+| `Settings` | a.md | `app/config.py`. `class Settings(BaseSettings)` — DATABASE_URL | env 스키마 |
+| `settings` | a.md | `app/config.py`. `Settings` 인스턴스 — 모듈 최상위에서 만든다 | 검증된 환경 값 |
+| `ERROR_STATUS` | b.md | `app/errors.py`. `dict[str, int]` — 도메인 코드 → HTTP 상태 | 상태 매핑 |
+| `to_app_error` | b.md | `app/errors.py`. `to_app_error(exc: BaseException) -> str` — 모르는 것은 INTERNAL | 정규화 |
 
 ## requires — 이음매가 제공해야 한다
 
@@ -1745,9 +1987,9 @@ FXPYL
   cat > "$b/policies.md" <<'FXPYP'
 ## 기계 검사
 
-| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
-| --- | --- | --- | --- | --- | --- | --- |
-| `no-print` | forbid | guide | `\bprint\(` | — | `print(user)` | 구조적 로거만 쓴다 |
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 반례 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `no-print` | forbid | guide | `\bprint\(` | — | `print(user)` | `print(f"{x}")` | 구조적 로거만 쓴다 |
 FXPYP
 
   cat > "$b/pack.json" <<'FXPYJ'
@@ -1808,6 +2050,7 @@ FXPM
   cat > "$b/resources/a.md" <<'FXPA'
 # 스키마와 환경변수
 
+<!-- file: src/env.ts -->
 ```ts
 import { z } from 'zod'
 
@@ -1822,6 +2065,7 @@ FXPA
   cat > "$b/resources/b.md" <<'FXPB'
 # 부팅
 
+<!-- file: src/boot.ts -->
 ```ts
 import { EnvSchema } from '@/env'
 
@@ -1838,8 +2082,8 @@ FXPB
 
 | 심볼 | 정의 파일 | 형태 | 성격 |
 | --- | --- | --- | --- |
-| `EnvSchema` | a.md | `ZodObject` — `safeParse(process.env)`로 적용 | env 스키마 |
-| `boot` | b.md | `boot(raw: unknown) => Env` — 실패는 throw | 부팅 |
+| `EnvSchema` | a.md | `src/env.ts`. `ZodObject` — `safeParse(process.env)`로 적용 | env 스키마 |
+| `boot` | b.md | `src/boot.ts`. `boot(raw: unknown) => Env` — 실패는 throw | 부팅 |
 
 ## requires — 이음매가 제공해야 한다
 
@@ -1851,10 +2095,10 @@ FXPL
   cat > "$b/policies.md" <<'FXPP'
 ## 기계 검사
 
-| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
-| --- | --- | --- | --- | --- | --- | --- |
-| `zod-present` | require | guide | `from 'zod'` | — | `import { z } from 'zod'` | 스키마 라이브러리 고정 |
-| `no-console` | forbid | guide | `console\.log\(` | — | `console.log(user)` | 구조적 로거만 쓴다 |
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 반례 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `zod-present` | require | guide | `from 'zod'` | — | `import { z } from 'zod'` | `import { v } from 'valibot'` | 스키마 라이브러리 고정 |
+| `no-console` | forbid | guide | `console\.log\(` | — | `console.log(user)` | `console.log({ id })` | 구조적 로거만 쓴다 |
 FXPP
 
   cat > "$b/pack.json" <<'FXPJ'
@@ -1871,7 +2115,7 @@ FXPP
 }
 FXPJ
 
-  for m in polnoex polbadex polrealex secorigin secprefix secok secrefer ledgerbad reqexport fvbad vocab dupfence noproof noshape badarity noimport reqnosig polnohdr jsonfence polbadfile; do
+  for m in polnoex polbadex polrealex secorigin secprefix secok secrefer ledgerbad reqexport fvbad vocab dupfence noproof noshape badarity noimport reqnosig polnohdr jsonfence polbadfile ghostres jstypedef jstypedefgone secintercept fvscope fvscopebad envclass envclassbad; do
     mkdir -p "$fx/pk/$m" && cp -R "$b" "$fx/pk/$m/" || return 1
   done
   # c.md를 더하는 픽스처는 pack.json에도 실어야 의도한 검사에서 차단된다.
@@ -1881,6 +2125,43 @@ FXPJ
     sed -i.bak 's#{ "file": "b.md", "nav": "부팅" }#{ "file": "b.md", "nav": "부팅" },\
     { "file": "c.md", "nav": "복귀 경로" }#' "$fx/pk/$v/fxpack2/pack.json" && rm -f "$fx/pk/$v/fxpack2/pack.json.bak"
   done
+
+  # ⑯ 스코프 패키지가 경쟁 제품으로 오인되지 않는다 (node-nest 실측 — 오탐)
+  # `@nestjs/platform-express`는 Nest의 기본 HTTP 어댑터이지 Express를 고른 것이 아니다.
+  # 통짜 문자열 부분 일치로는 이 둘을 가를 수 없어 정상 팩이 FAIL했다.
+  sed -i.bak 's#"fixesVariants": { "orm": "prisma" }#"fixesVariants": { "framework": "nestjs" }#; s#"zod@4", "prisma@6"#"zod@4", "@nestjs/core@11", "@nestjs/platform-express@11"#' \
+    "$fx/pk/fvscope/fxpack2/pack.json" && rm -f "$fx/pk/fvscope/fxpack2/pack.json.bak"
+  # 짝이 되는 양성 — 진짜 Express가 들어 있으면 여전히 모순으로 잡아야 한다 (미탐 방지)
+  sed -i.bak 's#"fixesVariants": { "orm": "prisma" }#"fixesVariants": { "framework": "nestjs" }#; s#"zod@4", "prisma@6"#"zod@4", "@nestjs/core@11", "express@5"#' \
+    "$fx/pk/fvscopebad/fxpack2/pack.json" && rm -f "$fx/pk/fvscopebad/fxpack2/pack.json.bak"
+
+  # ⑰ 클래스 필드로 선언한 env 스키마도 선언으로 인정한다 (node-nest 실측 — 오탐)
+  # class-validator 축은 스키마가 객체가 아니라 **클래스**이고 값 자리에 타입이 온다.
+  # 호출·속성 접근 형태만 아는 정규식은 그 선언을 0건으로 보고, env 사용을 미선언으로 잡았다.
+  cat > "$fx/pk/envclass/fxpack2/resources/a.md" <<'FXP16'
+# 스키마와 환경변수
+
+<!-- file: src/env.ts -->
+```ts
+import { z } from 'zod'
+
+export class EnvVars {
+  DATABASE_URL!: string
+  PORT: number = 3000
+}
+
+export const EnvSchema = z.object({ PORT: z.string() })
+```
+
+`EnvSchema`는 b.md의 부팅 경로가 쓴다.
+FXP16
+  printf '\n```ts\nconst dsn = env.DATABASE_URL\nconst port = env.PORT\n```\n' \
+    >> "$fx/pk/envclass/fxpack2/resources/b.md"
+
+  # 짝이 되는 양성 — 클래스에 없는 키를 쓰면 여전히 잡아야 한다 (미탐 방지)
+  cp "$fx/pk/envclass/fxpack2/resources/a.md" "$fx/pk/envclassbad/fxpack2/resources/a.md"
+  printf '\n```ts\nconst dsn = env.DATABASE_URL\nconst who = env.UNDECLARED_KEY\n```\n' \
+    >> "$fx/pk/envclassbad/fxpack2/resources/b.md"
 
   # ① 증명 예 열 자체가 없다 (구 6열 형식)
   cat > "$fx/pk/polnoex/fxpack2/policies.md" <<'FXP1'
@@ -1904,9 +2185,9 @@ FXP2
   cat > "$fx/pk/polrealex/fxpack2/policies.md" <<'FXP3'
 ## 기계 검사
 
-| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
-| --- | --- | --- | --- | --- | --- | --- |
-| `no-zod` | forbid | guide | `from 'zod'` | — | `import { z } from 'zod'` | 본문에 그대로 있다 |
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 반례 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `no-zod` | forbid | guide | `from 'zod'` | — | `import { z } from 'zod'` | `export { s } from 'zod'` | 본문에 그대로 있다 |
 FXP3
 
   # ④·⑤ 보안 형태 — 실측(2026-08-23)이 출하본 네 곳에서 찾은 두 형태
@@ -1980,7 +2261,7 @@ export function safeReturnTo(raw: string, fallback = '/') {
 FXP6
 
   # ⑪ 형태 열이 비었다 — 형제 클러스터가 시그니처를 추측하게 된다
-  sed -i.bak 's#| `boot` | b.md | `boot(raw: unknown) => Env` — 실패는 throw |#| `boot` | b.md | — |#' \
+  sed -i.bak 's#| `boot` | b.md | `src/boot.ts`. `boot(raw: unknown) => Env` — 실패는 throw |#| `boot` | b.md | — |#' \
     "$fx/pk/noshape/fxpack2/ledger.md" && rm -f "$fx/pk/noshape/fxpack2/ledger.md.bak"
 
   # ⑫ 형태가 선언한 인자 개수와 실제 정의가 다르다
@@ -2059,6 +2340,49 @@ FXP15
 FXP9
   printf '\n```ts\nexport const notes = []\n```\n' >> "$fx/pk/vocab/fxpack2/resources/b.md"
   sed -i.bak 's#| `boot` | b.md | 부팅 |#| `boot` | b.md | 부팅 |\n| `notes` | b.md | 어휘 위반 |#' "$fx/pk/vocab/fxpack2/ledger.md" && rm -f "$fx/pk/vocab/fxpack2/ledger.md.bak"
+
+  # ⑬ 무해: 링크 인터셉트의 오리진 비교. 복귀 경로 검증이 아니라 **가로챌지 말지**의 판정이고
+  # 외부 링크를 가로채지 않는 것이 정확히 옳다. 오리진 비교 자체를 위험 형태로 보면
+  # 정상 구현이 FAIL을 받는다 (vanilla 실측에서 실제로 그랬다).
+  cat > "$fx/pk/secintercept/fxpack2/resources/c.md" <<'FXP15'
+# 링크 인터셉트
+
+```ts
+export function interceptLinks(root: Element, navigate: (p: string) => void) {
+  const onClick = (e: MouseEvent) => {
+    const a = (e.target as Element)?.closest('a[href]')
+    if (!(a instanceof HTMLAnchorElement)) return
+    const url = new URL(a.href, window.location.origin)
+    if (url.origin !== window.location.origin) return
+    e.preventDefault()
+    navigate(url.pathname + url.search)
+  }
+  root.addEventListener('click', onClick)
+  return () => root.removeEventListener('click', onClick)
+}
+```
+FXP15
+  sed -i.bak 's#{ "file": "b.md", "nav": "부팅" }#{ "file": "b.md", "nav": "부팅" },\
+    { "file": "c.md", "nav": "링크 인터셉트" }#' "$fx/pk/secintercept/fxpack2/pack.json" && rm -f "$fx/pk/secintercept/fxpack2/pack.json.bak"
+  sed -i.bak 's#^| `boot` | b.md |#| `interceptLinks` | c.md | `interceptLinks(root, navigate)` — 해지 함수 반환 | 인터셉트 |\
+| `boot` | b.md |#' "$fx/pk/secintercept/fxpack2/ledger.md" && rm -f "$fx/pk/secintercept/fxpack2/ledger.md.bak"
+
+  # ⑫ JS 팩의 타입 심볼: JSDoc `@typedef` 로만 선언된다.
+  # `iscomment()`가 `*`로 시작하는 줄을 버리므로 그 선언은 codelines()에 **존재할 수 없다** —
+  # vanilla(첫 JavaScript 축)에서 정의가 있는데도 「정의가 없음」 FAIL이 났다.
+  # 검사기가 한 언어만 알던 자리이고, 두 판본이 오탐과 미탐을 각각 막는다.
+  for m in jstypedef jstypedefgone; do
+    sed -i.bak 's#^| `boot` | b.md |#| `FxTask` | b.md | `/** @typedef {{ id: string }} FxTask */` — JSDoc 타입 | 도메인 타입 |\
+| `boot` | b.md |#' "$fx/pk/$m/fxpack2/ledger.md" && rm -f "$fx/pk/$m/fxpack2/ledger.md.bak"
+  done
+  # jstypedef 에만 실제 선언을 넣는다. jstypedefgone 은 원장에만 있고 본문에 없다
+  printf '\n```js\n/** @typedef {{ id: string }} FxTask */\nexport const FX_TASK_KEY = "task"\n```\n' \
+    >> "$fx/pk/jstypedef/fxpack2/resources/b.md"
+
+  # ⑪ 미완 팩: pack.json이 선언한 리소스가 실파일로 없다.
+  # L0(계약)만 동결하고 리소스를 아직 안 쓴 팩이 실제로 저장소에 있었고, 「디렉토리가
+  # 있다」로 보유를 판정하면 완성본과 구별되지 않아 반쪽이 설치된다.
+  rm -f "$fx/pk/ghostres/fxpack2/resources/b.md"
 
   # ⑩ 무해: 파일 간 같은 코드펜스는 REVIEW이지 FAIL이 아니다 (공통 import 블록이 실재한다)
   cat >> "$fx/pk/dupfence/fxpack2/resources/a.md" <<'FXP10'
@@ -2280,16 +2604,16 @@ FXLEDOK
 
   cat > "$pk/policies.md" <<'FXPOL'
 ## 기계 검사
-| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
-| --- | --- | --- | --- | --- | --- | --- |
-| `zod-present` | require | guide | `from 'zod'` | — | `import { z } from 'zod'` | 스키마 라이브러리 고정 |
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 반례 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `zod-present` | require | guide | `from 'zod'` | — | `import { z } from 'zod'` | `import { v } from 'valibot'` | 스키마 라이브러리 고정 |
 FXPOL
 
   cat > "$pk/policies-forbid.md" <<'FXPOLV'
 ## 기계 검사
-| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
-| --- | --- | --- | --- | --- | --- | --- |
-| `no-zod` | forbid | guide | `from 'zod'` | — | `import { z } from 'zod'` | 차단 증명용 |
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 반례 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `no-zod` | forbid | guide | `from 'zod'` | — | `import { z } from 'zod'` | `export { s } from 'zod'` | 차단 증명용 |
 FXPOLV
 
   cat > "$pk/policies-require-missing.md" <<'FXPOLR'
@@ -2301,9 +2625,9 @@ FXPOLR
 
   cat > "$pk/policies-excepted.md" <<'FXPOLE'
 ## 기계 검사
-| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
-| --- | --- | --- | --- | --- | --- | --- |
-| `no-zod` | forbid | guide | `from 'zod'` | `a.md` | `import { z } from 'zod'` | 유일 등장 파일을 예외로 두면 통과해야 한다 |
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 반례 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `no-zod` | forbid | guide | `from 'zod'` | `a.md` | `import { z } from 'zod'` | `export { s } from 'zod'` | 유일 등장 파일을 예외로 두면 통과해야 한다 |
 FXPOLE
 
   printf '{ "axis": "backend", "pack": "backend/fxpack", "packFiles": ["a.md"], "seamFiles": ["b.md","c.md","d.md","e.md","f.md"] }\n' > "$fx/clean/asm.json"

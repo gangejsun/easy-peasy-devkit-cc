@@ -16,12 +16,12 @@
 아님. 아래는 전부 **추출 시점에 사전 제작 이음매로 시험해 위반 0을 확인**했다
 (원시 grep으로는 위반처럼 보이는 8건이 전부 산문·주석이었다).
 
-| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 설명 |
-| --- | --- | --- | --- | --- | --- | --- |
-| `getUser-not-getSession` | forbid | guide | `getSession\(` | — | `const { data } = await supabase.auth.getSession()` | 서버에서 사용자 확인은 항상 `getUser()`. `getSession()`은 쿠키를 그대로 신뢰하므로 인증 경계로 쓸 수 없다 |
-| `no-select-star` | forbid | guide | `select\('\*'\)` | — | `await supabase.from('tasks').select('*')` | 핸들러에서 컬럼을 명시한다. `select('*')`는 스키마 변경 시 조용히 payload가 커지고 비밀 컬럼을 끌고 온다 |
-| `no-module-singleton-client` | forbid | guide | `^const supabase = createClient` | — | `const supabase = createClient(url, anonKey)` | 클라이언트는 요청 단위로 만든다. 모듈 수준 싱글턴은 요청 간에 인증 컨텍스트를 섞는다 |
-| `error-is-checked` | require | guide | `if \(error\)` | — | `if (error) throw toAppError(error)` | Supabase 쿼리는 throw하지 않고 `error`를 반환한다. 확인하지 않으면 실패가 빈 결과로 둔갑한다 |
+| id | 판정 | 대상 | 정규식 | 예외 파일 | 증명 예 | 반례 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `getUser-not-getSession` | forbid | guide | `getSession\(` | — | `const { data } = await supabase.auth.getSession()` | `const s = await client.auth.getSession()` | 서버에서 사용자 확인은 항상 `getUser()`. `getSession()`은 쿠키를 그대로 신뢰하므로 인증 경계로 쓸 수 없다 |
+| `no-select-star` | forbid | guide | `select\('\*'\)` | — | `await supabase.from('tasks').select('*')` | `.select('*')` | 핸들러에서 컬럼을 명시한다. `select('*')`는 스키마 변경 시 조용히 payload가 커지고 비밀 컬럼을 끌고 온다 |
+| `no-module-singleton-client` | forbid | guide | `^(const\|let\|var) [A-Za-z_$][A-Za-z0-9_$]* = createClient\(` | — | `const supabase = createClient(url, anonKey)` | `const db = createClient(url, anonKey)` | 클라이언트는 요청 단위로 만든다. 모듈 수준 싱글턴은 요청 간에 인증 컨텍스트를 섞는다 |
+| `error-is-checked` | require | guide | `if \(error\)` | — | `if (error) throw toAppError(error)` | `if (error !== null)` | Supabase 쿼리는 throw하지 않고 `error`를 반환한다. 확인하지 않으면 실패가 빈 결과로 둔갑한다 |
 
 `대상`: `guide`=조립된 가이드 전체 · `seam`=이음매만 · `pack`=이 팩만 · `file:<이름>`.
 
