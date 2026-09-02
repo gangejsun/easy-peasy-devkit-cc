@@ -58,6 +58,5 @@ description: 마케팅 콘텐츠 파이프라인을 오케스트레이션합니�
 
 - 제품 마케팅 컨텍스트: `dev/docs/marketing/context-<제품>.md` — 제품명·타겟·핵심 가치·톤·금지 표현을 표 1개로
 - 캠페인 요약: `dev/docs/marketing/campaign-<제품>.md` — 스테이지별 산출물 경로 + 다음 액션 목록
-- scroll-stop-prompter: `.claude/skills/scroll-stop-prompter/SKILL.md`
-- scroll-stop-builder: `.claude/skills/scroll-stop-builder/SKILL.md`
-- seo-strategy: `.claude/skills/seo-strategy/SKILL.md`
+- 스테이지 스킬은 슬래시 명령으로 부른다 — `/scroll-stop-prompter` · `/scroll-stop-builder` · `/seo-strategy`
+  (셋 다 이 플러그인의 형제 스킬이라 경로를 적을 필요가 없다)

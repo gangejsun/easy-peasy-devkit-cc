@@ -72,10 +72,10 @@
 ## 검색 명령어 빠른 참조
 
 ```bash
-SCRIPT=".claude/skills/ui-ux-design/scripts/search.py"
+SCRIPT="${CLAUDE_SKILL_DIR}/scripts/search.py"
 
 # 디자인 시스템 생성
-python3 $SCRIPT "<쿼리>" --design-system -p "EasyPeasyClaudeCodeDevkit" -f markdown
+python3 $SCRIPT "<쿼리>" --design-system -p "<프로젝트명>" -f markdown
 
 # 도메인 검색
 python3 $SCRIPT "<키워드>" --domain <style|color|ux|chart|typography|landing|product|icons|react|web>
@@ -84,5 +84,5 @@ python3 $SCRIPT "<키워드>" --domain <style|color|ux|chart|typography|landing|
 python3 $SCRIPT "<키워드>" --stack <nextjs|shadcn|react|html-tailwind>
 
 # persist (저장)
-python3 $SCRIPT "<쿼리>" --design-system --persist -p "EasyPeasyClaudeCodeDevkit" -o dev/docs/design [--page "페이지명"]
+python3 $SCRIPT "<쿼리>" --design-system --persist -p "<프로젝트명>" -o dev/docs/design [--page "페이지명"]
 ```

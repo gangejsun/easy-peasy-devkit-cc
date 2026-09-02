@@ -537,6 +537,94 @@ run_fast() {
   done < <(_shared_copies | xargs -I{} basename {} | sort | uniq -d)
   [ "$drift" -eq 0 ] && ok "공유 사본 드리프트 없음"
 
+  # ── 6.6 포트 잔재 ──
+  #
+  # 원본 저장소에서 옮겨 온 자산에는 **그때는 참이었으나 배포 맥락에서 거짓이 된 문장**이
+  # 남는다. 틀리게 쓴 것이 아니라 맞게 쓴 것이 이사하면서 틀려졌으므로 문장 자체는
+  # 자연스럽고 사람 눈에 안 띈다. 실측: 잔재 4건이 4.5개월·89커밋·doctor 강화 14회·
+  # 하네스 평가 5회를 통과했다(2026-04-14 유입 → 2026-09-02 발견).
+  #
+  # 기존 검사가 못 잡는 이유는 셋이다. ① 「선언↔실물」은 **수치만** 대조하는데 개명은
+  # 수치를 바꾸지 않는다 ② dangling 검사는 `.claude/rules/*.md` 한 패턴만 본다
+  # ③ 위생 검사 대부분이 SKILL.md만 읽어 references/·resources/가 사각이다.
+  # 그래서 여기서는 **재귀**로 본다.
+  sec "포트 잔재"
+
+  # 스캔 대상 — 소비자에게 배포되거나 소비자 문서를 생성하는 자산.
+  # dev/는 넣지 않는다: 개발 기록이라 옛 이름을 서술하는 것이 정상이다.
+  local _pr_targets=() _pt
+  for _pt in skills rules agents templates guides marketing; do
+    [ -d "$_pt" ] && _pr_targets+=("$_pt")
+  done
+
+  # ① 소비자 경로에 나타난 스킬 이름 — 3분 판정.
+  #    생성물(frontend-guide·backend-guide)은 소비자 .claude/skills/가 실제 위치이므로 정상.
+  #    플러그인 스킬은 **플러그인 캐시에 살고 소비자 .claude/에 절대 놓이지 않는다** —
+  #    거기 있다고 쓰면 모델이 없는 경로를 읽으러 간다.
+  #    어느 쪽도 아니면 개명·폐기 후 따라가지 못한 죽은 참조다.
+  local _pr_bad=0 _pr_chk=0
+  if [ ${#_pr_targets[@]} -gt 0 ]; then
+    local _sname
+    while IFS= read -r _sname; do
+      [ -z "$_sname" ] && continue
+      _pr_chk=$((_pr_chk+1))
+      case "$_sname" in
+        frontend-guide|backend-guide) continue ;;   # 생성물 — 정상
+      esac
+      if [ -f "skills/$_sname/SKILL.md" ] || [ -f "marketing/skills/$_sname/SKILL.md" ]; then
+        bad "소비자 경로에 플러그인 스킬: .claude/skills/$_sname" \
+            "플러그인 스킬은 캐시에 산다. 소비자 .claude/skills/에는 생성물(frontend-guide·backend-guide)만 놓인다"
+        _pr_bad=$((_pr_bad+1))
+      else
+        bad "죽은 스킬 참조: .claude/skills/$_sname" \
+            "그런 스킬이 없다 — 개명·폐기 후 참조를 따라가지 않았다 (harness-change 「변경 후 역추적」)"
+        _pr_bad=$((_pr_bad+1))
+      fi
+    # `deprecated`가 같은 줄에 있으면 폐기 경로 변환 예시다(harness-change 「Shadow 미러」).
+    # 진짜 잔재는 폐기를 서술하지 않으므로 이 면제는 결함을 가리지 않는다.
+    done < <(grep -rhE '\.claude/skills/[A-Za-z0-9._-]+' "${_pr_targets[@]}" 2>/dev/null \
+             | grep -v 'deprecated' \
+             | grep -oE '\.claude/skills/[A-Za-z0-9._-]+' | sed 's|.*/||' | sort -u)
+  fi
+  if [ "$_pr_bad" -eq 0 ]; then
+    ok "소비자 경로의 스킬 이름 ${_pr_chk}종 정상"
+  fi
+
+  # ② 저장소 이름 누출 — 이름 집합을 매니페스트에서 도출한다(하드코딩 최소화).
+  #    원본 저장소명만은 도출 불가라 명시한다. 이 이름들이 배포 자산에 예시·기본값으로
+  #    박히면 소비자가 남의 프로젝트 이름을 받는다.
+  #    URL이 있는 줄은 면제 — 이 저장소가 스키마의 실제 호스트다(epcc-init의 $schema).
+  # jq에 의존하지 않는다 — 이 파일의 다른 매니페스트 판독과 같은 관례(grep -m1 + sed -E).
+  _pr_name() {  # $1 파일
+    [ -f "$1" ] || return 0
+    grep -m1 '"name"' "$1" 2>/dev/null | sed -E 's/.*"name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/'
+  }
+  # 디렉토리명은 쓰지 않는다 — 체크아웃 이름은 사용자가 바꿀 수 있고, `base`·`src`처럼
+  # 짧고 흔한 값이면 온갖 산문에 걸려 검사를 못 쓰게 만든다(픽스처 트리에서 실측됐다).
+  # 매니페스트의 선언만 쓰고, 6자 미만은 버린다.
+  local _self_names="" _n
+  for _n in "$(_pr_name .claude-plugin/plugin.json)" \
+            "$(_pr_name package.json)" \
+            "$(_pr_name .claude-plugin/marketplace.json)" \
+            "EasyPeasyClaudeCodeDevkit"; do
+    [ ${#_n} -ge 6 ] && _self_names="$_self_names $_n"
+  done
+  local _leak=0 _lhit
+  if [ ${#_pr_targets[@]} -gt 0 ] && [ -n "$_self_names" ]; then
+    for _n in $_self_names; do
+      while IFS= read -r _lhit; do
+        [ -z "$_lhit" ] && continue
+        bad "저장소 이름 누출: $_lhit" \
+            "소비자에게 배포되는 자산이다 — 플레이스홀더로 바꾼다 (URL은 면제)"
+        _leak=$((_leak+1))
+      done < <(grep -rnF -- "$_n" "${_pr_targets[@]}" 2>/dev/null \
+               | grep -vE 'https?://' | cut -c1-110)
+    done
+  fi
+  if [ "$_leak" -eq 0 ]; then
+    ok "배포 자산 자기이름 검사 통과"   # 실패 메시지를 부분 포함하지 않게 — 기준선 grep이 성공을 오탐으로 읽는다
+  fi
+
   # ── 7. 매니페스트 정합 ──
   #
   # 버전은 4곳에 흩어져 있다. 앞의 둘만 보던 검사를 README 배지와 marketplace.json까지
@@ -1031,7 +1119,8 @@ run_self_test() {
       for msg in "상시 로드 규칙 카드 없음" "치환되지 않는 스크립트 경로 표기" \
                  "Phase 표 재출현" "카드 표 .* ≠" "그래프 미선언 스킬" \
                  "미선언" "읽는 노드 없는 저장소" "미배포" \
-                 "프리셋 이름 누락" "사전 제작 이음매 누락"; do
+                 "프리셋 이름 누락" "사전 제작 이음매 누락" \
+                 "소비자 경로에 플러그인 스킬" "죽은 스킬 참조" "저장소 이름 누출"; do
         printf '%s' "$base_out" | grep -q "$msg" \
           && bad "기준선 오탐: '$msg'" "결함이 없는데 검출됐다 — 검사가 못 쓰게 된다"
       done
@@ -1079,6 +1168,17 @@ run_self_test() {
 
       _fx_static_case "$sfx" release-untagged 'package.json' '"version"' \
         "미배포" 'mkdir -p "$T/.claude-plugin" && printf "{\"version\":\"9.9.9\"}\n" > "$T/package.json" && printf "{\"name\":\"fx-plugin\",\"version\":\"9.9.9\"}\n" > "$T/.claude-plugin/plugin.json" && (cd "$T" && git init -q .)'
+
+      # 포트 잔재 — 개명·이사가 남기는 부류. 「선언↔실물」은 수치만 보므로 원리적으로 못 잡는다.
+      # sample은 픽스처 트리에 실재하는 스킬이라 「플러그인 스킬을 소비자 경로에 적었다」가 된다.
+      _fx_static_case "$sfx" consumer-skill-path 'skills/sample/SKILL.md' '\.claude/skills/sample' \
+        "소비자 경로에 플러그인 스킬" 'printf -- "- 참조: .claude/skills/sample/SKILL.md\n" >> "$T/skills/sample/SKILL.md"'
+      # 없는 이름은 죽은 참조로 갈린다 — 한 검사의 두 갈래를 각각 증명한다.
+      _fx_static_case "$sfx" dead-skill-ref 'skills/sample/SKILL.md' '\.claude/skills/gone-skill' \
+        "죽은 스킬 참조" 'printf -- "- 참조: .claude/skills/gone-skill/SKILL.md\n" >> "$T/skills/sample/SKILL.md"'
+      # 자기 이름 누출 — 이름 집합은 매니페스트에서 도출되므로 픽스처의 plugin.json 이름을 쓴다.
+      _fx_static_case "$sfx" self-name-leak 'skills/sample/SKILL.md' 'EasyPeasyClaudeCodeDevkit' \
+        "저장소 이름 누출" 'printf -- "예시 프로젝트: EasyPeasyClaudeCodeDevkit\n" >> "$T/skills/sample/SKILL.md"'
     fi
   fi
 

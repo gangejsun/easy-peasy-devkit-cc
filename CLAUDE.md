@@ -50,8 +50,8 @@ bash skills/stack-guide-generator/scripts/pack-smoke.sh --self-test
 
 ## 커밋
 
-사용자가 요청할 때만 커밋한다. 메시지 끝에 트레일러를 붙인다:
-`Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`
+사용자가 요청할 때만 커밋한다. 메시지 끝에 `Co-Authored-By:` 트레일러를 붙이되
+**모델명을 여기에 박지 않는다** — 실제로 작업한 모델을 쓴다(런타임이 그 값을 준다).
 
 ## 실사용 검증은 여기서 할 수 없다
 

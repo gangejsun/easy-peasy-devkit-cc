@@ -282,6 +282,7 @@
             "single",
             "msa"
           ],
+          "default": "monorepo",
           "description": "Repository topology chosen at epcc-init (drives the generated project-structure rule card)"
         }
       }

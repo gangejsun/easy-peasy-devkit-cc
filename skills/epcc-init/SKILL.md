@@ -125,7 +125,7 @@ Step 4에서 확인받는다 — 이 값에 따라 가이드의 타입 표준 �
 4. **축별 프레임워크·언어·패키지 매니저** (병합된 프리셋 기본값 확인)
 5. **빌드/테스트/린트 명령어** (프리셋 기본값 확인)
 6. **소스 디렉토리** (Step 3 병합 규칙의 결과를 확인)
-7. **공유 패키지 경로** (선택)
+7. **공유 패키지 경로** (`monorepo`·`msa`면 필수 — Step 4.7 참조. `single`이면 생략)
 
 **툴체인이 둘인 조합** (예: react-vite + fastapi — TypeScript/npm과 Python/uv)은 축마다
 명령이 다르다. 이때는 축별 명령을 각각 받고, **프로젝트 대표 명령**(`techStack.commands`)을
@@ -159,13 +159,22 @@ Step 4에서 확인받는다 — 이 값에 따라 가이드의 타입 표준 �
 ```
 레포 구조를 확인합니다:
 
-1. single   — 싱글레포: 앱 하나 (기본값)
-2. monorepo — 모노레포: 루트 앱 + 공유 패키지 (packages/ 등)
+1. monorepo — 모노레포: 루트 앱 + 공유 패키지 (packages/ 등)  (기본값)
+2. single   — 싱글레포: 앱 하나
 3. msa      — 서비스 여러 개 (services/·apps/ 분리, 서비스 간 API/이벤트 계약)
 ```
 
-- **monorepo** 선택 시에만 Step 4의 "공유 패키지 경로"를 필수로 확정한다
+- **실측이 기본값을 이긴다.** 기존 저장소에 `packages/`·`services/`가 없으면 `single`을
+  기본값으로 제시한다. `monorepo` 기본값은 **신규 프로젝트와 실측 판정 불가일 때만** 적용된다
+- 공유 패키지 경로(Step 4 항목 7)는 **`single`을 고를 때만 건너뛴다** — `monorepo`·`msa`는 필수다.
+  그 경로가 없으면 Step 7.5가 구조 카드의 `paths:`를 채우지 못하고, `paths:`가 비면
+  그 카드는 공유 코드 위에서 영영 로드되지 않는다
 - 선택 결과는 Step 5의 `domains.repoTopology`와 Step 7.5의 구조 카드 생성에 쓰인다
+
+> **기본값이 `monorepo`인 이유** — 공유 패키지는 `reversibility.md`가 **Costly**로 분류해
+> `epcc-reviewer` 리뷰를 필수로 만든다. 기능 경계를 패키지로 가르면 그 게이트가 자동으로
+> 붙는다. 다만 경계가 막아주는 것은 리뷰 요구까지이고, "A를 고치다 B가 깨졌다"를
+> 실제로 알려주는 것은 B의 테스트다 — 구조는 그 테스트를 **독립적으로 돌릴 수 있게** 할 뿐이다.
 
 ### Step 5: epcc.config.json 생성
 
@@ -273,6 +282,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/install-rules.sh"
 | `lessons.md` | 소스·`.claude/**`·`scripts/**`·`dev/docs/**` 편집 시 |
 | `doc-dependency.md` | `dev/docs/{prd,database,design,architecture,api}/**` 편집 시 |
 | `data-modeling.md` | `supabase/**` `**/migrations/**` `db/**` `prisma/**` 등 DB 경로 편집 시 |
+| `ui-design.md` | `**/components/**` `**/*.{tsx,jsx,vue,svelte,css,scss}` 편집 시 |
 
 > 이 표는 `rules/`의 실제 frontmatter를 반영해야 한다. 카드를 추가·수정하면 여기도 고친다
 > — `doctor --fast`가 카드 수 불일치를 검출한다.
@@ -312,7 +322,12 @@ Step 7의 카드가 **플러그인 소유**(버전 스탬프로 자동 갱신)�
    유지한다. 기존 린트 설정·CLAUDE.md에 프로젝트 고유 규약이 있으면 사용자 확인 후 반영해
    `code-conventions.md`로 저장한다
 5. 두 카드의 `paths:` frontmatter가 **실제 소스 디렉토리**(Step 4 입력값)를 가리키는지
-   확인한다 — paths가 틀리면 카드는 영영 로드되지 않는다
+   확인한다 — paths가 틀리면 카드는 영영 로드되지 않는다.
+   **토폴로지가 요구하는 경로도 함께 확인한다** — `monorepo`면 공유 패키지 경로가,
+   `msa`면 서비스 루트들이 `paths:`에 실재해야 한다. **없으면 카드를 저장하지 않고**
+   Step 4.7·Step 4로 돌아가 경로를 확정한 뒤 다시 생성한다.
+   소스 디렉토리만 덮는 카드는 공유 코드 위에서 한 번도 뜨지 않는다 —
+   그런 카드는 없는 카드보다 나쁘다(있다고 믿게 만든다)
 
 > 이 두 카드에는 `epcc-rule-version` 스탬프를 넣지 않는다 — 프로젝트 소유임을 표시한다.
 >

@@ -2,7 +2,7 @@
 
 AI Native Dev Harness for Claude Code — 되돌림 가능성 축 워크플로우, 자기검증 훅, 그래프 계측.
 
-![version](https://img.shields.io/badge/version-3.22.0-blue)
+![version](https://img.shields.io/badge/version-3.23.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 ## 무엇인가
@@ -98,7 +98,7 @@ Phase 번호는 순서 표시일 뿐 의무가 아닙니다 — 진입 조건 4�
 | 계층 | 수 | 내용 |
 |------|-----|------|
 | **훅** | 5 스크립트 / 6 등록 | SessionStart · PreToolUse · Stop · PreCompact · SessionEnd · PostToolUse |
-| **규칙** | T0 40줄 + T1 8개 1,148줄 | T0는 훅이 상시 주입(플러그인 소유). T1은 `workflow-routing`이 **매 세션 상시**, 나머지는 경로 매칭 시 조건부 로드 |
+| **규칙** | T0 40줄 + T1 9개 1,265줄 | T0는 훅이 상시 주입(플러그인 소유). T1은 `workflow-routing`이 **매 세션 상시**, 나머지는 경로 매칭 시 조건부 로드 |
 | **에이전트** | 2 | `epcc-planner`(쓰기 없음) · `epcc-reviewer`(읽기 전용) |
 | **스킬** | 27 | 측량·기획·구현·검증·보안·PR 워크플로우 + 스택 가이드 생성기 + 스킬 강화기 (마케팅 5종은 `epcc-marketing` 플러그인으로 분리) |
 | **프리셋** | 2축 5+9 | 프론트엔드: nextjs·react-vite·vue·vanilla·none / 백엔드: supabase·firebase·aws-serverless·aws-container·gcp-serverless·fastapi·node-api·node-nest·none |

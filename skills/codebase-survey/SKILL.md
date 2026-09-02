@@ -45,6 +45,8 @@ git log --oneline -1 && git rev-parse --abbrev-ref HEAD    # 어느 시점의 �
 cloc . 2>/dev/null || find . -type f -name '*.*' -not -path '*/node_modules/*' \
   -not -path '*/.git/*' | sed 's/.*\.//' | sort | uniq -c | sort -rn | head -15
 ls -d */ && ls -d src/*/ app/*/ packages/*/ 2>/dev/null   # 상위 2 depth
+ls -d services/*/ apps/*/ 2>/dev/null                     # msa 여부
+grep -o '"repoTopology"[^,}]*' epcc.config.json 2>/dev/null  # 선언값 — 실측과 대조한다
 ```
 
 락파일·매니페스트·설정 파일이 진실이다. **읽어서 확인한 것만 적는다** — 프리셋이나
@@ -100,6 +102,24 @@ Step 2의 「레이어」 실측은 `project-structure.md`의 **「의존 방향
 
 두 카드에 `epcc-rule-version` 스탬프를 **넣지 않는다** (프로젝트 소유 표시).
 
+### 세 번째 대조 대상 — `epcc.config.json`의 `repoTopology`
+
+토폴로지는 `/epcc-init`이 **프로젝트가 가장 작을 때** 한 번 묻고 기록한다. 그 뒤로 이 값을
+다시 보는 곳이 없어서, 저장소가 자라면 선언과 실물이 갈라진다. **실측이 선언을 이긴다.**
+
+| 실측 | 선언 | 처리 |
+| --- | --- | --- |
+| `packages/`·`services/`·`apps/` 없음 | `single` | 일치 |
+| `packages/`에 워크스페이스 2개 이상 | `single` | 드리프트 — `monorepo` 승격 제안 |
+| `services/`·`apps/`로 서비스 분리 | `single`·`monorepo` | 드리프트 — `msa` 제안 |
+| 필드 없음 | — | 미설정 — 보고만 한다. 추측으로 채우지 않는다 |
+
+**값보다 결과가 먼저다.** 어긋났으면 `project-structure.md`의 `paths:`를 같이 본다 —
+새 워크스페이스 경로(`packages/**` 등)가 거기 없으면 **그 카드는 새 코드 위에서 한 번도
+로드된 적이 없다.** 공유 패키지는 `reversibility.md`가 **Costly**로 분류하는 자리이므로,
+카드가 안 뜬다는 것은 되돌림 판정의 근거가 빠진 채 편집돼 왔다는 뜻이다.
+config 값 갱신보다 이 사실을 먼저 보고한다.
+
 ## Step 4: 검증 경로 확정
 
 빌드·테스트·린트 명령을 실측하고 **실제로 한 번 돌려** 존재를 증명한다.
@@ -121,6 +141,7 @@ Step 2의 「레이어」 실측은 `project-structure.md`의 **「의존 방향
 검증 경로: <명령 + 실행 결과>
 
 카드 드리프트: project-structure <일치|N건> · code-conventions <일치|N건>
+토폴로지: 선언 <값|미설정> · 실측 <값> — <일치|어긋남: paths 미포함 N건>
 ```
 
 드리프트가 1건 이상이면 마지막 줄에: `카드 N건 갱신할까요? (항목별로 고를 수 있습니다)`

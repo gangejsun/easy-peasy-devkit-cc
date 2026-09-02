@@ -68,7 +68,8 @@ CSV_CONFIG = {
     }
 }
 
-# EasyPeasyClaudeCodeDevkit: Next.js + shadcn/ui + React + Tailwind only
+# 지원 스택 4종 — 이 목록 밖의 스택은 --stack을 쓰지 않는다 (SKILL.md Step 4 참조).
+# 나머지 도메인(스타일·색상·타이포·UX)은 스택 불변이라 전 스택에서 유효하다.
 STACK_CONFIG = {
     "html-tailwind": {"file": "stacks/html-tailwind.csv"},
     "react": {"file": "stacks/react.csv"},

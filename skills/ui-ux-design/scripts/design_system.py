@@ -548,6 +548,7 @@ def format_master_md(design_system: dict) -> str:
     typography = design_system.get("typography", {})
     effects = design_system.get("key_effects", "")
     anti_patterns = design_system.get("anti_patterns", "")
+    decision_rules = design_system.get("decision_rules", {}) or {}
     
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
@@ -569,6 +570,32 @@ def format_master_md(design_system: dict) -> str:
     lines.append("---")
     lines.append("")
     
+    # ── 판단 섹션 ──────────────────────────────────────────────────
+    # 검색은 "무엇을 고를까"만 답한다. "이 브리프 전용인가"는 답하지 않는다.
+    # 그 심사는 모델이 하고, 결과가 여기 남아야 다음 세션까지 살아남는다
+    # (rules/doc-dependency.md가 dev/docs/design/**를 이미 감시한다).
+    lines.append("## Signature")
+    lines.append("")
+    lines.append("> 이 화면이 기억될 단 하나. **비운 채 두지 않는다** — 기준은 `.claude/rules/ui-design.md`.")
+    lines.append("")
+    lines.append("## 방향 심사")
+    lines.append("")
+    lines.append(f"- 선택한 스타일: **{style.get('name', '')}**")
+    lines.append("- 브리프가 지정했는가, 검색이 골랐는가:")
+    lines.append("- 기본값 3군집에 안착했는가 (크림+세리프+테라코타 / 근검정+산성악센트 / 괘선 다단):")
+    lines.append("- 바꾼 것과 이유:")
+    lines.append("")
+    if decision_rules:
+        lines.append("## 결정 규칙")
+        lines.append("")
+        lines.append("이 카테고리의 조건부 규칙이다. 위 심사에서 근거로 쓴다.")
+        lines.append("")
+        for cond, action in decision_rules.items():
+            lines.append(f"- `{cond}` → {action}")
+        lines.append("")
+    lines.append("---")
+    lines.append("")
+
     # Global Rules section
     lines.append("## Global Rules")
     lines.append("")

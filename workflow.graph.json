@@ -73,6 +73,7 @@
       "kind": "hook",
       "path": "scripts/security-check.sh",
       "event": "PreToolUse",
+      "emits": "신규 UI 파일 생성 시 ui-design 카드 소환 (차단 아님)",
       "blocks": true,
       "note": "exit 2로 시크릿 하드코딩 차단. 판정에 프로젝트 루트가 불필요",
       "on_error": [
