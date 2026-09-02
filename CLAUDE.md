@@ -30,7 +30,7 @@
 **복사**하고 `return 0`을 명시한다 (원본 `bad`/`warn`은 `$2`가 비면 반환값이 1이다).
 
 **가이드는 스킬이 아니라 `guides/` 자산이다** — 사전 제작 단위가 조합(32)이 아니라 축
-(프론트 5 · 백엔드 8)이라서다. **팩 리소스를 고치면 `ledger.md`·`pack.json`·`policies.md`도
+(프론트 4 · 백엔드 8)이라서다. **팩 리소스를 고치면 `ledger.md`·`pack.json`·`policies.md`도
 함께 본다** — 팩 단독 검증은 `guide-gate.sh --pack`, 실행 검증은 `pack-smoke.sh`이고 정책
 표의 `증명 예`와 `fixesVariants`는 **의무**다(누락 시 FAIL). 계약(`seams/*/contract.md`)의
 **값은 목록·표 행에만** 쓴다: 산문의 백틱은 설명이고, 부정문을 목록에 쓰면 양쪽 요구가 된다.

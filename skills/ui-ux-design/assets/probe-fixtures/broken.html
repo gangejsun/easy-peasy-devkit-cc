@@ -1,0 +1,36 @@
+<!doctype html>
+<!-- ui-probe --self-test 의 **결함** 픽스처. 런타임 3축을 각각 하나씩 심는다.
+     차단 장치를 만들었으면 차단을 증명한다 — 그리고 **의도한 이유로** 걸리는지 본다
+     (EPCC_FX_WHY=1 이면 무엇이 걸렸는지 함께 출력한다).
+
+       ① 콘솔 error   — console.error 직접 호출
+       ② 미포착 예외  — 최상위 throw
+       ③ 실패 요청    — 존재하지 않는 로컬 이미지 (file:// 에서 net::ERR_FILE_NOT_FOUND)
+-->
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>ui-probe broken fixture</title>
+</head>
+<body>
+  <h1>결함이 심긴 화면</h1>
+  <p>빌드는 통과하지만 화면은 깨져 있다 — 그 간극이 이 장치의 존재 이유다.</p>
+
+  <!-- ③ 실패 요청 -->
+  <img src="./__missing_asset_do_not_create__.png" alt="없는 이미지">
+
+  <button type="button">동작하지 않는 버튼</button>
+
+  <script>
+    // ① 콘솔 error
+    console.error('EPCC_FIXTURE console error: 렌더 후 데이터가 비었다');
+  </script>
+  <script>
+    // ② 미포착 예외 — 별도 스크립트 태그라 ①의 실행을 막지 않는다
+    (function () {
+      var data = null;
+      document.body.dataset.count = data.items.length; // TypeError
+    })();
+  </script>
+</body>
+</html>

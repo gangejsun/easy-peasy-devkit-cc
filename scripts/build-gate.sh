@@ -75,7 +75,41 @@ if jq -r 'select(.type=="assistant") | .message.content[]?
   BUILD_RAN=1
 fi
 
-[ "$BUILD_RAN" -eq 1 ] && exit 0
+# ── 2-a. UI 파일은 빌드 통과로 끝나지 않는다 (알림, 차단 아님) ──────
+# tsc 는 빈 화면도 콘솔이 터지는 화면도 통과시킨다. 그래서 여기서 **알린다.**
+# 차단하지 않는 이유: 헤드리스 브라우저가 없는 환경·서버가 필요 없는 컴포넌트 수정에서
+# 오탐이 나고, 오탐이 반복되면 사용자가 훅을 꺼버린다 (security-check.sh의 원칙).
+_ui_render_notice() {
+  local ui_changed ui_count stamp
+  ui_changed=$(printf '%s\n' "$SRC_CHANGED" | grep -E '\.(tsx|jsx|vue|svelte)$' || true)
+  [ -z "$ui_changed" ] && return 0
+  ui_count=$(epcc_num "$(printf '%s\n' "$ui_changed" | grep -c . || printf '0')")
+  [ "$ui_count" -eq 0 ] && return 0
+
+  stamp="$(epcc_state_dir)/ui-notice.stamp"
+  [ -f "$stamp" ] && return 0   # 세션당 1회 (session-brief가 매 세션 지운다)
+
+  # 렌더를 확인한 흔적 — 프로브·브라우저 자동화 Bash 호출, 또는 내장 /run 스킬 호출.
+  # 문자열 존재가 아니라 **실제 도구 호출**만 본다 (v2 stop-guard의 교훈).
+  if jq -r 'select(.type=="assistant") | .message.content[]?
+            | select(.type=="tool_use")
+            | if .name=="Bash" then (.input.command // empty)
+              elif .name=="Skill" then (.input.skill // empty)
+              else empty end' "$TRANSCRIPT" 2>/dev/null \
+     | grep -qiE '(ui-probe|playwright|puppeteer|chromium|(^|:)run$)'; then
+    return 0
+  fi
+
+  : > "$stamp" 2>/dev/null || true
+  epcc_emit_notice "Stop" "$(printf 'UI 파일 %s개가 이번 세션에 바뀌고 빌드는 통과했으나 **렌더를 확인한 흔적이 없습니다.**\n\n%s\n\n내장 `/run` 으로 띄운 뒤 그 URL에 `ui-ux-design` 스킬의 ui-probe를 거세요.\n타입체크 통과는 화면이 나온다는 증거가 아닙니다 — 차단하지 않으니 필요 없으면 넘어가세요.' \
+    "$ui_count" "$(printf '%s\n' "$ui_changed" | head -3 | sed 's/^/  - /')")" 2>/dev/null || true
+  return 0
+}
+
+if [ "$BUILD_RAN" -eq 1 ]; then
+  _ui_render_notice
+  exit 0
+fi
 
 # ── 3. 차단 ──────────────────────────────────────────────────────────
 # config에서 실제 명령을 읽어 구체적으로 안내한다

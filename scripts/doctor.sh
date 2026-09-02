@@ -1408,6 +1408,41 @@ run_consumer() {
     ok "build-gate: 판정 불가 → 차단 없음"
   fi
 
+  # UI 렌더 알림 — **알림이지 차단이 아니다.** 둘 다 증명한다.
+  # 빌드는 돌았는데 렌더 확인 흔적이 없는 세션을 합성해서 넣는다.
+  sec "UI 렌더 알림 (비차단)"
+  local up="$tmp/proj-커밋-있음"
+  mkdir -p "$up/src"
+  printf 'export const A = () => <div/>;\n' > "$up/src/Card.tsx"
+  (cd "$up" && git add -A >/dev/null 2>&1 && git commit -qm ui >/dev/null 2>&1)
+  printf 'export const A = () => <div>changed</div>;\n' > "$up/src/Card.tsx"
+  mkdir -p "$up/.claude/.epcc"; : > "$up/.claude/.epcc/session-baseline.txt"
+  rm -f "$up/.claude/.epcc/ui-notice.stamp"
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"npm run build"}}]}}' \
+    > "$tmp/ui-transcript.jsonl"
+  code=0
+  out=$(printf '{"stop_hook_active":false,"transcript_path":"%s"}' "$tmp/ui-transcript.jsonl" \
+        | CLAUDE_PLUGIN_ROOT="$cache" CLAUDE_PROJECT_DIR="$up" \
+          bash "$cache/scripts/build-gate.sh" 2>/dev/null) || code=$?
+  if ! command -v jq >/dev/null 2>&1; then
+    warn "UI 알림 미검증 — jq 없음" "판정 불가를 통과로 접지 않는다"
+  elif [ "$code" -ne 0 ]; then
+    bad "build-gate: UI 알림 경로에서 exit $code" "알림은 종료 코드를 바꾸면 안 된다"
+  elif printf '%s' "$out" | grep -q '"continue"[[:space:]]*:[[:space:]]*false'; then
+    bad "build-gate: UI 알림이 차단으로 나갔다" "오탐 차단은 사용자가 훅을 끄게 만든다"
+  elif printf '%s' "$out" | grep -q '렌더를 확인한 흔적이 없습니다'; then
+    ok "build-gate: UI 변경 + 빌드만 → 알림 발생, 차단 없음"
+  else
+    bad "build-gate: UI 알림이 나오지 않았다" "타입체크 통과가 렌더 증거로 취급되고 있다"
+  fi
+  # 두 번째 호출은 침묵해야 한다 — 꺼지지 않는 경고는 무시를 학습시킨다.
+  out=$(printf '{"stop_hook_active":false,"transcript_path":"%s"}' "$tmp/ui-transcript.jsonl" \
+        | CLAUDE_PLUGIN_ROOT="$cache" CLAUDE_PROJECT_DIR="$up" \
+          bash "$cache/scripts/build-gate.sh" 2>/dev/null)
+  printf '%s' "$out" | grep -q '렌더를 확인한 흔적이 없습니다' \
+    && bad "UI 알림이 매 Stop 마다 반복된다" "세션당 1회 마커가 동작하지 않는다" \
+    || ok "UI 알림 세션당 1회 (반복 경고 없음)"
+
   # 플러그인 밖에서 doctor 자신이 도는가
   sec "플러그인 밖 실행"
   (cd "$tmp/proj-커밋-있음" && bash "$cache/scripts/doctor.sh" --fast >/dev/null 2>&1) \

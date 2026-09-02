@@ -402,7 +402,7 @@
       "id": "ui-ux-design",
       "kind": "skill",
       "path": "skills/ui-ux-design/SKILL.md",
-      "when": "사용자 수동 호출 전용",
+      "when": "사용자 수동 호출 전용. 렌더 증명(Step 6)은 UI 변경 후 build 에서 들어온다",
       "manual": true
     },
     {
@@ -800,6 +800,17 @@
       "from": "decisions",
       "to": "pr-prep",
       "cond": "PR 본문 Decisions 줄"
+    },
+    {
+      "from": "build",
+      "to": "ui-ux-design",
+      "cond": "UI 파일 변경 후 렌더 증명 — /run 으로 띄우고 ui-probe"
+    },
+    {
+      "from": "ui-ux-design",
+      "to": "build",
+      "cond": "콘솔 error·미포착 예외·실패 요청 검출 — 종료 술어: 런타임 결함 0건",
+      "conditionalEmit": true
     }
   ]
 }

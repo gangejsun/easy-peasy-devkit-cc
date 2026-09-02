@@ -51,6 +51,9 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
   mkdir -p "$(epcc_state_dir)" 2>/dev/null || true
   git status --porcelain 2>/dev/null | awk '{print $NF}' | sort \
     > "$(epcc_state_dir)/session-baseline.txt" 2>/dev/null || true
+  # build-gate의 UI 렌더 알림은 세션당 1회다. 그 마커를 여기서 연다 —
+  # 꺼지지 않는 경고는 무시를 학습시킨다.
+  rm -f "$(epcc_state_dir)/ui-notice.stamp" 2>/dev/null || true
 fi
 
 # 열린 워크스페이스

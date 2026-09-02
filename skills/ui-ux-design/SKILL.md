@@ -138,23 +138,42 @@ python3 ${CLAUDE_SKILL_DIR}/scripts/search.py "<쿼리>" --stack html-tailwind
 - shadcn/ui 컴포넌트 활용
 - `@/` 경로 alias
 
+### Step 6: 렌더 증명 (코드를 쓴 뒤)
+
+Step 2.5가 **쓰기 전** 게이트라면 이것은 **쓴 뒤** 게이트다. 타입체크 통과는 화면이
+나온다는 증거가 아니다 — 판정 규범의 정본은 `.claude/rules/ui-design.md` §6이다.
+
+서버는 내장 `/run`으로 띄운다(이 스킬은 서버를 관리하지 않는다). 그 URL에 프로브를 건다:
+
+```bash
+bash ${CLAUDE_SKILL_DIR}/scripts/ui-probe.sh --url http://localhost:3000 --ready "main"
+```
+
+`--ready`에 렌더 완료를 뜻하는 선택자를 준다 — **가시성 기반 대기가 가장 신뢰할 수 있다.**
+선택자를 찾아야 하면 `--recon`으로 인벤토리를 넓힌다(기본은 종류당 8개, 컨텍스트 절약).
+콘솔 error·미포착 예외·실패 요청이 있으면 exit 1이다. 품질 실측은 WARN이라 종료 코드를
+올리지 않는다. 브라우저가 없으면 exit 2 — **판정 불가이지 통과가 아니다.**
+
 ## 품질 체크리스트 (Pre-Delivery)
 
-구현 전 반드시 확인:
-- [ ] 텍스트 대비율 4.5:1 이상
-- [ ] 터치 타겟 최소 44x44px
+Step 6의 `ui-probe`가 실측하는 항목에는 *(실측)* 을 붙였다 — 나머지는 사람이 본다.
+**실측 가능한 것을 눈으로 확인했다고 적지 않는다.**
+
+- [ ] 텍스트 대비율 4.5:1 이상 *(실측)*
+- [ ] 터치 타겟 최소 44x44px *(실측 · 모바일 뷰포트)*
 - [ ] hover 상태가 레이아웃을 이동시키지 않을 것
-- [ ] interactive 요소에 cursor-pointer
+- [ ] interactive 요소에 cursor-pointer *(실측)*
 - [ ] SVG 아이콘 사용 (이모지 금지)
-- [ ] 모바일 우선 반응형 (min 16px body text)
+- [ ] 모바일 우선 반응형 (min 16px body text) *(실측 · 본문 중앙값)*
 - [ ] 키보드 네비게이션 가능
-- [ ] prefers-reduced-motion 체크
+- [ ] prefers-reduced-motion 체크 *(실측)*
 
 ## 참조 문서
 
 - 빠른 참조: [references/quick-reference.md](references/quick-reference.md)
 - 프론트엔드 가이드라인: `.claude/skills/frontend-guide/SKILL.md` (스택별로 생성된다)
-- 디자인 판단 규범: `.claude/rules/ui-design.md` (UI 파일 편집 시 자동 로드)
+- 디자인 판단 규범: `.claude/rules/ui-design.md` (UI 파일 편집 시 자동 로드) — §6이 렌더 증명의 정본
+- 렌더 프로브: [scripts/ui-probe.sh](scripts/ui-probe.sh) (`--help` 로 사용법)
 - 디자인 출력: `dev/docs/design/`
 
 ## 프로젝트 커스텀 리소스

@@ -1,0 +1,35 @@
+<!doctype html>
+<!-- ui-probe --self-test 의 **기준선** 픽스처.
+     여기서 결함이 하나라도 나오면 그것은 오탐이고, 오탐은 장치를 무용지물로 만든다.
+     그래서 자기검증은 broken.html 보다 이 파일을 **먼저** 본다. -->
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ui-probe clean fixture</title>
+  <style>
+    body { background: #ffffff; color: #1a1a1a; font-family: system-ui, sans-serif; font-size: 17px; margin: 0; padding: 24px; }
+    p { font-size: 17px; line-height: 1.6; }
+    button, a.cta { cursor: pointer; min-width: 48px; min-height: 48px; display: inline-block; }
+    button { background: #1f3a5f; color: #ffffff; border: 0; border-radius: 6px; padding: 12px 20px; font-size: 16px; }
+    a.cta { background: #ffffff; color: #1f3a5f; border: 1px solid #1f3a5f; border-radius: 6px; padding: 12px 20px; text-decoration: none; line-height: 24px; }
+    input { min-height: 48px; font-size: 16px; padding: 8px; border: 1px solid #6b6b6b; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h1>결함 없는 화면</h1>
+  <p>이 문단은 본문 크기 중앙값 측정을 위한 표본이다. 대비율·터치 타겟·커서 규칙을 모두 만족하도록 만들었다.</p>
+  <p>콘솔에는 error 가 없고, 미포착 예외가 없으며, 실패하는 요청이 없다.</p>
+  <button id="save" type="button">변경 저장</button>
+  <a class="cta" id="docs" href="#docs">문서 열기</a>
+  <label for="email">이메일</label>
+  <input id="email" name="email" type="email" placeholder="name@example.com">
+  <script>
+    // log 는 결함이 아니다 — 판정은 console.error 만 본다.
+    console.log('clean fixture ready');
+    document.getElementById('save').addEventListener('click', function () {
+      document.title = 'saved';
+    });
+  </script>
+</body>
+</html>
