@@ -24,6 +24,11 @@ PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && p
 PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 SRC="$PLUGIN_ROOT/rules"
 DST="$PROJECT_ROOT/.claude/rules"
+# 카드가 링크로 가리키는 점진 로드용 참조. 카드 본문에서 `../references/<주제>/`로 참조하며,
+# **`.claude/rules/` 안에 두면 안 된다** — 거기의 .md는 paths가 없으면 매 세션 상주하므로
+# "필요할 때만 읽는다"가 성립하지 않는다.
+REFSRC="$PLUGIN_ROOT/references"
+REFDST="$PROJECT_ROOT/.claude/references"
 
 DRY=0; FORCE=0; MISSING_ONLY=0; QUIET=0
 for a in "$@"; do
@@ -92,6 +97,30 @@ if [ "$QUIET" -eq 1 ] && [ $((installed+updated)) -gt 0 ]; then
 fi
 say '\n  신규 %d · 갱신 %d · 유지 %d\n' "$installed" "$updated" "$skipped"
 
+# 카드가 링크한 참조 자산 — 카드와 같은 판정 규칙(버전 스탬프)을 쓴다
+refn=0
+if [ -d "$REFSRC" ]; then
+  while IFS= read -r rf; do
+    rel="${rf#$REFSRC/}"
+    rt="$REFDST/$rel"
+    if [ ! -f "$rt" ]; then
+      [ "$DRY" -eq 0 ] && { mkdir -p "$(dirname "$rt")"; cp "$rf" "$rt"; }
+      refn=$((refn+1)); continue
+    fi
+    [ "$MISSING_ONLY" -eq 1 ] && continue
+    rsv=$(version_of "$rf"); rsv="${rsv:-0.0.0}"
+    rtv=$(version_of "$rt"); rtv="${rtv:-0.0.0}"
+    if [ "$rsv" != "$rtv" ] || [ "$FORCE" -eq 1 ]; then
+      if [ "$DRY" -eq 0 ]; then
+        cmp -s "$rf" "$rt" || cp "$rt" "$rt.bak"
+        cp "$rf" "$rt"
+      fi
+      refn=$((refn+1))
+    fi
+  done < <(find "$REFSRC" -name '*.md' -type f 2>/dev/null)
+  [ "$refn" -gt 0 ] && say '  + 참조 자산 %d개 (%s)\n' "$refn" "${REFDST#$PROJECT_ROOT/}"
+fi
+
 # 설치 검증 — "복사했다"는 "존재한다"가 아니다
 if [ "$DRY" -eq 0 ]; then
   # 무매칭 시 ls exit 1 → pipefail+ERR 트랩이 여기서 죽어 아래 FATAL을 못 낸다.
@@ -102,4 +131,16 @@ if [ "$DRY" -eq 0 ]; then
     exit 1
   fi
   say '  검증: %s에 %s개 규칙 존재 ✓\n' "${DST#$PROJECT_ROOT/}" "$n"
+
+  # 카드가 가리키는 참조가 실제로 도달했는가. 링크만 있고 파일이 없으면
+  # 모델은 "읽을 수 없는 파일"을 안내받고 점진 로드가 조용히 끊긴다.
+  dang=0
+  for c in "$DST"/*.md; do
+    [ -f "$c" ] || continue
+    while IFS= read -r lnk; do
+      [ -z "$lnk" ] && continue
+      [ -f "$DST/$lnk" ] || { printf 'WARN: %s → %s 미설치\n' "$(basename "$c")" "$lnk" >&2; dang=$((dang+1)); }
+    done < <(grep -ohE '\.\./references/[A-Za-z0-9._/-]+\.md' "$c" 2>/dev/null | sort -u)
+  done
+  [ "$dang" -eq 0 ] && say '  검증: 카드→참조 링크 전부 도달 ✓\n'
 fi

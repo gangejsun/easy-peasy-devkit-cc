@@ -1,6 +1,7 @@
 ---
 name: marketing-workflow
 description: 마케팅 콘텐츠 파이프라인을 오케스트레이션합니다 — AI 프롬프트 생성 → 스크롤 애니메이션 사이트 구축 → SEO 최적화를 순차 실행하고 dev/docs/marketing/에 통합합니다. "마케팅 캠페인", "제품 랜딩 페이지", "스크롤 스톱 콘텐츠", "마케팅 파이프라인"에 사용합니다. 개별 스테이지는 /scroll-stop-prompter · /scroll-stop-builder · /seo-strategy. 수동 호출 전용.
+disable-model-invocation: true
 ---
 
 # Marketing Workflow Orchestrator

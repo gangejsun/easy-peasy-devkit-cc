@@ -1,6 +1,6 @@
 ---
 name: seo-strategy
-description: SEO 3-Mode 분석 — 페이지 최적화(키워드·LSI·메타·구조화 데이터) · 사이트 전체 감사 · AI 검색 최적화. 결과는 인터랙티브 HTML 리포트. "SEO 분석", "SEO 최적화", "사이트 감사", "키워드 분석", "메타 태그", "AI SEO", "LLM 최적화"에 사용합니다. marketing-workflow Stage 3. 수동 호출 전용.
+description: SEO 3-Mode 분석 — 페이지 최적화(키워드·LSI·메타·구조화 데이터) · 사이트 전체 감사 · AI 검색 최적화. 결과는 인터랙티브 HTML 리포트. "SEO 분석", "SEO 최적화", "사이트 감사", "키워드 분석", "메타 태그", "AI SEO", "LLM 최적화"에 사용합니다. marketing-workflow Stage 3이 순차 호출합니다.
 ---
 
 # SEO Strategy

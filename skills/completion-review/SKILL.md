@@ -1,6 +1,6 @@
 ---
 name: completion-review
-description: 코드 구현이 끝나고 문서를 최신화해야 할 때 사용합니다. context.md 업데이트, tasks.md 체크 완료, 관련 아키텍처/API 문서 업데이트, 완료된 작업 아카이브를 처리합니다. CLAUDE.md 작업 라우팅의 P5 — Reversible 변경을 마친 직후 발동합니다 (Costly 이상은 epcc-reviewer가 담당).
+description: 코드 구현이 끝나고 문서를 최신화해야 할 때 사용합니다. context.md 업데이트, tasks.md 체크 완료, 관련 아키텍처/API 문서 갱신, 완료 작업 아카이브를 처리합니다. Reversible 변경의 마무리 담당이며 Costly 이상은 epcc-reviewer가 맡습니다.
 ---
 
 # Completion Review

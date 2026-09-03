@@ -402,10 +402,10 @@ run_fast() {
   local t0="templates/operating-contract.md"
   if [ -f "$t0" ]; then
     local t0n; t0n=$(num "$(wc -l < "$t0")")
-    if [ "$t0n" -le 40 ]; then
-      ok "T0 운영 규칙 ${t0n}/40줄"
+    if [ "$t0n" -le 42 ]; then
+      ok "T0 운영 규칙 ${t0n}/42줄"
     else
-      bad "T0 운영 규칙 ${t0n}줄 — 예산 40줄 초과" "$(printf '규범을 지우지 마세요. 아래 셋 중 하나를 고릅니다 — 잃는 것이 서로 다릅니다.\n      1) T1 카드로 내린다  — 도달은 유지, 상시성 상실 (그 경로를 만질 때만 뜬다)\n      2) 더 짧게 고쳐 쓴다  — 상시성 유지, 정보가 깎일 위험\n      3) 예산을 올린다      — 둘 다 유지, 매 세션 비용이 는다 (이 검사의 40을 함께 올린다)')"
+      bad "T0 운영 규칙 ${t0n}줄 — 예산 42줄 초과" "$(printf '규범을 지우지 마세요. 아래 셋 중 하나를 고릅니다 — 잃는 것이 서로 다릅니다.\n      1) T1 카드로 내린다  — 도달은 유지, 상시성 상실 (그 경로를 만질 때만 뜬다)\n      2) 더 짧게 고쳐 쓴다  — 상시성 유지, 정보가 깎일 위험\n      3) 예산을 올린다      — 둘 다 유지, 매 세션 비용이 는다 (이 검사의 40을 함께 올린다)')"
     fi
 
     # T0에서 규범 절이 사라지면 조용히 전파된다 — 줄 수만 보는 검사는 삭제를 오히려 통과시킨다.
@@ -434,6 +434,46 @@ run_fast() {
   else
     ok "규칙 카드 버전 스탬프 완비"
   fi
+
+  # 카드 → 참조 링크 실재 (점진 로드의 도달 경로)
+  # 큰 카드는 본문을 references/로 내리고 링크로 가리킨다. 링크가 끊기면
+  # 모델은 "읽을 수 없는 파일"을 안내받고, 그 지식은 조용히 도달하지 않는다.
+  local rdang=0 rchecked=0 rc rlnk
+  for rc in "$ROOT"/rules/*.md; do
+    [ -f "$rc" ] || continue
+    while IFS= read -r rlnk; do
+      [ -z "$rlnk" ] && continue
+      rchecked=$((rchecked+1))
+      [ -f "$ROOT/${rlnk#../}" ] || { bad "$(basename "$rc") → $rlnk 없음" "점진 로드가 끊긴다"; rdang=$((rdang+1)); }
+    done < <(grep -ohE '\.\./references/[A-Za-z0-9._/-]+\.md' "$rc" 2>/dev/null | sort -u)
+  done
+  [ "$rdang" -eq 0 ] && ok "카드→참조 링크 ${rchecked}건 모두 실재"
+
+  # §참조가 실재하는 절을 가리키는가 — 큰 카드를 쪼개면 옮겨간 절의 번호가 잔재로 남는다.
+  # 「변경 후 역추적: 사라진 이름 쪽을 본다」의 기계 판정분. 범위 표기(§1~8)는 앞 숫자만 본다 —
+  # 놓치는 쪽으로 기운 판정이지, 있는 것을 없다고 하지 않는다.
+  local sdang=0 schk=0 card secs num
+  for card in "$ROOT"/rules/*.md; do
+    [ -f "$card" ] || continue
+    secs=$(grep -oE '^## [0-9]+\.' "$card" 2>/dev/null | grep -oE '[0-9]+' | tr '\n' ' ')
+    [ -z "$secs" ] && continue
+    for num in $(grep -ohE '§[0-9]+' "$card" 2>/dev/null | grep -oE '[0-9]+' | sort -u); do
+      schk=$((schk+1))
+      case " $secs " in *" $num "*) ;; *)
+        bad "$(basename "$card") §${num} — 그 절이 없다" "쪼개면서 옮겨간 절의 번호가 잔재로 남았다"; sdang=$((sdang+1)) ;;
+      esac
+    done
+    # 이 카드의 참조 디렉토리도 같은 잣대로 본다 ("카드 §N")
+    local rdir="$ROOT/references/$(basename "$card" .md)"
+    [ -d "$rdir" ] || continue
+    for num in $(grep -rohE '카드 §[0-9]+' "$rdir" 2>/dev/null | grep -oE '[0-9]+' | sort -u); do
+      schk=$((schk+1))
+      case " $secs " in *" $num "*) ;; *)
+        bad "references/$(basename "$rdir") → 카드 §${num} 없음" "쪼개면서 옮겨간 절의 번호가 잔재로 남았다"; sdang=$((sdang+1)) ;;
+      esac
+    done
+  done
+  [ "$sdang" -eq 0 ] && ok "카드 §참조 ${schk}건 모두 실재하는 절"
 
   # ── 5. 에이전트 계약 ──
   sec "에이전트 계약"
@@ -465,6 +505,58 @@ run_fast() {
   done < <(skill_mds)
   [ "$blk" -gt 0 ] && warn "블록 스칼라 description ${blk}/${stot}" "단일 행 권장 (sprawl 유발)" || ok "블록 스칼라 없음"
   [ "$proj" -gt 0 ] && warn "'(project)' 접미사 ${proj}/${stot}" "라우팅에 무의미, 상시 상주 비용만 차지" || ok "'(project)' 접미사 없음"
+
+  # 수동 전용 선언 ↔ disable-model-invocation 일치 (양방향)
+  #   description은 스킬을 한 번도 부르지 않아도 상주한다(docs/platform-contract.md §2.4).
+  #   "수동 호출 전용"이라 적고 플래그를 안 붙이면 **선언과 과금이 어긋난다** — 매 세션 헛돈.
+  #   반대로 라우팅이 자동 발동으로 지목하는 스킬에 붙이면 모델이 영영 못 불러 라우팅이 끊긴다.
+  local manual_unflagged="" flagged_routed="" legacy_key="" sname sdir
+  while IFS= read -r sm; do
+    [ -z "$sm" ] && continue
+    sdir=$(dirname "$sm"); sname=$(basename "$sdir")
+    local has_flag=0 says_manual=0 fm
+    # 프론트매터 **블록 전체**를 본다. description: 첫 행만 보면 접힌 description의
+    # 이어지는 행에 적힌 선언을 놓친다 — 그 틈으로 수동 전용 스킬이 상주했다.
+    fm=$(awk '/^---$/{n++; if(n==2) exit} n==1' "$sm" 2>/dev/null)
+    printf '%s\n' "$fm" | grep -q '^disable-model-invocation:[[:space:]]*true' && has_flag=1
+    printf '%s\n' "$fm" | grep -q '수동 호출 전용' && says_manual=1
+    # 플랫폼 계약에 없는 키는 조용히 무시된다 — 선언한 사람은 됐다고 믿는다.
+    printf '%s\n' "$fm" | grep -q '^trigger:' && legacy_key="$legacy_key $sname"
+    if [ "$says_manual" -eq 1 ] && [ "$has_flag" -eq 0 ]; then
+      manual_unflagged="$manual_unflagged $sname"
+    fi
+    if [ "$has_flag" -eq 1 ]; then
+      if grep -q "\`/${sname}\`" "$ROOT/rules/workflow-routing.md" 2>/dev/null; then
+        flagged_routed="$flagged_routed $sname(라우팅)"
+      elif grep -A3 "\"id\": \"${sname}\"" "$ROOT/workflow.graph.json" 2>/dev/null | grep -q '"phase"'; then
+        flagged_routed="$flagged_routed $sname(그래프 phase)"
+      # 다른 스킬이 **호출**하는가. 이름을 언급만 하는 「경계」 선언
+      # ("…를 보는 것은 `/x`다")과 구분해야 한다 — 오탐은 검사를 꺼버리게 만든다.
+      # 그래서 호출 동사가 같은 줄에 있을 때만 센다. 놓치는 쪽(미탐)으로 기운 판정이다.
+      elif [ "$(grep -rh -- "\`/${sname}\`" "$ROOT"/skills/*/SKILL.md "$ROOT"/marketing/skills/*/SKILL.md 2>/dev/null \
+               | grep -cE '실행|호출|부른다|순차')" -gt 0 ]; then
+        flagged_routed="$flagged_routed $sname(다른 스킬이 호출)"
+      fi
+    fi
+  done < <(skill_mds)
+  if [ -n "$legacy_key" ]; then
+    bad "플랫폼 계약에 없는 프론트매터 키 'trigger:':$legacy_key" \
+        "아무 효과가 없다. 수동 전용은 'disable-model-invocation: true' (docs/platform-contract.md §2.4)"
+  else
+    ok "프론트매터 키 전부 계약 내"
+  fi
+  if [ -n "$manual_unflagged" ]; then
+    bad "수동 전용인데 description이 상주:$manual_unflagged" \
+        "프론트매터에 'disable-model-invocation: true'를 넣으면 매 세션 상주 비용이 0이 된다 (docs/platform-contract.md §2.4)"
+  else
+    ok "수동 전용 선언 ↔ 상주 플래그 일치"
+  fi
+  if [ -n "$flagged_routed" ]; then
+    bad "자동 발동 대상에 모델 호출 차단:$flagged_routed" \
+        "라우팅·그래프가 자동 발동으로 지목하는 스킬은 모델이 부를 수 있어야 한다 — 플래그를 빼거나 라우팅에서 내린다"
+  else
+    ok "모델 호출 차단이 라우팅을 끊지 않음"
+  fi
 
   # 네이티브와 싸우는 문구
   local nfight=0 sr
@@ -1119,7 +1211,7 @@ run_self_test() {
       for msg in "상시 로드 규칙 카드 없음" "치환되지 않는 스크립트 경로 표기" \
                  "Phase 표 재출현" "카드 표 .* ≠" "그래프 미선언 스킬" \
                  "미선언" "읽는 노드 없는 저장소" "미배포" \
-                 "프리셋 이름 누락" "사전 제작 이음매 누락" \
+                 "프리셋 이름 누락" "사전 제작 이음매 누락" "계약에 없는 프론트매터 키" \
                  "소비자 경로에 플러그인 스킬" "죽은 스킬 참조" "저장소 이름 누출"; do
         printf '%s' "$base_out" | grep -q "$msg" \
           && bad "기준선 오탐: '$msg'" "결함이 없는데 검출됐다 — 검사가 못 쓰게 된다"
@@ -1128,6 +1220,35 @@ run_self_test() {
 
       _fx_static_case "$sfx" always-rule   'rules/workflow-routing.md' '^paths:' \
         "상시 로드 규칙 카드 없음" 'printf -- "---\npaths:\n  - \"src/**\"\n---\n" | cat - "$T/rules/workflow-routing.md" > "$T/r.tmp" && mv "$T/r.tmp" "$T/rules/workflow-routing.md"'
+
+      # 카드가 링크한 참조가 사라졌을 때 — 점진 로드 도달 경로
+      _fx_static_case "$sfx" ref-dangling 'rules/code-change.md' 'references/data-modeling/gone' \
+        '점진 로드가 끊긴다' \
+        "printf -- '패턴 상세는 [gone.md](../references/data-modeling/gone.md).\n' >> \"\$T/rules/code-change.md\""
+
+      # 쪼개면서 옮겨간 절의 번호가 카드에 잔재로 남았을 때
+      _fx_static_case "$sfx" section-stale 'rules/code-change.md' '§7' \
+        '그 절이 없다' \
+        "printf -- '## 1. 절\n\n상세는 §7 참조.\n' >> \"\$T/rules/code-change.md\""
+
+      # 수동 전용 선언 ↔ 상주 플래그 (양방향)
+      _fx_static_case "$sfx" manual-unflagged 'skills/sample/SKILL.md' '수동 호출 전용' \
+        '수동 전용인데 description이 상주' \
+        "perl -pi -e 's/^description: x\$/description: x 수동 호출 전용./' \"\$T/skills/sample/SKILL.md\""
+
+      _fx_static_case "$sfx" flagged-routed 'skills/sample/SKILL.md' 'disable-model-invocation' \
+        '자동 발동 대상에 모델 호출 차단' \
+        "perl -pi -e 's/^description: x\$/description: x\\ndisable-model-invocation: true/' \"\$T/skills/sample/SKILL.md\"; printf -- '| P0 | 조건 | \`/sample\` |\n' >> \"\$T/rules/workflow-routing.md\""
+
+      # 계약에 없는 키는 조용히 무시된다 — epcc-init이 'trigger: manual'로 넉 달간 상주했다
+      _fx_static_case "$sfx" legacy-trigger 'skills/sample/SKILL.md' '^trigger:' \
+        '플랫폼 계약에 없는 프론트매터 키' \
+        "perl -pi -e 's/^description: x\$/description: x\\ntrigger: manual/' \"\$T/skills/sample/SKILL.md\""
+
+      # 접힌 description의 **이어지는 행**에 적힌 선언. 첫 행만 보던 옛 검사는 이걸 놓쳤다.
+      _fx_static_case "$sfx" manual-folded 'skills/sample/SKILL.md' '수동 호출 전용' \
+        '수동 전용인데 description이 상주' \
+        "perl -pi -e 's/^description: x\$/description: >-\\n  x\\n  수동 호출 전용./' \"\$T/skills/sample/SKILL.md\""
 
       _fx_static_case "$sfx" skill-dir     'skills/sample/SKILL.md' '<skill-dir>' \
         "치환되지 않는 스크립트 경로 표기" 'printf "bash <skill-dir>/scripts/x.sh\n" >> "$T/skills/sample/SKILL.md"'
@@ -1389,6 +1510,25 @@ run_consumer() {
   [ -n "$always" ] && ok "상시 로드 카드 설치됨: $(basename "$always")" \
                    || bad "상시 로드 카드 없음" "작업 라우팅이 세션에 도달하지 않는다"
 
+  # 점진 로드 — 카드가 링크한 참조가 소비자 레이아웃에 실제로 도달했는가.
+  # 링크만 배달되고 파일이 안 오면 "필요할 때 읽는다"가 "읽을 수 없다"가 된다.
+  local cdang=0 cn=0 crc clnk
+  for crc in "$rp"/*.md; do
+    [ -f "$crc" ] || continue
+    while IFS= read -r clnk; do
+      [ -z "$clnk" ] && continue
+      cn=$((cn+1))
+      [ -f "$rp/$clnk" ] || cdang=$((cdang+1))
+    done < <(grep -ohE '\.\./references/[A-Za-z0-9._/-]+\.md' "$crc" 2>/dev/null | sort -u)
+  done
+  if [ "$cn" -eq 0 ]; then
+    ok "카드→참조 링크 없음 (해당 없음)"
+  elif [ "$cdang" -eq 0 ]; then
+    ok "점진 로드 참조 ${cn}건 소비자에 도달"
+  else
+    bad "참조 ${cdang}/${cn}건 미도달" "install-rules.sh가 references/를 함께 설치하지 않았다"
+  fi
+
   # 설정 없는 프로젝트에는 쓰지 않았는가 (동의 관문)
   [ -d "$tmp/proj-첫-커밋-전/.claude/rules" ] \
     && bad "미설정 프로젝트에 규칙을 썼다" "epcc.config.json 관문이 새고 있다" \
@@ -1549,22 +1689,28 @@ run_usage() {
   c_t0=$(num "$(sed '/<!--/,/-->/d' "$PLUGIN_ROOT/templates/operating-contract.md" 2>/dev/null | wc -c | tr -d ' ')")
   c_route=$(num "$(sed '/<!--/,/-->/d' "$PLUGIN_ROOT/rules/workflow-routing.md" 2>/dev/null | wc -c | tr -d ' ')")
   c_desc=0
-  local dtop="" dn dv
+  local dtop="" dn dv c_hidden=0 n_hidden=0
   for sfile in "$PLUGIN_ROOT"/skills/*/SKILL.md; do
     [ -f "$sfile" ] || continue
     dv=$(num "$(awk '/^---$/{n++; next} n==1 && /^(name|description):/{p=1} n==1 && /^[a-z_]+:/ && !/^(name|description):/{p=0} n==1 && p{print} n>=2{exit}' "$sfile" | wc -c | tr -d ' ')")
-    c_desc=$((c_desc + dv))
     dn=$(basename "$(dirname "$sfile")")
+    # disable-model-invocation: true 인 스킬의 description은 상주하지 않는다
+    # (docs/platform-contract.md §2.4). 합산하면 측정이 실제보다 크게 거짓말한다.
+    if grep -q '^disable-model-invocation:[[:space:]]*true' "$sfile" 2>/dev/null; then
+      c_hidden=$((c_hidden + dv)); n_hidden=$((n_hidden + 1)); continue
+    fi
+    c_desc=$((c_desc + dv))
     dtop="${dtop}${dv} ${dn}
 "
   done
   c_sum=$((c_t0 + c_route + c_desc))
   printf "    %-32s %8s바이트\n" "T0 운영 규칙" "$c_t0"
   printf "    %-32s %8s바이트\n" "workflow-routing (상시 로드)" "$c_route"
-  printf "    %-32s %8s바이트\n" "스킬 description 총합" "$c_desc"
+  printf "    %-32s %8s바이트\n" "스킬 description (상주분)" "$c_desc"
   printf "    %-32s %8s바이트\n" "── 상주 합계" "$c_sum"
   # 총합만으로는 무엇을 압축할지 모른다 — 상위 3개를 함께 보인다.
   printf "    ${C_D}상위: %s${C_0}\n" "$(printf '%s' "$dtop" | sort -rn | head -3 | awk '{printf "%s %s · ", $2, $1}' | sed 's/ · $//')"
+  [ "$n_hidden" -gt 0 ] && printf "    ${C_D}비상주 %d개 %s바이트 (disable-model-invocation)${C_0}\n" "$n_hidden" "$c_hidden"
   printf "    ${C_D}session-brief 출력은 세션마다 달라 미포함 (정직 보고)${C_0}\n"
   # 예산은 **반복 증거가 쌓인 뒤에** 둔다는 규율을 지켰다 — 평가 v3(14,219바이트) · v4(11,662) ·
   # v5(11,662)에서 3회 연속 "예산 있는 T0의 4.8배인데 상한이 없다"로 관측됐다(E-07).

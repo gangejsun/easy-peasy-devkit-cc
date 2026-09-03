@@ -126,6 +126,8 @@ LOW (N건)
 | **Medium** | 정보 노출, 보안 헤더 미설정, 검증 미흡 | 다음 릴리스 전 |
 | **Low** | 모범 사례 미준수, 개선 권고 | 백로그 |
 
+이 표는 보안 도메인 표준(CVSS 정렬)이라 리뷰 어휘와 눈금이 다르다. `/receiving-code-review`·`epcc-reviewer`로 넘길 때 환산한다 — **Critical·High → Critical · Medium → Important · Low → Suggestion**.
+
 ## 보안 체크리스트
 
 ### 인증/인가

@@ -1,6 +1,7 @@
 ---
 name: harness-evaluation
 description: 하네스(그래프) 엔진을 경로 단위 7축으로 평가하고 심각도별 결함 목록을 산출합니다. 사용자가 "하네스 평가", "그래프 평가", "종합 평가", "하네스 점검"을 요청할 때 사용하며 수동 호출 전용입니다. 사실 측정은 doctor가 수행하므로 이 스킬은 그 출력을 입력으로 받아 판단만 합니다.
+disable-model-invocation: true
 ---
 
 # Harness(Graph) Evaluation

@@ -1,6 +1,7 @@
 ---
 name: web-asset-generator
 description: 로고·텍스트·이모지로 웹 에셋을 생성합니다 — favicon 세트(16~512px, ICO), Apple Touch Icon, Android Chrome 아이콘, OG/소셜 카드 이미지, Next.js Metadata API 코드. "파비콘", "favicon", "OG 이미지", "소셜 카드", "og:image", "apple-touch-icon", "메타 이미지"에 사용합니다. 수동 호출 전용.
+disable-model-invocation: true
 ---
 
 # Web Asset Generator

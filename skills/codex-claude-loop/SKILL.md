@@ -1,6 +1,6 @@
 ---
 name: codex-claude-loop
-description: Claude Code가 설계/구현하고 OpenAI Codex가 검증/리뷰하는 듀얼 AI 엔지니어링 루프를 오케스트레이션합니다. epcc-reviewer의 cross-check 조건 충족 시 사용자 확인 후 호출되거나, 사용자가 코드 품질 검증을 요청할 때 사용하세요.
+description: OpenAI Codex로 코드를 독립 교차검증하는 듀얼 AI 루프. epcc-reviewer의 cross-check 조건 충족 시 또는 사용자가 코드 품질 검증을 요청할 때 사용합니다. 소스가 외부 모델로 전송되므로 사전 동의 없이 실행하지 않습니다.
 ---
 
 # Codex-Claude Engineering Loop

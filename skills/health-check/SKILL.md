@@ -1,6 +1,7 @@
 ---
 name: health-check
 description: 프로젝트 상태 일괄 점검 (빌드, 린트, 타입체크, 테스트). 사용자가 "상태 점검", "health check", "빌드 확인", "프로젝트 상태" 등을 요청할 때 사용합니다. 수동 호출 전용.
+disable-model-invocation: true
 ---
 
 # Health Check

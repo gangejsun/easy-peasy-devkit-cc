@@ -3,18 +3,16 @@ paths:
   - ".claude/**"
   - "scripts/**"
   - "hooks/**"
-  - "rules/**"
-  - "agents/**"
-  - "skills/**"
-  - "guides/**"
-  - "templates/**"
-  - "presets/**"
-  - "docs/**"
-  - "marketing/**"
-  - "workflow.graph.json"
   - "dev/docs/**"
 ---
-<!-- epcc-rule-version: 3.22.0 -->
+<!-- epcc-rule-version: 3.25.0 -->
+<!--
+  paths는 **소비자 프로젝트에서만** 발화한다 (플러그인 저장소에는 .claude/rules/가 없다).
+  그래서 목록은 소비자 레이아웃에서 참인 경로만 담는다 — 소비자의 .claude/ 자산·훅·스크립트·
+  하네스 문서. 플러그인 저장소에만 있는 rules/·skills/·guides/·templates/·presets/·docs/·
+  marketing/·workflow.graph.json을 여기 두면 소비자가 **자기** docs나 skills를 편집할 때마다
+  이 카드가 헛돌아 매번 4천 토큰을 먹는다. 이 저장소에서의 도달은 CLAUDE.md의 표가 담당한다.
+-->
 
 # 하네스 변경 카드
 

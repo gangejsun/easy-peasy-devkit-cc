@@ -52,6 +52,39 @@ Bash 규칙. 같은 변수를 양쪽에 쓰면 권한 프롬프트 없이 번들
 `rules`는 **플러그인 컴포넌트 타입이 아니다.** 플러그인의 `rules/`는 자동 배포되지
 않으므로 `scripts/install-rules.sh`가 프로젝트 `.claude/rules/`로 설치한다.
 
+## 2.4 스킬 프론트매터 — 상주 비용을 정하는 스위치
+
+확인: 2026-09-02 · 출처: https://code.claude.com/docs/en/skills
+
+**description은 스킬을 한 번도 부르지 않아도 상주한다.** 그 상주 여부를 정하는 필드가 둘이다.
+
+| 프론트매터 | 사용자가 부를 수 있나 | 모델이 부를 수 있나 | description 상주 |
+| --- | --- | --- | --- |
+| (기본) | 예 | 예 | **상주** |
+| `disable-model-invocation: true` | 예 | **아니오** | **상주하지 않음** |
+| `user-invocable: false` | 아니오 | 예 | 상주 |
+
+즉 **수동 호출 전용 스킬에 `disable-model-invocation: true`를 붙이면 매 세션 비용이 0이 된다.**
+붙이지 않으면 "수동 전용"이라고 본문에 적어도 description 값은 그대로 상주한다 —
+**선언과 과금이 어긋나는 자리**이고, 이 저장소가 실제로 그랬다(v3.24.0 기준 5개).
+
+반대 방향의 함정: 라우팅 표(`rules/workflow-routing.md`)나 `workflow.graph.json`의 `phase`가
+자동 발동으로 지목하는 스킬에 이 플래그를 붙이면 **모델이 영영 부를 수 없게 되어 라우팅이 끊긴다.**
+붙이기 전에 두 곳을 모두 확인한다 (`doctor --fast`의 「수동 전용 일치」가 대신 본다).
+
+그 밖에 비용·동작에 영향이 있는 필드:
+
+| 필드 | 효과 |
+| --- | --- |
+| `description` + `when_to_use` | 합쳐 **1,536자**에서 잘린다(`skillListingMaxDescChars`로 조절). 넘기면 뒤가 사라진다 |
+| `paths` | 스킬도 규칙 카드처럼 경로 조건부로 만들 수 있다 |
+| `context: fork` (+ `agent`, `background`) | 스킬을 **격리된 서브에이전트에서** 실행 — 본문과 중간 산출물이 메인 창에 들어오지 않는다 |
+| `model` · `effort` | 그 스킬 턴에만 적용되는 모델·노력 수준 |
+| `allowed-tools` · `disallowed-tools` | 그 스킬 턴 동안의 도구 허용/차단 |
+
+**본문은 부를 때만 로드되고, 참조 파일은 읽을 때만 로드된다** — SKILL.md는 500줄 이하로 두고
+상세는 옆 파일로 내리는 것이 공식 권고다.
+
 ## 2.5 마켓플레이스 — 한 저장소, 여러 플러그인
 
 확인: 2026-09-01 · 출처: https://code.claude.com/docs/en/plugin-marketplaces

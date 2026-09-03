@@ -1,6 +1,7 @@
 ---
 name: execution-dashboard
 description: 이번 세션에서 어떤 스킬/규칙/Hook이 참조되었는지 실행흐름을 파악하고 싶을 때 사용합니다. 타임라인과 카테고리별 요약으로 표시합니다. "실행추적", "실행흐름", "뭐 참고했어?", "어떤 스킬 썼어?" 등의 키워드 사용 시 트리거됩니다. 수동 호출 전용.
+disable-model-invocation: true
 ---
 
 # Execution Dashboard

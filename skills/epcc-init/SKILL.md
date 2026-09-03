@@ -1,7 +1,7 @@
 ---
 name: epcc-init
 description: EPCC Devkit 프로젝트 초기 설정. epcc.config.json과 CLAUDE.md를 생성합니다. 새 프로젝트에서 처음 EPCC Devkit을 설정할 때 사용합니다.
-trigger: manual
+disable-model-invocation: true
 ---
 
 # /epcc-init — EPCC 프로젝트 초기 설정
@@ -159,9 +159,19 @@ Step 4에서 확인받는다 — 이 값에 따라 가이드의 타입 표준 �
 ```
 레포 구조를 확인합니다:
 
-1. monorepo — 모노레포: 루트 앱 + 공유 패키지 (packages/ 등)  (기본값)
-2. single   — 싱글레포: 앱 하나
-3. msa      — 서비스 여러 개 (services/·apps/ 분리, 서비스 간 API/이벤트 계약)
+1. monorepo — 루트 앱 + 공유 패키지 (packages/)                    (기본값)
+   ↳ 두 곳 이상이 쓰는 코드가 있을 때. 웹+관리자, 앱+랜딩, 공유 UI·타입·유틸
+   ↳ packages/는 Costly로 분류되어 수정 시 리뷰가 한 단계 더 붙습니다
+
+2. single   — 앱 하나
+   ↳ 아직 공유할 대상이 없을 때. 프로토타입·단일 서비스
+   ↳ 나중에 packages/가 생기면 그때 monorepo로 올리면 됩니다 (되돌리기 쉬움)
+
+3. msa      — 서비스 여러 개 (services/·apps/)
+   ↳ 배포 단위가 여러 개일 때. 서비스 간 API·이벤트 계약을 따로 관리합니다
+
+고르기 어려우면 — 지금 두 곳 이상이 쓰는 코드가 있습니까?
+  있다 → 1   ·   없다 → 2   ·   따로 배포한다 → 3
 ```
 
 - **실측이 기본값을 이긴다.** 기존 저장소에 `packages/`·`services/`가 없으면 `single`을
@@ -171,96 +181,17 @@ Step 4에서 확인받는다 — 이 값에 따라 가이드의 타입 표준 �
   그 카드는 공유 코드 위에서 영영 로드되지 않는다
 - 선택 결과는 Step 5의 `domains.repoTopology`와 Step 7.5의 구조 카드 생성에 쓰인다
 
-> **기본값이 `monorepo`인 이유** — 공유 패키지는 `reversibility.md`가 **Costly**로 분류해
-> `epcc-reviewer` 리뷰를 필수로 만든다. 기능 경계를 패키지로 가르면 그 게이트가 자동으로
-> 붙는다. 다만 경계가 막아주는 것은 리뷰 요구까지이고, "A를 고치다 B가 깨졌다"를
-> 실제로 알려주는 것은 B의 테스트다 — 구조는 그 테스트를 **독립적으로 돌릴 수 있게** 할 뿐이다.
+> **선택지에 부연을 붙이는 이유** — 기본값만 있고 판단 근거가 없으면 사용자는 그냥
+> 기본값을 누르고, 앱 하나짜리 프로젝트가 빈 `packages/`를 안고 시작한다.
+> 판정 질문은 규모가 아니라 **"지금 두 곳 이상이 쓰는 코드가 있는가"** 하나다 —
+> 규모로 물으면 "앞으로 커질 것 같다"는 답이 나오고, 그것은 근거가 아니다.
+>
+> 그리고 구조가 막아주는 것은 **리뷰 요구까지**다. "A를 고치다 B가 깨졌다"를 실제로
+> 알려주는 것은 B의 테스트이고, 구조는 그 테스트를 독립적으로 돌릴 수 있게 할 뿐이다.
 
-### Step 5: epcc.config.json 생성
+### Step 5–6: epcc.config.json · CLAUDE.md 생성
 
-수집된 정보로 `epcc.config.json` 생성:
-
-```jsonc
-{
-  "$schema": "https://raw.githubusercontent.com/gangejsun/easy-peasy-devkit-cc/main/schema/epcc.config.schema.json",
-
-  "project": {
-    "name": "<입력값>",
-    "language": "<입력값>",
-    "experienceLevel": "<입력값>"
-  },
-
-  "techStack": {
-    "presets": { "frontend": "<Step 2 선택>", "backend": "<Step 2 선택>" },
-    "preset": "<frontend>+<backend>",           // 하위 호환 표기 — presets가 정본
-
-    // 프로젝트 대표값 — build-gate·health-check가 읽는다. 반드시 채운다
-    "framework": "<대표 프레임워크>",
-    "language": "<대표 언어>",
-    "packageManager": "<대표 패키지 매니저>",
-    "commands": { "build": "<입력값>", "test": "<입력값>", "lint": "<입력값>" },
-
-    "frontend": {                                // 프론트엔드 축 (none이면 빈 값)
-      "framework": "<입력값 또는 프리셋 기본값>",
-      "language": "<입력값 또는 프리셋 기본값>",
-      "packageManager": "<입력값 또는 프리셋 기본값>",
-      "commands": { "build": "", "test": "", "lint": "" },
-      "sourceDir": "<프리셋 기본값>",
-      "additionalStack": []
-    },
-    "backend": {                                 // 백엔드 축
-      "backendType": "<baas | serverless | cloud-server | framework-builtin | 빈 값>",
-      "cloudProvider": "<입력값 또는 null>",
-      "database": "<프리셋 기본값 또는 입력값>",
-      "dataAccess": "<프리셋 기본값 또는 입력값>",
-      "auth": "<Step 4.5 입력값>",
-      "framework": "<자체 서버일 때만>",
-      "language": "<자체 서버일 때만>",
-      "packageManager": "<자체 서버일 때만>",
-      "commands": { "build": "", "test": "", "lint": "" },
-      "sourceDir": "<자체 서버일 때만>"
-    },
-    "additionalStack": []                        // base + 두 축 누적
-  },
-
-  "domains": {
-    "sourceDir": "<입력값>",
-    "sharedPackage": "<입력값>",
-    "importAlias": "<입력값>",
-    "repoTopology": "<monorepo | single | msa — Step 4.7 선택값>"
-  },
-
-  "security": {
-    "secretPatterns": []  // 프리셋 기본값 사용
-  },
-
-  "customResources": {}
-}
-```
-
-### Step 6: CLAUDE.md 생성
-
-**정본은 `${CLAUDE_PLUGIN_ROOT}/templates/CLAUDE.md.hbs`다.** 이 스킬에 템플릿 본문을
-옮겨 적지 않는다 — 사본은 드리프트 원천이고, 실제로 v3에서 이 스킬의 인라인 사본이
-정본과 갈라져 「작업 라우팅」 섹션이 프로젝트에 도달하지 못했다.
-
-1. `${CLAUDE_PLUGIN_ROOT}/templates/CLAUDE.md.hbs`를 Read한다
-2. Handlebars 표현을 `epcc.config.json`의 값으로 치환한다:
-   - `{{project.name}}` · `{{techStack.framework}}` 등 → 해당 값
-   - `{{#if ...}}...{{/if}}` → 조건이 참이면 본문만 남기고, 거짓이면 블록 전체 삭제
-   - `{{#each techStack.additionalStack}}` → 항목마다 한 줄씩 전개
-   - `{{#if (eq project.language "ko")}}` 류 → 실제 설정값에 맞는 분기 하나만 남김
-3. `<플러그인-루트>` 자리표시자는 **그대로 둔다** — 절대 경로는 매 세션 브리핑의
-   '자기검증' 줄에 표시되므로, 여기에 박아 넣으면 플러그인 경로 변경 시 끊긴다
-4. 프로젝트 루트에 `CLAUDE.md`로 쓴다 (기존 파일이 있으면 Step 0의 백업 확인을 따른다)
-
-**「하네스」 섹션의 `.claude/rules/workflow-routing.md` 포인터를 지우지 않는다.**
-P0~P6 Phase 표 본문은 그 카드에 있고 Step 7이 설치한다 — CLAUDE.md에 표를 다시
-써넣지 않는다 (사본이 갈리면 `doctor --fast`가 실패시킨다).
-
-> **CLAUDE.md는 100행 내외로 유지하세요.** 프로젝트 구조 트리, 기술 특화 규칙,
-> 코드 스타일 상세는 넣지 않습니다 — 실시간 탐색이 가능하거나 `.claude/rules/`가 담당합니다.
-> 매 행마다 "이 행을 지우면 Claude가 실수하는가"를 물어 아니면 지웁니다.
+**`assets/config-and-claude-md.md`를 읽고 그대로 따른다.**
 
 ### Step 7: T1 규칙 카드 설치 (필수 — 건너뛰지 마세요)
 
@@ -278,10 +209,10 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/install-rules.sh"
 | `code-change.md` | `src/**` `app/**` `packages/**` `lib/**` 편집 시 |
 | `security.md` | `src/**` `app/**` `packages/**` `lib/**` 편집 시 |
 | `reversibility.md` | 소스·마이그레이션·워크스페이스 편집 시 |
-| `harness-change.md` | `.claude/**` `scripts/**` 편집 시 |
+| `harness-change.md` | `.claude/**` `scripts/**` `hooks/**` `dev/docs/**` 편집 시 |
 | `lessons.md` | 소스·`.claude/**`·`scripts/**`·`dev/docs/**` 편집 시 |
 | `doc-dependency.md` | `dev/docs/{prd,database,design,architecture,api}/**` 편집 시 |
-| `data-modeling.md` | `supabase/**` `**/migrations/**` `db/**` `prisma/**` 등 DB 경로 편집 시 |
+| `data-modeling.md` | `supabase/**` `**/migrations/**` `db/**` `prisma/**` 등 DB 경로 편집 시. §1~8만 담고 열 가지 패턴은 `.claude/references/data-modeling/`으로 내려 **필요한 것만** 읽는다 |
 | `ui-design.md` | `**/components/**` `**/*.{tsx,jsx,vue,svelte,css,scss}` 편집 시 |
 
 > 이 표는 `rules/`의 실제 frontmatter를 반영해야 한다. 카드를 추가·수정하면 여기도 고친다
@@ -337,110 +268,9 @@ Step 7의 카드가 **플러그인 소유**(버전 스탬프로 자동 갱신)�
 > `code-conventions.md`를 만들지 않는다** — 만드는 순간 무스탬프 타겟이 `0.0.0`으로
 > 읽혀 프로젝트 사본이 덮어써진다(`.bak`은 남지만 조용한 손실이다).
 
-### Step 8: dev/ 디렉토리 생성
+### Step 8–9.5: dev/ · .gitignore · 스택 가이드 확보
 
-```
-dev/
-├── active/     # 진행 중 작업
-├── archive/    # 완료된 작업
-├── docs/       # 프로젝트 문서
-│   ├── prd/
-│   ├── architecture/
-│   ├── api/
-│   ├── database/
-│   ├── research/
-│   ├── business/
-│   ├── service/
-│   └── design/
-```
-
-> 문서 템플릿은 프로젝트에 복사하지 않는다 — `/dev-docs-generator`가
-> `skills/dev-docs-generator/assets/doc-templates.md`를 정본으로 쓴다. 사본을 두면 갈린다.
->
-> `council/` · `harness-evaluation/` 등 나머지 산출물 디렉토리는 해당 스킬이
-> 처음 쓸 때 만든다. 빈 디렉토리는 git이 추적하지도 않으므로 미리 만들지 않는다.
-
-### Step 9: .gitignore 업데이트
-
-`.gitignore`에 다음 항목을 추가합니다 (이미 있으면 건너뜀):
-```
-.epcc/
-```
-
-### Step 9.5: 스택 가이드 확보 (질문 없음 · init을 붙잡지 않는다)
-
-**init은 가이드를 기다리지 않는다.** 조립으로 끝나는 조합은 여기서 완결되고, 생성이
-필요하면 스크립트가 작업을 등록한다.
-
-> 근거: 생성 1회의 실측이 **수리 전 54분**이었고(`dev/docs/skill-review/contract-first-e2e-2026-08-22.md`)
-> 그 끝에서도 감사자 둘 다 설치 불가 판정을 냈다. 설치 첫인상을 그 시간에 묶을 이유가 없다 —
-> 가이드는 첫 컴포넌트·첫 핸들러를 쓸 때 필요하지 `init`이 끝나는 순간 필요한 것이 아니다.
-
-#### 호출 1회로 끝난다 — 여기서 판정하지 않는다
-
-팩이 쓸 만한가 · 이음매가 있는가 · 게이트를 돌릴 축이 어디인가 · 무엇이 남았는가는
-**전부 `install-guide.sh`가 자기가 읽는 데이터로 정한다.** 그것을 이 자리에서 산문으로
-다시 판정하면 사본이 갈린다 — 실제로 갈려서, 사전 제작 이음매가 없는 조합 25개에서
-**방금 조립한 리소스를 지우는 규칙**이 됐던 것이 이 절의 이전 판이다.
-
-```bash
-# 두 축의 프리셋 notes를 넘긴다 — 가이드는 한 축의 함수가 아니라 조합의 함수다.
-# 서버 코드가 어디 사는지(프론트 축) · 보안 경계가 어디인지 · 데이터 계층에 정책 엔진이
-# 있는지(백엔드 축)가 두 가이드의 내용을 함께 결정한다
-mkdir -p .epcc && cat > .epcc/preset-notes.json <<'JSON'
-{ "serverCode": "<프론트 프리셋 notes>", "securityBoundary": "<백엔드 프리셋 notes>",
-  "policyEngine": <true|false>, "language": "<TypeScript|JavaScript>" }
-JSON
-
-SEAM=""
-[ -d "${CLAUDE_PLUGIN_ROOT}/guides/seams/<프론트>+<백엔드>" ] && SEAM="--seam <프론트>+<백엔드>"
-
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/install-guide.sh" \
-  --frontend <프론트 프리셋|none> --backend <백엔드 프리셋|none> $SEAM \
-  --gate --notes .epcc/preset-notes.json
-```
-
-출력 마지막의 `상태:` 한 줄이 결과 전부다:
-
-| 상태 | 뜻 | 이 자리에서 할 일 |
-| --- | --- | --- |
-| `complete` | 스킬로 완성됐고 게이트를 통과했다 | 없음 |
-| `resources` | 리소스만 조립됨 — 이음매 대기 (**정상 중간 상태**) | 없음 |
-| `generate` | 팩이 없거나 미완이라 전체 생성이 필요하다 | 없음 |
-| `pinned` | 이미 설치된 가이드의 스택 전제를 지켰다 | 없음 |
-| `skip` | 그 축이 `none`이다 | 없음 |
-
-- **`.epcc/guide-job.json`을 손으로 쓰지 않는다.** 남은 일이 있으면 스크립트가 쓰고,
-  없으면 지운다. 축별로 무엇이 남았는지 아는 것은 그쪽이다
-- **종료 코드 1**(게이트 FAIL)이면 그 축은 `.epcc/failed-guides/`로 내려가 있다.
-  보고만 하고 **init은 계속한다** — 가이드가 없어도 T1 규칙 카드는 이미 작동한다
-- **기준선 대조도 스크립트가 한다**(기본 켬). 출력에 메이저 상승이 보이면 손으로 판단하지
-  말고 **그대로 옮겨 보고**한다. 재생성 여부는 묻지 않는다 — 사용자는 가이드가 낡았는지
-  알 방법이 없어 감으로 답하게 되고, 그러면 그 질문은 매 세션의 소음이 된다
-
-#### 남은 일이 있으면 — 하나만 묻고 끝낸다
-
-```
-확정된 조합: <프론트> × <백엔드>
-가이드 상태: frontend=<상태> · backend=<상태>
-남은 일: <guide-job.json의 need 그대로> — 지금 이어서 만들까요, 다음 세션에 만들까요?
-(init 자체는 완료됐습니다. 가이드 없이도 T1 규칙 카드는 이미 작동합니다)
-```
-
-이어서 만든다고 하면 `stack-guide-generator`를 호출한다 — **인자를 정리해 넘길 필요가 없다.**
-그 스킬이 `.epcc/guide-job.json`을 읽어 시작하고, 끝나면 그 파일을 닫는다.
-아니면 여기서 끝낸다. `session-brief` 훅이 다음 세션에 미완 작업을 알린다.
-
-> 이 한 가지만 묻는 이유: **지금 20분을 쓸지는 사용자의 시간에 대한 결정**이라 시스템이
-> 대신 답할 수 없다. 반면 "사전 제작본을 쓸지 생성할지"는 구현 세부라 묻지 않는다.
-
-#### 사전 제작본을 늘리는 기준
-
-사전 제작 단위는 **조합이 아니라 축**이다. 조합 단위로 사전 제작하면 유지 불가능하고,
-감사받지 않는 사전 제작본은 부패해서 **없는 가이드보다 나쁘다**(틀린 지침을 신뢰하게 만든다).
-
-> **정기 감사 대상으로 등록할 수 있을 때만 사전 제작한다.** 축 팩은 이 기준을 충족한다 —
-> 팩 하나를 감사하면 그 축을 쓰는 조합 전부가 함께 좋아진다.
+**`assets/scaffold-and-guide.md`를 읽고 그대로 따른다.**
 
 ### Step 10: 완료 보고
 

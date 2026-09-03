@@ -31,7 +31,8 @@ Write code before the test? Delete it. Start over. No exceptions.
 
 ### RED - Write Failing Test
 
-Write one minimal test showing what should happen. One behavior, clear name, real code (no mocks unless unavoidable).
+Write one minimal test showing what should happen. One behavior, clear name, real code.
+Mock only at **system boundaries** (see [Seams](#seams--where-tests-go)).
 
 ### Verify RED - Watch It Fail
 
@@ -48,6 +49,47 @@ Write simplest code to pass the test. Don't add features, refactor other code, o
 ### REFACTOR - Clean Up
 
 After green only: Remove duplication, improve names, extract helpers. Keep tests green. Don't add behavior.
+
+## Seams — where tests go
+
+A **seam** is the public boundary you observe behaviour at, without reaching inside.
+Tests live at seams, never against internals.
+
+**Agree the seams before writing the first test.** You cannot test everything; naming the
+seams up front is how the effort lands on critical paths instead of every edge case.
+State them, get confirmation, then start the loop. No test at an unconfirmed seam.
+
+- **The interface is the test surface.** Callers and tests cross the same boundary.
+  If you must test *past* the interface to see the behaviour, the module is the wrong shape.
+- **Prefer an existing seam to a new one, and the highest one that still shows the bug.**
+  Fewer seams is better; one is ideal.
+- **Mock only at system boundaries** — third-party APIs, clocks, randomness, the network.
+  Never mock your own modules or internal collaborators. If a mock is needed to reach
+  the behaviour, the seam is in the wrong place.
+
+## Test quality — three ways a passing test is worthless
+
+A green suite proves nothing if the tests cannot disagree with the code.
+Check each new test against all three before moving on.
+
+| Anti-pattern | The tell | Fix |
+| --- | --- | --- |
+| **Implementation-coupled** | Test breaks on a refactor although behaviour did not change | Assert through the interface, not on internals, call counts, or the database |
+| **Tautological** | The expected value is computed the way the code computes it, so it passes by construction | Expected values come from an independent source — a known literal, a worked example, the spec |
+| **Horizontal slicing** | All tests written first, then all implementation | One test → one implementation → repeat. Each test is a tracer bullet that answers to what the last cycle taught you |
+
+```typescript
+// BAD — tautological: recomputes the implementation
+const expected = items.reduce((sum, i) => sum + i.price, 0);
+expect(calculateTotal(items)).toBe(expected);
+
+// GOOD — independent literal
+expect(calculateTotal([{ price: 10 }, { price: 5 }])).toBe(15);
+```
+
+Mock-specific failure modes (asserting on mock behaviour, test-only production methods,
+incomplete mocks, over-complex mocks) are catalogued with gate functions in
+[testing-anti-patterns.md](testing-anti-patterns.md). Read it when a test needs a mock.
 
 ## Common Rationalizations
 

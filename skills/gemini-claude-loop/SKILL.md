@@ -1,6 +1,6 @@
 ---
 name: gemini-claude-loop
-description: 외부 AI(Gemini)로 코드를 독립 검증합니다. Claude Code가 설계/구현하고 Gemini CLI가 검증/리뷰하는 듀얼 AI 루프를 오케스트레이션합니다. epcc-reviewer의 cross-check 조건 충족 시 사용자 확인 후 호출되거나, 사용자가 코드 품질 검증을 요청할 때 사용하세요. 소스가 외부 모델로 전송되므로 사전 동의 없이 실행하지 않습니다.
+description: Google Gemini로 코드를 독립 교차검증하는 듀얼 AI 루프. epcc-reviewer의 cross-check 조건 충족 시 또는 사용자가 코드 품질 검증을 요청할 때 사용합니다. 소스가 외부 모델로 전송되므로 사전 동의 없이 실행하지 않습니다.
 ---
 
 # Gemini-Claude Engineering Loop
@@ -11,7 +11,7 @@ Claude Code가 구현하고 Gemini가 검증하는 듀얼 AI 품질 보증 루�
 
 ## 전제조건
 
-- **Gemini CLI 설치**: `npm install -g @anthropic-ai/gemini-cli` 또는 [공식 설치 가이드](https://github.com/google-gemini/gemini-cli)
+- **Gemini CLI 설치**: `npm install -g @google/gemini-cli` 또는 [공식 설치 가이드](https://github.com/google-gemini/gemini-cli)
 - **확인**: `gemini --version` 으로 설치 확인
 
 ### API 키 설정

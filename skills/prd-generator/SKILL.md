@@ -1,6 +1,6 @@
 ---
 name: prd-generator
-description: 사용자가 새로운 기능 개발을 요청했을 때, /dev/docs/prd 경로에 관련 PRD가 없으면 자동으로 PRD를 생성합니다. 서비스 규모에 따라 단일 PRD 또는 모듈형 PRD(prd-overload + Phase Sub PRD + Shared) 체계를 선택합니다. CLAUDE.md 작업 라우팅의 P2 — 신규 기능 요청인데 해당 PRD가 없을 때 발동합니다. 수동 호출(/prd-generator)도 가능합니다.
+description: 신규 기능 요청인데 dev/docs/prd/에 해당 PRD가 없을 때 PRD를 생성합니다. 서비스 규모에 따라 단일 PRD 또는 모듈형 PRD(prd-overload + Phase Sub PRD + Shared)를 선택합니다.
 ---
 
 # PRD Generator

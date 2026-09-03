@@ -1,6 +1,7 @@
 ---
 name: epcc-migrate
 description: EPCC Devkit v2 하네스가 설치된 프로젝트를 v3로 전환합니다. 죽은 훅 제거, 규칙 3계층 재배치, 에이전트 개명을 수행합니다. 사용자가 "하네스 마이그레이션", "v3 전환", "epcc 업그레이드"를 요청할 때 사용하며 수동 호출 전용입니다.
+disable-model-invocation: true
 ---
 
 <!-- epcc-doctor: allow-stale-refs

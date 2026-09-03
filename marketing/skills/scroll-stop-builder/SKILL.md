@@ -1,6 +1,6 @@
 ---
 name: scroll-stop-builder
-description: 비디오 파일로 Apple 스타일 스크롤 드리븐 애니메이션 웹사이트를 구축합니다 — FFmpeg 프레임 추출 + Canvas 렌더링, 13개 섹션 선택 조합. "스크롤 스톱 사이트", "스크롤 애니메이션 웹사이트", "비디오 스크롤 사이트", "Apple 스타일 스크롤"에 사용합니다. marketing-workflow Stage 2. 수동 호출 전용.
+description: 비디오 파일로 Apple 스타일 스크롤 드리븐 애니메이션 웹사이트를 구축합니다 — FFmpeg 프레임 추출 + Canvas 렌더링, 13개 섹션 선택 조합. "스크롤 스톱 사이트", "스크롤 애니메이션 웹사이트", "비디오 스크롤 사이트", "Apple 스타일 스크롤"에 사용합니다. marketing-workflow Stage 2가 순차 호출합니다.
 ---
 
 # Scroll-Stop Builder
