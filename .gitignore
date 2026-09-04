@@ -20,6 +20,9 @@ Thumbs.db
 .env.local
 .env.*.local
 
+# 분석 도구 산출물 (understand-anything이 생성하는 지식 그래프 — 재생성 가능)
+.ua/
+
 # EPCC 런타임 산출물 (훅이 생성하는 세션 상태 — 소스 아님)
 .claude/.epcc/
 dev/handoff/
