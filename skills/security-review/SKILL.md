@@ -17,6 +17,20 @@ OWASP Top 10 기반 보안 취약점 검사 및 구조화된 보고서 생성.
 | 변경분 검토 | 기능 구현 완료 후, PR 리뷰 | `git diff` 대상 파일 | 2 → 3 → 4 → 6 |
 | 특정 영역 검토 | 특정 도메인/기능 보안 확인 | 지정된 경로만 | 2 → 3 → 6 |
 
+**그리고 프로젝트 성격에 맞는 참조를 고른다.** 전부 읽지 않는다 — 해당 없는 표준을 읽으면
+컨텍스트만 먹고 발견은 늘지 않는다.
+
+| 프로젝트가 | 읽을 것 |
+|-----------|--------|
+| 웹앱 (항상) | `references/owasp-top10.md` |
+| HTTP API를 제공 | `references/api-top10.md` |
+| LLM·에이전트 기능이 있음 | `references/agentic.md` |
+| 모바일 앱이 있음 | `references/mobile-masvs.md` |
+| K8s·컨테이너로 배포 | `references/kubernetes.md` |
+
+`owasp-top10.md`는 **지도**다 — 항목마다 「위임」(기존 정본을 가리킴)이거나 「신규」이고,
+위임 항목은 거기서 다시 판정하지 않는다.
+
 ### Step 2: 시크릿 및 환경변수 검사
 
 검사 항목:
@@ -48,14 +62,41 @@ OWASP Top 10 기반 보안 취약점 검사 및 구조화된 보고서 생성.
 | 미들웨어/가드 | 보호 경로 정의 + 세션 검증 | High |
 | DB 접근 제어 | 행 수준 보안(RLS) 또는 쿼리 필터 | Critical |
 
+**읽지 말고 돌려라.** 복귀 경로·경로 정규화·토큰 비교·이스케이프·인가 판정은 **읽기로 세 번의
+감사가 놓쳤고 실행이 한 번에 잡았다.** 공격 벡터 목록의 정본은
+`${CLAUDE_PLUGIN_ROOT}/skills/stack-guide-generator/assets/security-vectors.md`이고,
+그 파일은 원래 **가이드 저작**을 검증하려고 쓰였다. 여기서는 대상을 바꿔 **소비자 코드의
+해당 함수에 그대로 먹인다**:
+
+1. 감사 대상에서 복귀 경로 검증·경로 조립·토큰 비교·이스케이프 함수를 찾는다
+2. 그 파일의 벡터(A절 복귀 경로 12건 · B 경로 정규화 · C 토큰 비교 · D 이스케이프 · E 인가)를
+   실제로 호출해 결과를 본다
+3. **정상 입력도 함께 넣는다** — 과차단은 결함이다
+4. 해당 함수가 없으면 그 자체가 발견이다 (검증 없이 쓰고 있다는 뜻)
+
 ### Step 4: 인프라 보안 검사
 
-CLAUDE.md의 패키지 매니저를 확인하고 의존성 감사를 수행:
+**의존성 감사** — 락파일로 매니저를 판별해 실행한다. 절차의 정본은
+`skills/health-check/SKILL.md` Step 5이고 여기서는 같은 판별을 쓴다 (`pnpm-lock.yaml`→`pnpm audit` · `yarn.lock`→`yarn audit` ·
+`package-lock.json`→`npm audit` · `uv.lock`·`requirements.txt`→`pip-audit` ·
+`Cargo.lock`→`cargo audit` · `go.sum`→`govulncheck`. 락파일이 없으면 이 항목은 **판정 불가**다):
 
 ```bash
-# 프로젝트 패키지 매니저에 맞는 감사 명령 실행
-# npm audit / pnpm audit / yarn audit / pip-audit / cargo audit 등
+pnpm audit 2>&1   # 판별된 매니저로 치환해 실제로 실행한다
 ```
+
+**정적 분석 도구가 PATH에 있으면 함께 돌린다.** 없으면 **설치를 요구하지 않고** 보고서의
+「판정 불가」 절에 적는다 — 도구 부재를 취약점 부재로 접지 않기 위해서다.
+
+```bash
+command -v semgrep     >/dev/null && semgrep --config=auto --error 2>&1
+command -v bandit      >/dev/null && bandit -r . 2>&1        # Python
+command -v gosec       >/dev/null && gosec ./... 2>&1        # Go
+command -v govulncheck >/dev/null && govulncheck ./... 2>&1  # Go
+```
+
+**도구가 덮은 축은 손으로 다시 감사하지 않는다.** 같은 결함을 두 번 보고하면 경보 피로가
+생기고, 경보 피로는 보고서를 안 읽게 만든다.
 
 | 검사 항목 | 심각도 |
 |----------|--------|
@@ -92,7 +133,7 @@ CRITICAL (N건)
    발견: [구체적 설명]
    영향: [악용 시 영향]
    수정: [구체적 수정 방법]
-   참조: OWASP [항목]
+   참조: OWASP A03:2021 · CWE-89        ← 표준 ID를 실물로 적는다 (자리표시자 금지)
 
 HIGH (N건)
 ----------
@@ -110,9 +151,15 @@ LOW (N건)
 -------------
 [패키지 매니저 audit 결과 요약]
 
+판정 불가 (N건)
+---------------
+[확인하지 못한 것과 그 이유 — 도구 부재 · 락파일 없음 · 실행 환경 없음 · 접근 불가]
+예) SAST: semgrep 미설치 — 정적 규칙 검사를 수행하지 못함
+예) 의존성: 락파일 없음 — CVE 대조 불가
+
 종합 평가
 ---------
-보안 수준: [양호/주의/위험/심각]
+보안 수준: [양호/주의/위험/심각]   ※ 판정 불가 항목이 있으면 '양호'로 적지 않는다
 즉시 조치 필요: [목록]
 권고사항: [목록]
 ```
@@ -129,6 +176,11 @@ LOW (N건)
 이 표는 보안 도메인 표준(CVSS 정렬)이라 리뷰 어휘와 눈금이 다르다. `/receiving-code-review`·`epcc-reviewer`로 넘길 때 환산한다 — **Critical·High → Critical · Medium → Important · Low → Suggestion**.
 
 ## 보안 체크리스트
+
+아래는 **모든 프로젝트에 해당하는 핵심**이다. 암호화(A02) · 파라미터화(A03) · 설정(A05) ·
+인증 실패(A07) · 무결성/역직렬화(A08) · 감사 로깅(A09) · SSRF(A10)와 API·LLM·모바일·K8s
+항목은 Step 1에서 고른 `references/`에 있다 — **여기에 옮겨 적지 않는다.**
+
 
 ### 인증/인가
 - [ ] 서버사이드 액션에서 인증 사용자 확인

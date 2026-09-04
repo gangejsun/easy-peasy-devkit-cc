@@ -22,15 +22,6 @@
     },
     "additionalStack": ["SQLAlchemy 2.0", "Pydantic v2", "Alembic", "pytest + httpx"]
   },
-  "security": {
-    "secretPatterns": [
-      {
-        "name": "Database URL with Password",
-        "pattern": "postgresql://[^:]+:[^@]+@",
-        "action": "warn"
-      }
-    ]
-  },
   "notes": {
     "securityBoundary": "애플리케이션 층이 유일한 권한 경계다 — DB는 신뢰된 연결로 접근하므로 행 수준 정책에 기대지 않는다. 인증 방식은 미정이므로 확인 질문 대상",
     "toolchain": "프론트엔드 축과 언어·패키지 매니저가 다르다 — 명령 세트가 2개가 되는 조합"

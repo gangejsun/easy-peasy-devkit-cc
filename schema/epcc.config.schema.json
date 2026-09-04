@@ -23,14 +23,21 @@
         },
         "language": {
           "type": "string",
-          "enum": [
+          "pattern": "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$",
+          "examples": [
             "ko",
             "en",
+            "id",
+            "vi",
             "ja",
             "zh"
           ],
           "default": "en",
-          "description": "Response language for Claude"
+          "description": "Response language (BCP-47 tag). Not an enum \u2014 /epcc-init offers ko/en/id/vi plus free entry, so any valid tag is accepted. Internal reasoning stays English; output is localized for meaning, and industry-standard technical terms stay in English."
+        },
+        "languageLabel": {
+          "type": "string",
+          "description": "Endonym shown in the T0 language directive, e.g. \ud55c\uad6d\uc5b4, Bahasa Indonesia, Ti\u1ebfng Vi\u1ec7t. Written by /epcc-init for languages outside the known set; session-brief.sh falls back to `language` when absent."
         },
         "experienceLevel": {
           "type": "string",
@@ -284,41 +291,6 @@
           ],
           "default": "monorepo",
           "description": "Repository topology chosen at epcc-init (drives the generated project-structure rule card)"
-        }
-      }
-    },
-    "security": {
-      "type": "object",
-      "description": "Security hook configuration",
-      "properties": {
-        "secretPatterns": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string",
-                "description": "Pattern display name"
-              },
-              "pattern": {
-                "type": "string",
-                "description": "Regular expression pattern"
-              },
-              "action": {
-                "type": "string",
-                "enum": [
-                  "block",
-                  "warn"
-                ],
-                "description": "Action on match: block (exit 2) or warn (stderr only)"
-              }
-            },
-            "required": [
-              "name",
-              "pattern",
-              "action"
-            ]
-          }
         }
       }
     },

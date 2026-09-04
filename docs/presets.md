@@ -190,11 +190,11 @@ BaaS 축이 얇은 것은 자연스럽다 — 그 조합의 "백엔드 가이드
 
 `/epcc-init`은 세 파일을 이 순서로 병합한다 (뒤가 앞을 덮어씀):
 
-1. `presets/base.json` — 공통 `domains`·보안 패턴 (AWS Key, GitHub PAT, Generic API Key)
+1. `presets/base.json` — 공통 `domains`
 2. `presets/frontend/<선택>.json`
 3. `presets/backend/<선택>.json`
 
-- `security.secretPatterns`와 `additionalStack`은 덮어쓰지 않고 **누적**한다
+- `additionalStack`은 덮어쓰지 않고 **누적**한다
 - `domains.sourceDir`은 프론트엔드 축 우선, 프론트엔드가 `none`이면 백엔드 축
 - 각 프리셋의 `notes`는 config에 기록하지 않고 **가이드 생성 에이전트에 조합 맥락으로 전달**한다
 

@@ -21,15 +21,6 @@
     },
     "additionalStack": ["Cloud Run", "Cloud Functions", "Firestore", "Identity Platform"]
   },
-  "security": {
-    "secretPatterns": [
-      {
-        "name": "Google/Firebase Service Account Key",
-        "pattern": "\"type\"\\s*:\\s*\"service_account\"",
-        "action": "block"
-      }
-    ]
-  },
   "notes": {
     "securityBoundary": "두 층이 공존한다 — 서버 코드 앞단은 IAM/Identity Platform 토큰 검증이고, Firestore를 클라이언트가 직접 읽는 경로가 있으면 Security Rules가 그 경계다. 두 경로 중 어느 쪽을 쓰는지 가이드에서 먼저 확정한다(둘 다면 규칙과 서버 검사가 서로 어긋나지 않게 하는 것이 핵심 주제)",
     "serverCodeLocation": "Cloud Run(컨테이너, 상주 가능) 또는 Cloud Functions(함수 단위) — 둘의 커넥션·콜드 스타트 특성이 달라 가이드에서 하나를 기본으로 정한다",

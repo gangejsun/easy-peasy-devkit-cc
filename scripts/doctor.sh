@@ -419,6 +419,38 @@ run_fast() {
     else
       ok "T0 규범 절 6개 실재"
     fi
+
+    # T0의 응답 언어 자리표시자 ↔ session-brief의 치환기.
+    # **양쪽 다 있거나 다 없거나**다. 한쪽만이면 반대 방향으로 조용히 망가진다:
+    #   자리표시자만 → `{{RESPONSE_LANGUAGE}}`가 매 세션 그대로 컨텍스트로 샌다
+    #   치환기만     → T0가 언어를 고정하고 프로젝트 설정이 도달하지 못한다
+    # 후자가 v3.25까지의 상태였다 — config에 language가 있어도 T0의 한국어가 이겼다.
+    local t0ph=0 sbsub=0
+    grep -qF '{{RESPONSE_LANGUAGE}}' "$t0" 2>/dev/null && t0ph=1
+    grep -qF '{{RESPONSE_LANGUAGE}}' scripts/session-brief.sh 2>/dev/null && sbsub=1
+    if [ "$t0ph" -eq 1 ] && [ "$sbsub" -eq 1 ]; then
+      ok "응답 언어 자리표시자 ↔ 치환기 양립"
+    elif [ "$t0ph" -eq 1 ]; then
+      bad "T0 자리표시자를 치환할 곳이 없다" "session-brief.sh에 {{RESPONSE_LANGUAGE}} 치환이 없습니다 — 자리표시자가 매 세션 컨텍스트로 샙니다"
+    elif [ "$sbsub" -eq 1 ]; then
+      bad "치환기만 있고 T0에 자리표시자가 없다" "operating-contract.md의 **언어** 절이 언어를 고정하고 있습니다 — 프로젝트 설정이 도달하지 않습니다"
+    else
+      warn "응답 언어가 T0에 고정됨" "프로젝트가 언어를 고를 수 없습니다"
+    fi
+
+    # 언어 목록 드리프트 — init이 제시하는 코드는 hbs 분기와 스키마 예시에 모두 실려야 한다.
+    # 하나라도 빠지면 그 언어를 고른 프로젝트만 CLAUDE.md에서 코드가 날것으로 보인다.
+    local lmiss="" _l
+    for _l in ko en id vi; do
+      grep -qF "\"$_l\"" templates/CLAUDE.md.hbs 2>/dev/null || lmiss="$lmiss hbs:$_l"
+      grep -qF "\"$_l\"" schema/epcc.config.schema.json 2>/dev/null || lmiss="$lmiss schema:$_l"
+      grep -qF "\`$_l\`" skills/epcc-init/SKILL.md 2>/dev/null || lmiss="$lmiss init:$_l"
+    done
+    if [ -n "$lmiss" ]; then
+      bad "언어 목록 불일치:$lmiss" "init 선택지 · CLAUDE.md.hbs 분기 · 스키마 examples 셋이 같아야 합니다"
+    else
+      ok "언어 목록 일치 (init ↔ hbs ↔ schema)"
+    fi
   else
     bad "T0 운영 규칙 파일 없음: $t0"
   fi
@@ -1188,6 +1220,52 @@ run_self_test() {
     fi
   done
 
+  # ── .env 면제 (v3.26.0) ────────────────────────────────────────────
+  # 시크릿의 **정당한 목적지**는 gitignore된 .env 파일인데 훅이 거기 쓰는 것까지
+  # 막고 있었다 — 차단 메시지가 ".env.local로 옮기라"면서 그 파일을 막는 모순이었다.
+  #
+  # 이 면제는 **git 상태에 의존**하므로 정적 JSON 픽스처로는 증명할 수 없다.
+  # 임시 저장소를 만들어 무시 여부를 통제한다. 증명해야 할 것은 셋이다:
+  #   ① 무시되는 .env는 통과   ② 무시 안 되는 .env는 여전히 차단
+  #   ③ 일반 소스는 회귀 없음  ④ 판정 불가(저장소 밖)면 면제하지 않는다
+  local sc et ng
+  sc="$(pwd)/scripts/security-check.sh"
+  et=$(mktemp -d 2>/dev/null) || et=""
+  ng=$(mktemp -d 2>/dev/null) || ng=""
+  if [ -z "$et" ] || [ -z "$ng" ]; then
+    warn "임시 디렉토리 생성 실패" ".env 면제가 증명되지 않은 상태"
+  elif ! git -C "$et" init -q 2>/dev/null; then
+    warn "git init 실패" ".env 면제가 증명되지 않은 상태 (git 부재?)"
+  else
+    printf '.env.local\n' > "$et/.gitignore"
+    mkdir -p "$et/src"
+    # 키는 **조각으로 조립**한다 — 이 스크립트 본문에 매치되는 리터럴을 두면
+    # doctor.sh 자신을 편집할 때 훅이 자기 검사 스크립트를 차단한다.
+    local kpre='sk-proj-' kbody='SELFTESTKEYAAAABBBBCCCCDDDD'
+    local ekey="$kpre$kbody"
+    local ecase epath ewant elabel erest ecode ewhere
+    for ecase in "$et:.env.local:0:gitignore된 .env — 면제 작동" \
+                 "$et:.env.production:2:gitignore 안 된 .env — 차단 유지" \
+                 "$et:src/config.ts:2:일반 소스 — 회귀 없음" \
+                 "$ng:.env.local:2:저장소 밖 — 판정 불가라 면제 없음"; do
+      ewhere="${ecase%%:*}"; erest="${ecase#*:}"
+      epath="${erest%%:*}"; erest="${erest#*:}"
+      ewant="${erest%%:*}"; elabel="${erest#*:}"
+      ecode=0
+      jq -nc --arg p "$epath" --arg k "$ekey" \
+        '{session_id:"epcc-doctor-test",cwd:".",tool_name:"Write",hook_event_name:"PreToolUse",tool_input:{file_path:$p,content:("OPENAI_API_KEY=" + $k + "\n")}}' \
+        | ( cd "$ewhere" && CLAUDE_PROJECT_DIR="$ewhere" bash "$sc" >/dev/null 2>&1 ) || ecode=$?
+      if [ "$ecode" -eq "$ewant" ]; then
+        ok ".env 면제: $elabel → exit $ecode"
+      else
+        bad ".env 면제: $elabel → exit $ecode (기대 $ewant)" \
+            "$( [ "$ewant" = 0 ] && printf '정당한 목적지에 쓰지 못한다 — 실사용이 막힌다' \
+                                 || printf '면제가 과도하게 열렸다 — 시크릿이 커밋될 수 있다' )"
+      fi
+    done
+  fi
+  rm -rf "${et:-/nonexistent}" "${ng:-/nonexistent}"
+
   # ── 정적 검사 양성 픽스처 (RC4) ──────────────────────────────────
   # 정적 검사(상시 카드·치환자 표기·Phase 이원화·카드 표 수·그래프 미선언)는
   # 손으로 결함을 심어 증명했었다. 그 증명은 재현되지 않고, 실제로 한 번은
@@ -1582,6 +1660,47 @@ run_consumer() {
   printf '%s' "$out" | grep -q '렌더를 확인한 흔적이 없습니다' \
     && bad "UI 알림이 매 Stop 마다 반복된다" "세션당 1회 마커가 동작하지 않는다" \
     || ok "UI 알림 세션당 1회 (반복 경고 없음)"
+
+  # ── 응답 언어 도달 ────────────────────────────────────────────────
+  # 언어 선택은 config에 적히는 것으로 끝나지 않는다. T0는 파일이 아니라 훅 **출력**이라
+  # 치환이 실제로 일어나야 도달한다. 살아있음 ≠ 작동함.
+  sec "응답 언어 도달"
+  local lp="$tmp/proj-lang" lout=""
+  mkdir -p "$lp"
+  printf '{"project":{"name":"t","language":"id","languageLabel":"Bahasa Indonesia"},"techStack":{"language":"TypeScript"}}\n' \
+    > "$lp/epcc.config.json"
+  lout=$(printf '{}' | CLAUDE_PLUGIN_ROOT="$cache" CLAUDE_PROJECT_DIR="$lp" \
+         EPCC_STATE_DIR="$lp/.epcc" bash "$cache/scripts/session-brief.sh" 2>/dev/null || true)
+  if printf '%s' "$lout" | grep -q '{{'; then
+    bad "T0에 자리표시자가 남았다" "치환이 동작하지 않습니다 — 매 세션 {{RESPONSE_LANGUAGE}}가 컨텍스트로 샙니다"
+  elif printf '%s' "$lout" | grep -q 'Bahasa Indonesia'; then
+    ok "설정 언어가 T0에 도달 (id → Bahasa Indonesia)"
+  else
+    bad "설정 언어가 T0에 도달하지 않았다" "epcc.config.json의 project.language가 무시되고 있습니다"
+  fi
+
+  # 이 파일에는 "language" 키가 넷 있다 (project·techStack·frontend·backend).
+  # 범위를 좁히지 않으면 스택 언어(TypeScript)를 응답 언어로 읽는다.
+  printf '%s' "$lout" | grep -q 'TypeScript로' \
+    && bad "techStack.language를 응답 언어로 읽었다" "project 블록으로 범위를 좁히지 않았습니다" \
+    || ok "스택 언어를 응답 언어로 오인하지 않음"
+
+  # 미설정 프로젝트 폴백 — 여기서 라벨이 비면 자리표시자가 그대로 샌다
+  lout=$(printf '{}' | CLAUDE_PLUGIN_ROOT="$cache" CLAUDE_PROJECT_DIR="$tmp/proj-첫-커밋-전" \
+         EPCC_STATE_DIR="$tmp/proj-첫-커밋-전/.epcc" bash "$cache/scripts/session-brief.sh" 2>/dev/null || true)
+  printf '%s' "$lout" | grep -q '{{' \
+    && bad "미설정 프로젝트의 T0에 자리표시자가 남았다" "폴백 라벨이 비어 있습니다" \
+    || ok "미설정 프로젝트 폴백 (자리표시자 누출 없음)"
+
+  # 차단 증명 — 치환기를 들어낸 픽스처가 실제로 --fast에 막히는가, **의도한 사유로** 막히는가
+  local bcache="$tmp/cache-broken" bout=""
+  if cp -R "$cache" "$bcache" 2>/dev/null; then
+    perl -pi -e 's/\{\{RESPONSE_LANGUAGE\}\}//g' "$bcache/scripts/session-brief.sh" 2>/dev/null || true
+    bout=$(bash "$bcache/scripts/doctor.sh" --fast --root "$bcache" 2>&1 || true)
+    printf '%s' "$bout" | grep -q '치환할 곳이 없다' \
+      && ok "치환기 제거 → --fast 차단 (의도한 사유)" \
+      || bad "치환기를 들어냈는데 --fast가 통과시켰다" "자리표시자 누출이 검출되지 않습니다"
+  fi
 
   # 플러그인 밖에서 doctor 자신이 도는가
   sec "플러그인 밖 실행"

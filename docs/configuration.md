@@ -10,7 +10,8 @@ The configuration file lives at the project root. All fields are optional except
 |-------|------|---------|-------------|
 | `name` | string | (required) | Project name |
 | `description` | string | | Project description |
-| `language` | `"ko" \| "en" \| "ja" \| "zh"` | `"en"` | Claude response language |
+| `language` | BCP-47 tag | `"en"` | Response language. `/epcc-init` offers `ko` · `en` · `id` · `vi` plus free entry, so any tag is valid. Internal reasoning stays English; industry-standard technical terms (`Bottom Sheet`, `GNB`, `middleware`) stay English in every language |
+| `languageLabel` | string | | Endonym shown in the T0 language directive (`한국어`, `Bahasa Indonesia`, `Tiếng Việt`). Falls back to `language` |
 | `experienceLevel` | `"senior" \| "mid" \| "junior"` | `"senior"` | Affects response detail level |
 
 ### techStack
@@ -36,14 +37,16 @@ The configuration file lives at the project root. All fields are optional except
 | `sharedPackage` | string | | Shared package path (requires approval to modify) |
 | `importAlias` | string | | Import alias (e.g., `@/`) |
 
-### security
+### security — not configurable
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `secretPatterns` | array | Secret detection patterns |
-| `secretPatterns[].name` | string | Display name for the pattern |
-| `secretPatterns[].pattern` | string | Regular expression |
-| `secretPatterns[].action` | `"block" \| "warn"` | Block (exit 2) or warn (stderr) |
+Secret blocking is **built into the `security-check` hook**, not a config section. The hook
+matches vendor-published key shapes (AWS `AKIA`, GitHub `ghp_`, Stripe, 토스페이먼츠,
+카카오페이, OpenAI `sk-proj-`, Anthropic `sk-ant-`, Google `AIza`, Supabase, PEM private
+keys, GCP service-account JSON) and blocks the write with exit 2.
+
+Writing a secret into a `.env*` file that `git check-ignore` confirms is ignored is
+**allowed** — that is where secrets belong. A `.env` file that is *not* ignored (e.g.
+`.env.example`) is still blocked. See `docs/harness-anatomy.md` § `security-check`.
 
 ### workflow
 
@@ -101,11 +104,6 @@ Array of skill names to disable. Disabled skills are excluded from SessionStart 
     "sourceDir": "src",
     "sharedPackage": "packages/shared",
     "importAlias": "@/"
-  },
-  "security": {
-    "secretPatterns": [
-      { "name": "Supabase Key", "pattern": "eyJhbGci...", "action": "block" }
-    ]
   }
 }
 ```

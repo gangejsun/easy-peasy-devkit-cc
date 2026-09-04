@@ -13,7 +13,8 @@
 
   "project": {
     "name": "<입력값>",
-    "language": "<입력값>",
+    "language": "<BCP-47 태그 — ko | en | id | vi | 기타 입력의 정규화 결과>",
+    "languageLabel": "<그 언어의 엔도님 — 한국어 | English | Bahasa Indonesia | Tiếng Việt | ...>",
     "experienceLevel": "<입력값>"
   },
 
@@ -57,9 +58,6 @@
     "repoTopology": "<monorepo | single | msa — Step 4.7 선택값>"
   },
 
-  "security": {
-    "secretPatterns": []  // 프리셋 기본값 사용
-  },
 
   "customResources": {}
 }
@@ -76,7 +74,8 @@
    - `{{project.name}}` · `{{techStack.framework}}` 등 → 해당 값
    - `{{#if ...}}...{{/if}}` → 조건이 참이면 본문만 남기고, 거짓이면 블록 전체 삭제
    - `{{#each techStack.additionalStack}}` → 항목마다 한 줄씩 전개
-   - `{{#if (eq project.language "ko")}}` 류 → 실제 설정값에 맞는 분기 하나만 남김
+   - `{{#if (eq project.language "ko")}}` 류 → 실제 설정값에 맞는 분기 하나만 남김.
+     **Response Language 아래 두 줄(현지화·전문용어 계약)은 분기가 아니므로 지우지 않는다**
 3. `<플러그인-루트>` 자리표시자는 **그대로 둔다** — 절대 경로는 매 세션 브리핑의
    '자기검증' 줄에 표시되므로, 여기에 박아 넣으면 플러그인 경로 변경 시 끊긴다
 4. 프로젝트 루트에 `CLAUDE.md`로 쓴다 (기존 파일이 있으면 Step 0의 백업 확인을 따른다)

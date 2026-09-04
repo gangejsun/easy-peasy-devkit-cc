@@ -240,7 +240,13 @@ esac
 block() {
   printf '❌ 차단: %s\n\n' "$1" >&2
   printf '%s\n\n' "$2" >&2
-  printf '올바른 방법: 환경 변수로 이동 (.env.local — .gitignore 확인)\n' >&2
+  # 안내는 **실제로 가능한 경로**를 가리켜야 한다. 예전 문구는 ".env.local로 옮기라"고
+  # 했는데 정작 그 파일 쓰기도 막혀 있어서, 유일하게 불가능한 곳을 가리키고 있었다.
+  if [ "${ENV_NOT_IGNORED:-0}" = "1" ]; then
+    printf '이 파일은 .gitignore에 없습니다 — 먼저 추가하세요. 그러면 여기에 쓸 수 있습니다.\n' >&2
+  else
+    printf '올바른 방법: .gitignore된 .env 파일로 옮기세요 (거기에는 쓸 수 있습니다).\n' >&2
+  fi
   exit 2
 }
 warn() { printf '⚠️  %s\n%s\n' "$1" "$2" >&2; }
@@ -248,6 +254,42 @@ warn() { printf '⚠️  %s\n%s\n' "$1" "$2" >&2; }
 # -e 필수: PEM 헤더처럼 '-'로 시작하는 패턴을 grep이 옵션으로 오해한다
 has()  { printf '%s' "$TEXT" | grep -Eq  -e "$1"; }
 hasi() { printf '%s' "$TEXT" | grep -Eqi -e "$1"; }
+
+# ── .env 면제 — 증명된 경우에만 ──────────────────────────────────────
+#
+# 시크릿의 **정당한 목적지**는 gitignore된 .env 파일이다. 그런데 이 훅에는 경로
+# 조건이 package.json 하나뿐이라 거기에 쓰는 것까지 막고 있었다 — 차단 메시지가
+# ".env.local로 옮기라"고 안내하면서 정작 그 파일 쓰기를 막는 모순이었고,
+# "키를 환경 변수에 등록해줘"라는 **가장 흔한 정상 작업**이 불가능했다.
+#
+# **면제는 증명된 경우에만 준다.** 판정 불가(git 없음 · 저장소 밖 · 미추적)면
+# 면제하지 않고 아래 검사로 내려가므로 오늘의 동작이 그대로 유지된다 —
+# 이 완화는 어떤 경우에도 오늘보다 나빠지지 않고, 증명될 때만 열린다.
+# 그래서 「판정 불가를 차단으로 접지 않는다」와 충돌하지 않는다: 새로 차단하는 것이
+# 아니라 **새 예외를 주지 않는** 것이고, 기존 차단은 그대로다.
+#
+# `.gitignore`를 텍스트로 훑지 않는다 — 중첩 .gitignore · 부정 패턴(`!`) · 전역
+# exclude를 놓친다. `git check-ignore`가 권위 있는 답을 갖고 있다.
+# 파일이 있는 디렉토리로 이동해 basename을 묻는다: file_path가 절대·상대 어느
+# 쪽이어도 같은 결과가 나오고, git이 상위 .gitignore 계층을 스스로 해석한다.
+#
+# **Bash 힙독(`cat > .env.local <<EOF`)은 면제하지 않는다.** 그 경로는 file_path가
+# 비어 있고, 셸 명령 문자열에서 대상 경로를 신뢰성 있게 파싱할 수 없다.
+# (같은 한계를 destructive_gate도 갖는다 — 위 「파일 안의 파괴 구문」 주석 참조.)
+case "$TOOL_NAME" in
+  Edit|Write|MultiEdit)
+    if [[ "$(basename -- "$FILE_PATH")" =~ ^\.env(\..+)?$ ]]; then
+      if ( cd "$(dirname -- "$FILE_PATH")" 2>/dev/null \
+           && git check-ignore -q -- "$(basename -- "$FILE_PATH")" 2>/dev/null ); then
+        printf '🔐 시크릿을 %s 에 기록합니다 — .gitignore로 무시되는 파일이라 커밋되지 않습니다.\n' "$FILE_PATH" >&2
+        exit 0
+      fi
+      # 무시되지 않거나 판정 불가. 면제 없이 아래 검사로 내려가되, block()의 안내가
+      # ".gitignore에 추가하라"로 갈라지도록 표시만 남긴다.
+      ENV_NOT_IGNORED=1
+    fi
+    ;;
+esac
 
 # ── 차단 대상: 명백한 시크릿 ─────────────────────────────────────────
 

@@ -19,10 +19,73 @@ epcc_begin "session-brief" "$INPUT"
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
 # ── 1. T0 운영 규칙 ──────────────────────────────────────────────────
+# 응답 언어는 프로젝트가 정한다 — T0의 {{RESPONSE_LANGUAGE}}를 여기서 치환한다.
+# T0를 훅 출력으로 둔 이유가 여기서 값을 한다: 파일이면 언어가 고정되지만
+# 출력이므로 프로젝트마다 다른 값이 매 세션 주입된다.
+#
+# **빈 값을 내보내지 않는다.** 자리표시자가 남으면 `{{RESPONSE_LANGUAGE}}`가
+# 그대로 매 세션 컨텍스트로 새고, 모델은 그걸 언어 이름으로 읽는다.
+epcc_response_language() {
+  local cfg="$EPCC_ROOT/epcc.config.json" code="" label="" blk=""
+
+  if [ -f "$cfg" ]; then
+    if command -v jq >/dev/null 2>&1; then
+      code=$(jq -r '.project.language // empty' "$cfg" 2>/dev/null || true)
+      label=$(jq -r '.project.languageLabel // empty' "$cfg" 2>/dev/null || true)
+    else
+      # 이 파일에는 "language" 키가 넷 있다 — project · techStack · frontend · backend.
+      # 순진한 grep -m1은 키 순서에 따라 스택 언어(TypeScript)를 응답 언어로 집는다.
+      # project 블록으로 범위를 좁힌 뒤에만 찾는다.
+      blk=$({ sed -n '/"project"[[:space:]]*:/,/^[[:space:]]*}/p' "$cfg" 2>/dev/null || true; })
+      code=$({ printf '%s' "$blk" | grep -m1 -oE '"language"[[:space:]]*:[[:space:]]*"[^"]*"' 2>/dev/null || true; } \
+              | sed -E 's/.*"([^"]*)"$/\1/')
+      label=$({ printf '%s' "$blk" | grep -m1 -oE '"languageLabel"[[:space:]]*:[[:space:]]*"[^"]*"' 2>/dev/null || true; } \
+              | sed -E 's/.*"([^"]*)"$/\1/')
+    fi
+  fi
+
+  # 「기타」는 자유 입력이고 이 값은 sed 치환식과 T0 한 줄에 그대로 들어간다.
+  # **자르거나 걸러내지 않고 통째로 버린다** — 걸러낸 잔해(`s/x/y/` 조각)와
+  # 바이트로 잘린 멀티바이트 문자가 T0 문장을 읽을 수 없게 만든다. 정상 범위를
+  # 벗어난 값은 언어 이름이 아니므로, 다음 후보로 내려가는 편이 항상 낫다.
+  epcc_safe_label() {
+    local v="${1:-}" clean=""
+    [ -z "$v" ] && { printf ''; return 0; }
+    [ "${#v}" -gt 60 ] && { printf ''; return 0; }
+    clean=$(printf '%s' "$v" | tr -d '|&/\\$`<>{}"'"'"'[:cntrl:]' 2>/dev/null || true)
+    [ "$clean" = "$v" ] && printf '%s' "$v" || printf ''
+  }
+
+  label=$(epcc_safe_label "${label:-}")
+  code=$(epcc_safe_label "${code:-}")
+
+  # 라벨 우선순위: languageLabel → 알려진 코드의 엔도님 → 원시 코드 → 기본값
+  if [ -z "$label" ]; then
+    case "$code" in
+      ko) label="한국어" ;;
+      en) label="English" ;;
+      id) label="Bahasa Indonesia" ;;
+      vi) label="Tiếng Việt" ;;
+      ja) label="日本語" ;;
+      zh) label="中文" ;;
+      # 기타 — init이 코드만 남긴 경우. 언어 태그 모양일 때만 받는다
+      [A-Za-z][A-Za-z]|[A-Za-z][A-Za-z][A-Za-z]|[A-Za-z][A-Za-z]-[A-Za-z0-9]*) label="$code" ;;
+      *) label="" ;;
+    esac
+  fi
+
+  # 미설정 프로젝트의 기본값. 설치 직후엔 어느 언어권인지 알 수 없으므로
+  # 사용자가 쓴 언어를 따르게 한다 — 한국어 고정이면 외국 사용자는 init 전까지 막힌다.
+  [ -z "$label" ] && label="사용자가 쓴 언어"
+  printf '%s' "$label"
+}
+
 CONTRACT="$PLUGIN_ROOT/templates/operating-contract.md"
 if [ -f "$CONTRACT" ]; then
+  RESP_LANG=$(epcc_response_language)
   # HTML 주석 블록 전체를 제거한다 ('^<!--'만 지우면 여러 줄 주석의 본문이 샌다)
-  sed '/<!--/,/-->/d' "$CONTRACT" | sed '/./,$!d'
+  sed '/<!--/,/-->/d' "$CONTRACT" | sed '/./,$!d' \
+    | sed "s|{{RESPONSE_LANGUAGE}}|${RESP_LANG}|g"
 else
   printf '[epcc] 경고: 운영 규칙 파일 없음 (%s)\n' "$CONTRACT"
 fi

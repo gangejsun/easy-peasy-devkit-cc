@@ -94,4 +94,10 @@ memory: project
 
 ## 언어
 
-내부 추론은 영어, 사용자 출력은 한국어.
+내부 추론·분석은 영어. 보고는 **프로젝트가 정한 응답 언어**로 쓴다 —
+`epcc.config.json`의 `project.languageLabel`(없으면 `project.language`), 그것도 없으면
+메인 세션이 사용자와 쓰고 있는 언어를 따른다. 직역이 아니라 의도·문맥·도메인을 반영해 옮긴다.
+
+**전문용어·코드·식별자·파일 경로·상태 토큰(`DONE`·`Costly` 등)은 번역하지 않는다.**
+`Bottom Sheet` · `GNB` · `middleware` · `migration`처럼 업계에서 영어로 통용되는 용어는
+영어 원어 그대로 둔다 — 억지 번역은 리뷰 대상을 흐린다.
