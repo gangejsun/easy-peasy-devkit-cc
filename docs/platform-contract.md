@@ -182,11 +182,47 @@ Bash 규칙. 같은 변수를 양쪽에 쓰면 권한 프롬프트 없이 번들
 > **계측의 공백은 훅의 죽음과 같은 모양을 한다.** 가르는 것은 "그 이벤트가 발생할
 > 기회가 있었는가"이고, 그것은 로그가 아니라 **발화 조건**을 봐야 안다.
 
+## 5.2 Windows에서 훅 실행 셸
+
+확인: 2026-09-05 · 출처: https://code.claude.com/docs/en/hooks · https://code.claude.com/docs/en/setup
+
+`hooks/hooks.json`의 모든 `command`는 리터럴 문자열이다(예: `"bash ${CLAUDE_PLUGIN_ROOT}/scripts/session-brief.sh"`).
+이 문자열을 **무엇으로 해석해 실행할지**는 `shell` 필드가 정하고, 기본값은 OS에 따라 갈린다:
+
+> Defaults to `"bash"`, or to `"powershell"` on Windows when Git Bash isn't installed.
+
+| 실행 환경 | 훅을 해석하는 셸 | `"bash script.sh"` 문자열의 운명 |
+| --- | --- | --- |
+| macOS · Linux · WSL | bash | 그대로 실행 |
+| 네이티브 Windows + Git for Windows 설치됨 | Git Bash | 그대로 실행 |
+| 네이티브 Windows + Git for Windows **없음** | PowerShell | PowerShell이 `bash`를 실행 파일로 찾으려 하고, PATH에 없으면 **훅이 실행되지 않는다** |
+
+설치 가이드도 같은 결론을 명시한다:
+
+> [Git for Windows] enables the Bash tool by providing Git Bash. Without Git for Windows,
+> Claude Code runs shell commands via the PowerShell tool.
+
+**이 하네스에 대한 함의** — 훅 5개(`session-brief`·`security-check`·`build-gate`·`handoff`·
+`track-skill`) 전부가 `"bash ..."` 패턴이다. Git for Windows 없는 네이티브 Windows에서는
+`jq` 부재처럼 **일부 검증이 판정 불가로 저하**되는 정도가 아니라, **훅 5개가 통째로 한 번도
+실행되지 않을 수 있다** — 이 저장소가 경계하는 "조용한 무력화" 중 가장 심한 형태다.
+(참고로 Git for Windows가 제공하는 Git Bash는 `grep`·`awk`·`sed`는 포함하지만 `jq`는
+포함하지 않는다 — 별도 설치가 필요하다.)
+
+소비자 대상 설치 안내는 `docs/windows-setup.md`와 README의 「Windows 사용자라면」
+콜아웃이 맡는다.
+
 ## 6. 서브에이전트
 
 확인: 2026-08-24 · 출처: https://code.claude.com/docs/en/sub-agents
 
 - `tools:` frontmatter는 **허용 목록**이다. 없는 도구는 쓸 수 없다 —
   `Skill`이 목록에 없으면 그 에이전트는 **스킬을 호출할 수 없다**
+- **단, 허용 목록만으로 쓰기를 막지는 못한다.** 실측(2026-09-07 · v3.26.0):
+  `tools: Read, Grep, Glob, WebSearch, WebFetch`만 선언한 `epcc-planner`가 실행 시점에
+  **Write·Edit를 함께 갖고 있었다.** 같은 세션에서 `disallowedTools: Write, Edit, NotebookEdit`를
+  가진 `epcc-reviewer`는 선언대로였다. 원인은 확인하지 못했다 — 추정하지 않고 사실만 남긴다.
+  **쓰기를 확실히 막으려면 `disallowedTools`를 함께 쓴다.** 허용 목록 하나로
+  「권한이 없으니 위반이 불가능하다」를 주장하면 그 주장이 조용히 거짓이 된다
 - 메인 대화의 auto memory는 서브에이전트에 상속되지 않는다
 - 에이전트는 `.claude/rules/`를 상속받지 않는다 → 필요한 규범은 프롬프트에 직접 적는다

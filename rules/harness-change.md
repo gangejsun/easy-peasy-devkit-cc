@@ -101,7 +101,7 @@ T0은 매 세션 자동 주입·자동 갱신이라 삭제가 **소비자에게 
    — 이벤트마다 지원 필드가 다르다. 미지원 필드는 **조용히 무시**된다
    — Stop은 `decision`/`reason`을 지원하지 않는다 (`continue`+`systemMessage` 사용)
    — PreCompact/SessionEnd는 평문 stdout이 컨텍스트에 들어가지 않는다 (JSON 필요)
-3. `bash "${CLAUDE_PLUGIN_ROOT:-.}/scripts/doctor.sh" --fast` + `--self-test` → 통과 확인
+3. `bash "${CLAUDE_PLUGIN_ROOT:-.}/scripts/doctor.sh" --default` + `--self-test` → 통과 확인
 4. hooks.json에 등록했으면 `workflow.graph.json`에도 노드/엣지를 추가한다
    — 라우팅 카드의 Phase에 걸리는 노드면 `phase`를, 파일을 남기면 `produces`와
    그 산출물을 읽는 엣지까지 (doctor --graph가 대조한다)

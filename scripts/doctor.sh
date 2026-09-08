@@ -111,7 +111,7 @@ _fx_static_tree() {
     > "$T/skills/stack-guide-generator/assets/guide-skeleton.md"
 
   # 선언↔실물 대조 대상 2곳. 이 트리의 **실물**과 맞는 수를 적어둔 것이 기준선이다
-  # (훅 1 · 규칙 2 · 스킬 3 · 노드 2 · 엣지 0 · 프리셋 2+2 · 팩 0+0).
+  # (훅 1 · 규칙 2 · 스킬 3 · 노드 3 · 엣지 0 · 프리셋 2+2 · 팩 0+0).
   # 훅 수의 실물은 hooks.json에서 나오므로 그 파일도 있어야 대조가 실제로 돈다 —
   # 없으면 '판정 불가'로 건너뛰고, 건너뛴 검사는 증명된 검사가 아니다.
   mkdir -p "$T/hooks" "$T/.claude-plugin" || return 1
@@ -120,16 +120,19 @@ _fx_static_tree() {
   printf -- '#!/bin/bash\nexit 0\n' > "$T/scripts/x.sh"
   printf -- '{"plugins":[{"name":"fx","description":"자기검증 훅 1종. 3개 스킬 + 축 가이드 팩(프론트 0 · 백엔드 0), 2축 프리셋(프론트 2 · 백엔드 2)."}]}\n' \
     > "$T/.claude-plugin/marketplace.json"
-  printf -- '# 해부\n\n실물 대조 — 훅 1 · T1 규칙 카드 2 · 스킬 3 · 그래프 노드 2 · 엣지 0\n' \
+  printf -- '# 해부\n\n실물 대조 — 훅 1 · T1 규칙 카드 2 · 스킬 3 · 그래프 노드 3 · 엣지 0\n' \
     > "$T/docs/harness-anatomy.md"
 
-  # 그래프: 스킬 2개를 노드로 선언 (manual로 인바운드 면제)
+  # 그래프: 스킬 2개 + 훅 1개를 노드로 선언 (manual/entry로 인바운드 면제).
+  # 훅 노드는 hooks.json이 등록한 x.sh에 대응한다 — 「미선언 훅」 검사가 생긴 뒤로
+  # 등록만 하고 선언하지 않은 트리는 **결함 없는 기준선이 아니다**.
   cat > "$T/workflow.graph.json" <<'FXG'
 {
   "version": "0.0.1",
   "nodes": [
     { "id": "sample", "kind": "skill", "path": "skills/sample/SKILL.md", "manual": true },
-    { "id": "epcc-init", "kind": "skill", "path": "skills/epcc-init/SKILL.md", "manual": true }
+    { "id": "epcc-init", "kind": "skill", "path": "skills/epcc-init/SKILL.md", "manual": true },
+    { "id": "x", "kind": "hook", "path": "scripts/x.sh", "event": "SessionStart", "entry": true }
   ],
   "edges": []
 }
@@ -156,15 +159,19 @@ _fx_static_case() {
 
   # ② 검출 — 그 상태에서 검사가 기대 메시지를 내는가
   local out; out=$(bash "$0" "$mode" --root "$T" 2>&1)
+  # 사유 표시는 성공/실패 **양쪽**에서 낸다. 성공 분기에만 두면 정작 필요한 순간에
+  # 침묵한다 — 미탐으로 실패했을 때야말로 "그럼 무엇이 대신 걸렸나"를 봐야 한다.
+  # 경고(!)로 판정하는 픽스처도 사유가 보여야 한다: ✗만 보면 warn 기반 픽스처의
+  # "의도한 이유로 걸렸는가"를 확인할 수 없다.
+  local why=""
+  [ -n "${EPCC_FX_WHY:-}" ] && why=$(printf '%s' "$out" | grep -E '✗|!' | head -2 | sed 's/^  *//' | tr '\n' ';')
   if printf '%s' "$out" | grep -q "$want"; then
     ok "$name → '$want' 검출"
-    # 경고(!)로 판정하는 픽스처도 사유가 보여야 한다 — ✗만 보면 warn 기반
-    # 픽스처의 "의도한 이유로 걸렸는가"를 확인할 수 없다.
-    [ -n "${EPCC_FX_WHY:-}" ] && printf "      ${C_D}%s${C_0}\n" \
-      "$(printf '%s' "$out" | grep -E '✗|!' | head -2 | sed 's/^  *//' | tr '\n' ';')"
   else
     bad "$name → '$want' 미검출" "결함을 심었는데 검사가 통과시켰다 — 미탐"
   fi
+  [ -n "$why" ] && printf "      ${C_D}%s${C_0}\n" "$why"
+  return 0
 }
 
 # ════════════════════════════════════════════════════════════════════
@@ -211,7 +218,10 @@ run_fast() {
   for f in scripts/*.sh; do
     [ -f "$f" ] || continue
     case "$f" in */lib/*) continue;; esac
-    grep -qE '^set -[A-Za-z]*e|lib/common\.sh' "$f" 2>/dev/null || continue
+    # **언급이 아니라 실제 source를 본다.** 파일이 lib/common.sh를 문자열로 담기만 해도
+    # 걸리던 필터라, doctor.sh가 회전 불변식 픽스처에서 그 경로를 부분 프로세스로 넘기자
+    # 자기 자신을 ERR trap 보유자로 오인해 오탐을 냈다. 훅 5종과 설치기 2종은 그대로 걸린다.
+    grep -qE '^set -[A-Za-z]*e|^[[:space:]]*(source|\.)[[:space:]]+[^|]*lib/common\.sh' "$f" 2>/dev/null || continue
     while IFS= read -r line; do
       case "$line" in *'|| true'*|*'||true'*) continue;; esac
       gl="$gl $(basename "$f")"; n=$((n+1)); break
@@ -397,7 +407,7 @@ run_fast() {
     ok "Phase 표 정본 단일 (rules/workflow-routing.md)"
   fi
 
-  # T0 예산 — operating-contract.md 주석이 약속한 40줄 상한을 기계가 지킨다.
+  # T0 예산 — operating-contract.md 주석이 약속한 42줄 상한을 기계가 지킨다.
   # 초과는 「삭제하라」가 아니라 분기점이다 — 선택지와 선택 간 실질 차이를 제시하고 사람이 고른다.
   local t0="templates/operating-contract.md"
   if [ -f "$t0" ]; then
@@ -405,7 +415,7 @@ run_fast() {
     if [ "$t0n" -le 42 ]; then
       ok "T0 운영 규칙 ${t0n}/42줄"
     else
-      bad "T0 운영 규칙 ${t0n}줄 — 예산 42줄 초과" "$(printf '규범을 지우지 마세요. 아래 셋 중 하나를 고릅니다 — 잃는 것이 서로 다릅니다.\n      1) T1 카드로 내린다  — 도달은 유지, 상시성 상실 (그 경로를 만질 때만 뜬다)\n      2) 더 짧게 고쳐 쓴다  — 상시성 유지, 정보가 깎일 위험\n      3) 예산을 올린다      — 둘 다 유지, 매 세션 비용이 는다 (이 검사의 40을 함께 올린다)')"
+      bad "T0 운영 규칙 ${t0n}줄 — 예산 42줄 초과" "$(printf '규범을 지우지 마세요. 아래 셋 중 하나를 고릅니다 — 잃는 것이 서로 다릅니다.\n      1) T1 카드로 내린다  — 도달은 유지, 상시성 상실 (그 경로를 만질 때만 뜬다)\n      2) 더 짧게 고쳐 쓴다  — 상시성 유지, 정보가 깎일 위험\n      3) 예산을 올린다      — 둘 다 유지, 매 세션 비용이 는다 (이 검사의 42를 함께 올린다)')"
     fi
 
     # T0에서 규범 절이 사라지면 조용히 전파된다 — 줄 수만 보는 검사는 삭제를 오히려 통과시킨다.
@@ -903,6 +913,14 @@ run_fast() {
                     | capture("(?<f>[a-z0-9-]+)\\.sh").f] | unique | length' hooks/hooks.json 2>/dev/null)")
   fi
 
+  # 줄 수 예산도 **손으로 적은 수**다 — 그런데 개수만 대조하고 여기는 비어 있었다.
+  # 실제로 T0 예산이 40→42로 오른 뒤 문서 5곳이 40에 멈춰 있었고, 현재 파일(41줄)은
+  # 모든 문서가 말하는 예산을 이미 넘긴 채 아무도 실패하지 않았다.
+  # 스크립트 개별 줄 수는 넣지 않는다 — 설계 문서의 곁가지이지 예산이 아니다.
+  local real_t0 real_rl
+  real_t0=$(num "$(wc -l < templates/operating-contract.md 2>/dev/null)")
+  real_rl=$(num "$({ cat rules/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')")
+
   if [ -f README.md ]; then
     if [ -n "$real_nd" ]; then
       _claim "그래프 노드" "$(grep -oE '노드 [0-9]+' README.md | head -1 | sed -E 's/[^0-9]*([0-9]+)/\1/')" "$real_nd" "README.md"
@@ -910,6 +928,11 @@ run_fast() {
     fi
     _claim "스킬 수" "$(grep -oE '\| \*\*스킬\*\* \| [0-9]+' README.md | grep -oE '[0-9]+$')" "$real_sk" "README.md"
     _claim "T1 카드 수" "$(grep -oE 'T1 [0-9]+개' README.md | head -1 | sed -E 's/T1 ([0-9]+)개/\1/')" "$real_ru" "README.md"
+    # 「T0 N줄 + T1 M개 L줄」 형식. 쉼표는 지우고 비교한다 (문서는 1,080으로 쓴다)
+    # `grep -oE '[0-9]+'`로 훑으면 **라벨 안의 숫자**가 섞인다 — "T0"의 0이 값으로 잡혔다.
+    # 「선언↔실물」이 자기 자신에게서 두 번째로 잡은 같은 실수다. 캡처 그룹으로 뽑는다.
+    _claim "T0 줄 수" "$(grep -m1 -oE 'T0 [0-9]+줄' README.md | sed -E 's/T0 ([0-9]+)줄/\1/')" "$real_t0" "README.md"
+    _claim "T1 합계 줄 수" "$(grep -m1 -oE 'T1 [0-9]+개 [0-9,]+줄' README.md | grep -oE '[0-9,]+줄' | tr -d ',줄')" "$real_rl" "README.md"
     # 프리셋 축 개수. vue 축이 프리셋·팩·이음매·init 메뉴에 실재하는데 소비자 문서 3곳에
     # 한 번도 안 나왔고, README는 프론트를 4개라 주장했다. 검사가 같은 표의 옆 행에서
     # 멈춰 있었다 — 축을 늘리는 경로와 문서를 잇는 자리가 여기다 (평가 v5 · E-15).
@@ -959,6 +982,28 @@ run_fast() {
         _claim "그래프 엣지" "$a_ed" "$real_ed" "$AN"
       fi
     fi
+  fi
+
+  # 위 검사는 `grep -m1`로 **한 형식의 첫 매치만** 본다. 같은 문서가 다른 표현으로 같은 수를
+  # 또 적으면 안 보인다 — 실제로 해부 문서가 556줄 뒤에서 다른 수를 적고 있었고, 그 파일
+  # 자신이 "문서에 손으로 적은 수는 반드시 낡는다"고 경고하는 중이었다.
+  # 형식을 넓히되 **workflow.graph.json을 언급하는 줄**로 한정한다: 역사 서술
+  # (README가 "노드 N · 엣지 N"이라고 적어둔 사이…)은 대조 대상이 아닌데, 그 줄에는
+  # 파일명이 없어 자연히 빠진다.
+  if [ -n "$real_nd" ]; then
+    local gline gnode gedge gsrc
+    while IFS=: read -r gsrc gline; do
+      [ -z "$gline" ] && continue
+      gnode=$(printf '%s' "$gline" | sed -E 's/.*노드 ([0-9]+) · 엣지 ([0-9]+).*/\1/')
+      gedge=$(printf '%s' "$gline" | sed -E 's/.*노드 ([0-9]+) · 엣지 ([0-9]+).*/\2/')
+      _claim "그래프 노드(본문)" "$gnode" "$real_nd" "$gsrc"
+      _claim "그래프 엣지(본문)" "$gedge" "$real_ed" "$gsrc"
+    done < <(grep -lF 'workflow.graph.json' README.md CLAUDE.md docs/*.md 2>/dev/null \
+             | while IFS= read -r gf; do
+                 grep -HF 'workflow.graph.json' "$gf" 2>/dev/null \
+                   | grep -E '노드 [0-9]+ · 엣지 [0-9]+' | cut -d: -f1,2- \
+                   | sed -E "s|^([^:]*):|\\1:|"
+               done)
   fi
   [ "$wrong" -eq 0 ] && [ "$claims" -gt 0 ] && ok "문서 수치 주장 ${claims}건 실물과 일치"
 
@@ -1126,6 +1171,10 @@ run_self_test() {
   hd_before=$({ ls -1 dev/handoff 2>/dev/null || true; } | sort | tr '\n' ' ')
 
   local total=0 good=0
+  # 소비된 픽스처를 **측정**한다. 어떤 픽스처가 쓰이는지 검사 쪽에서 재유도하면
+  # (${event}.json 보간 + 리터럴 참조를 다시 구현하면) 사본이 하나 더 생기고,
+  # 선택 로직이 바뀌는 순간 검사가 조용히 틀린다. 실제로 먹인 것만 누적한다.
+  local used=""
   # 이벤트 → 스크립트 매핑을 hooks.json에서 읽어 각 이벤트 픽스처로 실행
   while IFS=$'\t' read -r event cmd; do
     [ -z "$cmd" ] && continue
@@ -1136,6 +1185,8 @@ run_self_test() {
     local fixture="$fx/${event}.json"
     [ -f "$fixture" ] || fixture="$fx/default.json"
     [ -f "$fixture" ] || { bad "$(basename "$f") [$event]: 픽스처 없음"; continue; }
+    used="$used$(basename "$fixture")
+"
 
     local out err code
     out=$(CLAUDE_PROJECT_DIR="$ROOT" bash "$f" < "$fixture" 2>/tmp/epcc_st_err); code=$?
@@ -1177,6 +1228,25 @@ run_self_test() {
         "계측이 자기가 재는 데이터를 오염시킨다 — epcc_handoff_dir() 격리 확인 필요"
   fi
 
+  # 폴백 증명 — 등록된 이벤트가 전부 named 픽스처를 가져 위 `default.json` 폴백은
+  # **한 번도 실행된 적이 없다**. 실행된 적 없는 경로는 작동한다는 증거가 없다.
+  # 새 훅 이벤트를 추가하는 순간 자기검사가 그것을 태우는지가 여기 달려 있다.
+  local synth_fixture pcode=0
+  synth_fixture="$fx/__epcc_unregistered_event__.json"
+  [ -f "$synth_fixture" ] || synth_fixture="$fx/default.json"
+  if [ ! -f "$synth_fixture" ]; then
+    bad "default.json 없음" "미등록 이벤트의 폴백이 없다 — 새 훅이 자기검사 사각으로 들어간다"
+  else
+    CLAUDE_PROJECT_DIR="$ROOT" bash scripts/session-brief.sh < "$synth_fixture" >/dev/null 2>&1 || pcode=$?
+    used="$used$(basename "$synth_fixture")
+"
+    if [ "$pcode" -eq 0 ] || [ "$pcode" -eq 2 ]; then
+      ok "픽스처 폴백 작동 (미등록 이벤트 → default.json → exit $pcode)"
+    else
+      bad "픽스처 폴백이 깨졌다 (exit $pcode)" "새 훅 이벤트를 추가해도 자기검사가 그것을 태우지 못한다"
+    fi
+  fi
+
   # ── 양성 픽스처 (B-7): '살아있다'가 아니라 '막는다'를 증명 ──
   # 무해 픽스처는 exit 0만 확인한다. 차단돼야 할 입력이 실제로 exit 2로
   # 차단되는지는 별도 증명이 필요하다 (v2 교훈: 살아있음 ≠ 작동함).
@@ -1184,20 +1254,32 @@ run_self_test() {
   # 도구 경로마다 따로 증명한다. 매처가 Edit|Write|MultiEdit뿐이던 동안 Bash 힙독으로
   # 쓰는 시크릿은 차단이 0이었고, Write 픽스처만 통과시켜 그 사실이 보이지 않았다
   # (평가 v5 · E-20). 커버리지의 구멍은 **경로별 픽스처가 없으면 보이지 않는다**.
-  local bfx bcode blabel
+  local bfx bcode blabel bwant brest bout
   # 파괴적 명령은 시크릿과 **다른 축**이다 (파일을 하나도 쓰지 않고 되돌릴 수 없게 만든다).
   # 축이 다르면 픽스처도 따로 있어야 한다 — 시크릿 픽스처가 통과해도 이쪽 커버리지는 0일 수 있다.
-  for bfx in "PreToolUse-block.json:Write 시크릿 주입" \
-             "PreToolUse-bash-block.json:Bash 힙독 시크릿 주입" \
-             "PreToolUse-bash-destructive.json:Bash 파괴적 명령"; do
-    blabel="${bfx#*:}"; bfx="$fx/${bfx%%:*}"
+  #
+  # 3번째 필드는 **기대 사유**다. exit 2만 보면 시크릿 픽스처가 파괴적 명령 분기에
+  # 걸려도 통과한다 — 축별 커버리지를 증명하려고 픽스처를 나눠 놓고 정작 어느 축이
+  # 잡았는지 안 보는 셈이었다. 사유는 `block`의 **1번 인자(제목)**만 쓴다:
+  # 2번 인자(패턴 힌트)에는 리터럴 패턴이 들어 있어(security-check.sh의 "패턴: sk-proj-")
+  # 여기 적으면 doctor.sh 자신이 그 훅에 막힌다.
+  for bfx in "PreToolUse-block.json:Write 시크릿 주입:AWS Access Key ID 하드코딩" \
+             "PreToolUse-bash-block.json:Bash 힙독 시크릿 주입:AWS Access Key ID 하드코딩" \
+             "PreToolUse-bash-destructive.json:Bash 파괴적 명령:테이블 전체 비우기"; do
+    brest="${bfx#*:}"; bfx="$fx/${bfx%%:*}"
+    blabel="${brest%%:*}"; bwant="${brest#*:}"
     if [ -f "$bfx" ] && [ -f scripts/security-check.sh ]; then
       bcode=0
-      CLAUDE_PROJECT_DIR="$ROOT" bash scripts/security-check.sh < "$bfx" >/dev/null 2>&1 || bcode=$?
-      if [ "$bcode" -eq 2 ]; then
-        ok "security-check: $blabel → exit 2 (차단 확인)"
-      else
+      bout=$(CLAUDE_PROJECT_DIR="$ROOT" bash scripts/security-check.sh < "$bfx" 2>&1) || bcode=$?
+      used="$used$(basename "$bfx")
+"
+      if [ "$bcode" -ne 2 ]; then
         bad "security-check: $blabel에 exit $bcode" "차단 훅이 잡아야 할 것을 잡지 못함 — 미탐"
+      elif printf '%s' "$bout" | grep -qF "$bwant"; then
+        ok "security-check: $blabel → exit 2 ('$bwant' — 의도한 사유)"
+      else
+        bad "security-check: $blabel이 다른 사유로 차단됨" \
+            "기대 '$bwant' / 실제 '$(printf '%s' "$bout" | grep -m1 '차단:' | sed 's/^[^:]*: *//')' — 축별 커버리지가 증명되지 않는다"
       fi
     else
       warn "양성 픽스처 없음 ($bfx)" "그 도구 경로의 차단 능력이 증명되지 않은 상태"
@@ -1211,6 +1293,8 @@ run_self_test() {
               "PreToolUse-bash-destructive-ok.json:파괴 구문 조사 명령"; do
     oklabel="${okfx#*:}"; okfx="$fx/${okfx%%:*}"
     [ -f "$okfx" ] || { warn "오탐 픽스처 없음 ($okfx)" "그 경로의 오탐 방어가 증명되지 않은 상태"; continue; }
+    used="$used$(basename "$okfx")
+"
     bcode=0
     CLAUDE_PROJECT_DIR="$ROOT" bash scripts/security-check.sh < "$okfx" >/dev/null 2>&1 || bcode=$?
     if [ "$bcode" -eq 0 ]; then
@@ -1337,6 +1421,11 @@ run_self_test() {
       _fx_static_case "$sfx" graph-missing 'skills/orphan-skill/SKILL.md' 'orphan-skill' \
         "그래프 미선언 스킬" 'mkdir -p "$T/skills/orphan-skill" && printf -- "---\nname: orphan-skill\ndescription: x\n---\n" > "$T/skills/orphan-skill/SKILL.md"' --graph
 
+      # 훅을 등록하고 그래프에 선언하지 않은 상태 (G5 대칭). 스킬 쪽만 검사하던 동안
+      # 훅은 사각이었고, 요구는 rules/harness-change.md에 사람이 읽는 규범으로만 있었다.
+      _fx_static_case "$sfx" hook-undeclared 'hooks/hooks.json' 'y\.sh' \
+        "그래프 미선언 훅" 'jq ".hooks.Stop = [{\"hooks\":[{\"type\":\"command\",\"command\":\"bash scripts/y.sh\"}]}]" "$T/hooks/hooks.json" > "$T/h.tmp" && mv "$T/h.tmp" "$T/hooks/hooks.json" && printf -- "#!/bin/bash\nexit 0\n" > "$T/scripts/y.sh"' --graph
+
       # 라우팅 카드가 호출을 선언했는데 그래프 노드에 phase가 없는 상태 (G6).
       # \140 은 백틱 — eval에서 명령 치환으로 해석되지 않게 8진 이스케이프를 쓴다.
       _fx_static_case "$sfx" phase-unmapped 'rules/workflow-routing.md' '^\| P1' \
@@ -1379,6 +1468,54 @@ run_self_test() {
       _fx_static_case "$sfx" self-name-leak 'skills/sample/SKILL.md' 'EasyPeasyClaudeCodeDevkit' \
         "저장소 이름 누출" 'printf -- "예시 프로젝트: EasyPeasyClaudeCodeDevkit\n" >> "$T/skills/sample/SKILL.md"'
     fi
+  fi
+
+  # ── 고아 픽스처 ────────────────────────────────────────────────────
+  # 위에서 **실제로 먹인** 것과 디렉토리를 대조한다. 어떤 픽스처가 쓰이는지 재유도하지
+  # 않으므로(${event}.json 보간 + 리터럴 참조를 다시 구현하지 않으므로) 선택 로직이 바뀌어도
+  # 영원히 일치한다. templates/에는 이 검사가 있었는데(고아 자산) 정작 **자기검증 도구인
+  # 픽스처**에는 없어서 죽은 픽스처가 조용히 살았다 — 원칙이 자기 자신에게만 면제됐다.
+  sec "픽스처 소비"
+  local ofx ob orphf=0 ocnt=0
+  while IFS= read -r ofx; do
+    [ -f "$ofx" ] || continue
+    ocnt=$((ocnt+1)); ob=$(basename "$ofx")
+    printf '%s' "$used" | grep -qxF "$ob" && continue
+    bad "고아 픽스처: $ofx" "아무 검사도 이 픽스처를 먹이지 않는다 — 죽은 자산이거나 배선 누락이다"
+    orphf=$((orphf+1))
+  done < <(find "$fx" -maxdepth 1 -name '*.json' 2>/dev/null | sort)
+  [ "$orphf" -eq 0 ] && [ "$ocnt" -gt 0 ] && ok "픽스처 ${ocnt}건 모두 소비됨"
+
+  # ── 하트비트 회전 불변식 ──────────────────────────────────────────
+  # **회전은 어떤 컴포넌트의 마지막 증거도 지우지 않는다.**
+  # 이것이 깨지면 생존 지표가 살아있는 훅을 "실행된 적 없음"으로 보고한다 — 실측으로
+  # 그랬다: security-check가 Edit/Write/Bash 전부에 걸려 로그의 97%를 차지하고
+  # track-skill의 이력을 창 밖으로 밀어냈다. 구현이 tail -1000으로 되돌아가도 잡을
+  # 검사가 없던 자리다. 코드 모양이 아니라 **행동**을 본다.
+  sec "하트비트 회전 불변식"
+  local rt rn
+  rt=$(mktemp -d 2>/dev/null) || rt=""
+  if [ -z "$rt" ]; then
+    warn "임시 디렉토리 생성 실패" "회전 불변식이 증명되지 않은 상태"
+  else
+    { printf 'ghost-hook|2026-01-01T00:00:00Z|x|0\n'
+      awk 'BEGIN{ for (i = 0; i < 2100; i++) print "noisy-hook|2026-01-02T00:00:00Z|x|0" }'
+    } > "$rt/hookrun.log"
+    EPCC_STATE_DIR="$rt" EPCC_ROOT="$rt" EPCC_HOOK_NAME="noisy-hook" \
+      bash -c '. "$1/scripts/lib/common.sh"; epcc_heartbeat 0' _ "$ROOT" >/dev/null 2>&1
+    rn=$(num "$(wc -l < "$rt/hookrun.log" 2>/dev/null | tr -d ' ')")
+    if awk -F'|' '{print $1}' "$rt/hookrun.log" 2>/dev/null | grep -qx 'ghost-hook'; then
+      ok "밀려난 훅의 마지막 증거가 회전 후에도 남는다 (${rn}행)"
+    else
+      bad "회전이 밀려난 훅의 증거를 지웠다 (${rn}행)" \
+          "생존 지표가 살아있는 훅을 '실행된 적 없음'으로 보고하게 된다"
+    fi
+    if [ "$rn" -gt 0 ] && [ "$rn" -le 1100 ]; then
+      ok "회전 후 크기 유계 (${rn}행 ≤ 1100)"
+    else
+      bad "회전 후 크기 ${rn}행" "0이면 로그가 통째로 날아간 것이고, 상한을 넘으면 무한 증식한다"
+    fi
+    rm -rf "$rt"
   fi
 
   # 루트 해석 확인
@@ -1449,6 +1586,25 @@ run_graph() {
     bad "그래프 미선언 스킬 ${undecl}개" "선언이 없으면 호출 근거도 없다 —$ulist"
   else
     ok "스킬 전부 그래프에 선언됨"
+  fi
+
+  # 미선언 훅 (G5 대칭) — 위 검사는 skills/만 돈다. 훅에는 대응물이 없어서 여섯 번째 훅을
+  # 등록하고 그래프 노드를 안 넣어도 아무도 모른다. 요구사항은 rules/harness-change.md에
+  # **사람이 읽는 규범으로만** 있었고, 지금 성립하는 것은 규율이지 기계가 아니다.
+  # id가 아니라 **path로 대조한다** — session-brief.sh의 노드 id는 'session-start'라
+  # basename 비교는 즉시 오탐이 난다.
+  local hundecl=0 hlist="" hpath
+  while IFS= read -r hpath; do
+    [ -z "$hpath" ] && continue
+    jq -e --arg p "$hpath" '[.nodes[]? | select(.kind=="hook" and .path==$p)] | length > 0' \
+      "$g" >/dev/null 2>&1 && continue
+    hundecl=$((hundecl+1)); hlist="$hlist $hpath"
+  done < <(jq -r '.hooks | to_entries[] | .value[]?.hooks[]?.command' hooks/hooks.json 2>/dev/null \
+           | grep -oE 'scripts/[a-z0-9./-]+\.sh' | sort -u)
+  if [ "$hundecl" -gt 0 ]; then
+    bad "그래프 미선언 훅 ${hundecl}개" "hooks.json에 등록됐는데 그래프에 노드가 없다 — 계측 사각 —$hlist"
+  else
+    ok "훅 전부 그래프에 선언됨"
   fi
 
   # 에러 엣지 선언 여부 (G4)
@@ -1797,7 +1953,7 @@ run_usage() {
   fi
 
   sec "상주 컨텍스트 비용"
-  # 호출 여부와 무관하게 **매 세션 무조건** 들어가는 비용. T0만 예산(40줄)이 있었고
+  # 호출 여부와 무관하게 **매 세션 무조건** 들어가는 비용. T0만 예산(42줄)이 있었고
   # 나머지는 아무도 세지 않았다 — 특히 스킬 description은 스킬을 한 번도 안 써도
   # 전량이 상주한다. 그래서 평가 축 P5가 계속 '미계측'이었다.
   # 단위는 **바이트**다(wc -c). 한국어는 문자당 약 3바이트라 문자 수보다 크다 —

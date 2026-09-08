@@ -25,7 +25,7 @@
 
   "backend": {
     "resources": [
-      { "file": "api-routes.md",             "nav": "Route Handler 추가 · 요청/응답 봉투 · 페이지네이션 계약" },
+      { "file": "api-endpoints.md",          "nav": "Route Handler 추가 · 요청/응답 봉투 · 페이지네이션 계약" },
       { "file": "auth-boundaries.md",        "nav": "getUser 경계 · RLS와 앱 검사의 역할 분담 · service role 격리" },
       { "file": "validation-and-errors.md",  "nav": "Zod 스키마 배선 · 에러 봉투·헬퍼 · env 검증 · 에러 코드표 · 로깅" },
       { "file": "server-client.md",          "nav": "요청 단위 Supabase 클라이언트 생성 (쿠키 결합)" },

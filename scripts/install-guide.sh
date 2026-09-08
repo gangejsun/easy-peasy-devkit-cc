@@ -258,6 +258,54 @@ except Exception: print('')" 2>/dev/null)
     AXIS_STATE=resources
   fi
 
+  # ── 은퇴 리소스 정리 ────────────────────────────────────────────────
+  # put()은 더하고 갱신할 뿐 **지우지 않는다.** 그래서 팩·이음매에서 리소스 이름이 바뀌면
+  # 소비자에는 옛 파일이 영구히 남는다. 무해한 고사 파일로 보이지만 그렇지 않다:
+  # --gate가 Navigation 커버리지를 `resources/*.md` 글롭으로 검사하므로, 그 상태에서
+  # 게이트를 돌리면 「미커버 리소스」로 FAIL하고 **멀쩡한 가이드 전체가
+  # .epcc/failed-guides/로 격리된다**(실측).
+  #
+  # 기준은 **직전 assembly.json**이다 — 설치기가 이전에 만든 파일만 지운다. 사용자가
+  # 손으로 넣은 파일은 거기 없으므로 건드리지 않는다. put()이 "사용자 수정본 — 보존"으로
+  # 지키는 것과 같은 경계다. 은퇴 이름 목록을 손으로 관리하지 않으므로 앞으로의 모든
+  # rename·삭제에 자동으로 작동한다.
+  if [ "$DRY" -eq 0 ] && [ -f "$dst/assembly.json" ]; then
+    local newfiles="" rf retired=0 oldf
+    for rf in "$packdir/resources"/*.md; do
+      if [ -f "$rf" ]; then newfiles="$newfiles$(basename "$rf")
+"; fi
+    done
+    if [ -n "$seamdir" ]; then
+      for rf in "$seamdir/resources"/*.md; do
+        if [ -f "$rf" ]; then newfiles="$newfiles$(basename "$rf")
+"; fi
+      done
+    fi
+    # **이번 실행이 실제로 해석한 범주만 정리한다.** seamdir가 비는 것은 "이음매 리소스가
+    # 사라졌다"가 아니라 "이번 호출이 이음매를 못 찾았다"이다 — session-brief가 권하는
+    # 갱신 명령에는 --seam이 없고 사전 제작 이음매는 캐시 대상이 아니라 항상 그렇게 된다.
+    # 그 상태에서 seamFiles를 은퇴시키면 put_hub도 안 불려 SKILL.md가 그대로 남고,
+    # **지운 파일을 참조하는 깨진 허브**가 된다. packFiles는 packdir가 늘 해석되므로 안전하다.
+    local cands; cands=$(grep -oE '"packFiles"[^]]*\]' "$dst/assembly.json" 2>/dev/null \
+                         | grep -oE '"[A-Za-z0-9._-]+\.md"' | tr -d '"')
+    if [ -n "$seamdir" ]; then
+      cands="$cands
+$(grep -oE '"seamFiles"[^]]*\]' "$dst/assembly.json" 2>/dev/null \
+  | grep -oE '"[A-Za-z0-9._-]+\.md"' | tr -d '"')"
+    fi
+    while IFS= read -r oldf; do
+      if [ -z "$oldf" ]; then continue; fi
+      if [ ! -f "$dst/resources/$oldf" ]; then continue; fi
+      if printf '%s' "$newfiles" | grep -qxF "$oldf"; then continue; fi
+      printf '    - %-30s 은퇴 — 이번 조립본에 없습니다\n' "$oldf"
+      rm -f "$dst/resources/$oldf"
+      retired=$((retired+1))
+    done < <(printf '%s\n' "$cands" | sort -u)
+    if [ "$retired" -gt 0 ]; then
+      printf '    은퇴 리소스 %s개 정리 (직전 assembly.json 기준)\n' "$retired"
+    fi
+  fi
+
   # 조립 원장 — 무엇이 어디서 왔는지. 게이트가 팩 소유 파일을 식별하는 근거
   if [ "$DRY" -eq 0 ]; then
     { printf '{\n  "axis": "%s",\n  "pack": "%s/%s",\n  "packVersion": "%s",\n' "$axis" "$axis" "$pack" "${pv#v}"

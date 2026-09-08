@@ -127,7 +127,7 @@ export const http = {
 
 ```ts
 // features/tasks/api/tasks.api.ts — URL·쿼리스트링 조립이 이 파일 밖으로 새지 않는다.
-// toQuery(f, cursor)는 status·limit·cursor를 조립한다 (전체 구현은 full-example.md §2)
+// toQuery(f, cursor)는 status·limit·cursor를 조립한다 (전체 구현은 complete-example.md §2)
 export const listTasks = (f: TaskFilter, cursor?: string, signal?: AbortSignal): Promise<Page<Task>> =>
   http.getPage<Task>(`/tasks?${toQuery(f, cursor)}`, { signal, parse: parseTask });
 
@@ -182,7 +182,7 @@ export function useTasksQuery(filter: TaskFilter) {
 ## 4. 뮤테이션과 무효화
 
 ```ts
-// useMutation의 onSuccess (전체 훅은 full-example.md §4)
+// useMutation의 onSuccess (전체 훅은 complete-example.md §4)
 onSuccess: (created) => {
   qc.invalidateQueries({ queryKey: taskKeys.lists() });   // 목록 전체 무효화
   qc.setQueryData(taskKeys.detail(created.id), created);  // 상세는 응답으로 즉시 채움

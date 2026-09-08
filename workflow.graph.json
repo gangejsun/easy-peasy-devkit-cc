@@ -1,6 +1,5 @@
 {
   "$comment": "하네스를 기계 판독 가능한 그래프로 선언한다. v2에서 이 그래프는 마크다운 표와 산문에 흩어져 있어 검증도 계측도 불가능했고, 그 결과 '선언됐지만 도달 불가능한 자산'(rules/ 697줄)이 4개월간 아무에게도 발견되지 않았다. doctor --graph가 이 파일로 dangling 엣지·도달 불가 노드·에러 엣지 누락을 검사한다. edges의 instrumented:true 는 훅이 실제로 방출하는 엣지다. stage 간 엣지는 모델 행동이라 코드가 방출할 수 없으므로 '죽은 엣지' 판정에서 제외한다. nodes의 phase 는 rules/workflow-routing.md의 Phase 어휘(P0-A~E·P1~P6)와 이 그래프를 잇는다 — 두 어휘가 어긋나면 라우팅이 기계 검사 불가가 된다. nodes의 produces 는 '하네스가 나중에 다시 읽는 산출물'에만 붙인다 — 사용자에게 최종 전달되고 끝나는 산출물(마케팅 사이트·파비콘 등)은 store가 아니다. store 노드는 쓰기(인바운드)와 읽기(아웃바운드) 엣지를 모두 가져야 한다: 읽는 노드가 없는 저장소는 비용만 있고 드리프트의 원천이다.",
-  "version": "3.20.0",
   "nodes": [
     {
       "id": "session-start",
@@ -356,15 +355,6 @@
       "when": "Irreversible 교차검증 — 외부 모델(Codex) 렌즈 추가"
     },
     {
-      "id": "gemini-claude-loop",
-      "kind": "skill",
-      "phase": [
-        "P6"
-      ],
-      "path": "skills/gemini-claude-loop/SKILL.md",
-      "when": "Irreversible 교차검증 — 외부 모델(Gemini) 렌즈 추가"
-    },
-    {
       "id": "epcc-init",
       "kind": "skill",
       "path": "skills/epcc-init/SKILL.md",
@@ -623,17 +613,7 @@
       "cond": "외부 모델 검증 선택 시"
     },
     {
-      "from": "cross-check",
-      "to": "gemini-claude-loop",
-      "cond": "외부 모델 검증 선택 시"
-    },
-    {
       "from": "codex-claude-loop",
-      "to": "receiving-code-review",
-      "cond": "외부 리뷰 판정 반환"
-    },
-    {
-      "from": "gemini-claude-loop",
       "to": "receiving-code-review",
       "cond": "외부 리뷰 판정 반환"
     },

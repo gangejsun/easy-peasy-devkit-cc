@@ -76,7 +76,7 @@ RDS Proxy는 **인프라 층에 머무는 예**다. 앱은 호스트가 프록�
 | 대상 클레임 | `client_id` (액세스 토큰) | `aud` |
 | 그룹 클레임 | `cognito:groups` | `realm_access.roles` |
 
-**코드가 바뀌는 곳은 클레임 정규화 함수 하나뿐**이다 (`resources/auth-and-permissions.md`).
+**코드가 바뀌는 곳은 클레임 정규화 함수 하나뿐**이다 (`resources/auth-boundaries.md`).
 `aws-jwt-verify`, `amazon-cognito-identity-js`, Cognito Admin SDK는 `src/`에 들이지 않는다.
 사용자 생성·비밀번호 재설정 같은 관리 작업이 필요하면 별도 운영 스크립트로 분리한다.
 

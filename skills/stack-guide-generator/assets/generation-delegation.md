@@ -49,7 +49,7 @@ frontend-guide를 만드는 에이전트에게도 **백엔드 축을 알려준�
      이후 모든 리소스가 참조하는 유일한 정본이다
    - **층 2 · 소비**: 리소스를 쓰면서 새로 도입한 **프로젝트 로컬 심볼을 원장에 등재**한다
      (라이브러리 API는 제외). 행 형식은 `| 심볼 | 정의 파일 | 소비처 |` —
-     예: ``| `requireOwner` | auth-and-permissions.md | api-endpoints.md, complete-example.md |``
+     예: ``| `requireOwner` | auth-boundaries.md | api-endpoints.md, complete-example.md |``
    - **층 3 · 통합**: 완전 예제를 **원장만으로 조립**한다. 원장에 없는 심볼을 쓰지 않고
      (미정의 호출 불가), 소비처가 빈 심볼은 여기서 소비하거나 삭제한다 (유령 정의 불가)
 

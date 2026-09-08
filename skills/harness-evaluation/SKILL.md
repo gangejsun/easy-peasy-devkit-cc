@@ -82,7 +82,7 @@ grep -rn 'Small\|Medium\|Large' skills/*/SKILL.md
 # P3 — 반복 상한 (공유 파일 포함)
 grep -rln '최대 [0-9]회\|1회 재' skills/*/SKILL.md skills/*/references/*.md
 # P7-① — 밖으로 나가는 노드 · P7-② — 잔존물
-grep -rln 'WebSearch\|WebFetch\|codex\|gemini' skills/*/SKILL.md agents/*.md
+grep -rln 'WebSearch\|WebFetch\|codex' skills/*/SKILL.md agents/*.md
 ls dev/handoff/ 2>/dev/null | wc -l
 ```
 
@@ -143,4 +143,4 @@ ls dev/handoff/ 2>/dev/null | wc -l
 | --- | --- |
 | P2-④ 오탐 | `rules/harness-change.md`의 3상태 규율은 있었으나 계측하는 축이 없었다 |
 | P6-③ 애매 | 평가 v1의 E-02 "꺼지지 않는 경고는 무시를 학습시킨다"의 일반화 |
-| P7 경계 | 외부 모델 루프(codex·gemini)의 유출과 `dev/handoff/` 무제한 잔존을 어떤 축도 보지 않았다 |
+| P7 경계 | 외부 모델 루프(codex)의 유출과 `dev/handoff/` 무제한 잔존을 어떤 축도 보지 않았다 |

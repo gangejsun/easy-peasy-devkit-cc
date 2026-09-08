@@ -262,7 +262,7 @@ import { AppError } from '@/http/errors'
 | **테이블·컬럼·인덱스 설계 규칙** (정규화, 키, 제약) | `.claude/rules/data-modeling.md` |
 | Zod 스키마 작성, 요청 파싱 헬퍼, DB 제약 이중화 | `resources/input-validation.md` |
 | 환경변수 스키마, 비밀/공개 값 분리, 부팅 시 실패 | `resources/input-validation.md` |
-| 토큰 검증, `requireAuth` 배선, 역할·스코프, 로그인/로그아웃 흐름, 복귀 경로 검증 | `resources/auth-and-permissions.md` |
+| 토큰 검증, `requireAuth` 배선, 역할·스코프, 로그인/로그아웃 흐름, 복귀 경로 검증 | `resources/auth-boundaries.md` |
 | Vitest 설정, 핸들러 테스트, 실 DB 통합 테스트, 테스트용 토큰 서명 | `resources/testing.md` |
 | `docker compose` 로컬 패리티, 통합 테스트 DB 초기화·격리 | `resources/testing.md` |
 | AWS 종속을 인프라 층에 가두기, 온프레미스 이관 체크리스트, 로깅·저장소·비밀 | `resources/portability-boundaries.md` |

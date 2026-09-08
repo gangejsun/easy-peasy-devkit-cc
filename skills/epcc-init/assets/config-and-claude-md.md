@@ -22,6 +22,12 @@
     "presets": { "frontend": "<Step 2 선택>", "backend": "<Step 2 선택>" },
     "preset": "<frontend>+<backend>",           // 하위 호환 표기 — presets가 정본
 
+    // 차원 — 축이 아니다. 팩을 고르지 않고 팩의 조건부 슬롯을 켜고 끈다
+    "deliveryModel": "<web | hybrid | native | api-only — Step 2 ① 선택>",
+    "clientKind": "<browser | app>",            // 파생: web이면 browser, 나머지는 app
+    "pwa": false,                                // web일 때만 의미. 서비스워커·설치 슬롯을 켠다
+    "nativeStack": "",                           // native일 때만. React Native·Flutter 등
+
     // 프로젝트 대표값 — build-gate·health-check가 읽는다. 반드시 채운다
     "framework": "<대표 프레임워크>",
     "language": "<대표 언어>",

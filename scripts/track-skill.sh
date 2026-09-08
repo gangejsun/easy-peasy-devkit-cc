@@ -19,6 +19,11 @@ EPCC_HOOK_NAME="track-skill"
 EPCC_ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || printf '')}"
 [ -z "$EPCC_ROOT" ] && exit 0
 
+# 하트비트는 **첫 동작**이다 (security-check.sh와 같은 배치). 아래 조기 종료 뒤에 두면
+# "이 훅이 돌았다"는 사실이 .skill 유무에 좌우되고, 생존 지표가 실제로 돈 훅을
+# "실행된 적 없음"으로 보고한다. 훅이 돌았다는 것과 기록할 스킬이 있었다는 것은 다르다.
+epcc_heartbeat 0
+
 SKILL=$(epcc_field "$INPUT" '.tool_input.skill')
 [ -z "$SKILL" ] && exit 0
 
@@ -34,5 +39,4 @@ if [ "$N" -gt 5000 ]; then
     && mv "$DIR/skilluse.log.tmp" "$DIR/skilluse.log" 2>/dev/null || true
 fi
 
-epcc_heartbeat 0
 exit 0

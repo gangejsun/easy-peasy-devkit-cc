@@ -74,7 +74,7 @@ Array of skill names to disable. Disabled skills are excluded from SessionStart 
 
 ```json
 {
-  "disabledSkills": ["gemini-claude-loop", "business-planner"]
+  "disabledSkills": ["codex-claude-loop", "business-planner"]
 }
 ```
 

@@ -993,6 +993,69 @@ _pkg_has_product() { # $1=이름목록파일 $2=토큰
   grep -qE "^@?${esc}/" "$1" 2>/dev/null
 }
 
+# knownGaps 선언 ↔ 실물 대조.
+# knownGaps는 선언만 있고 **어떤 게이트도 읽지 않았다** — 그런데 react-vite/ledger.md는
+# "게이트가 REVIEW로 보고한다"고 적고 있었다. 유일한 후보인 check_symbols의 미정의 심볼
+# 분기는 @/ 별칭 import에서만 이름을 걷는데, 그 공백 심볼은 import 없이 JSX로 맨몸
+# 사용되므로 애초에 그 검사에 들어가지 못한다. 선언은 셋인데 집행은 0이었다.
+#
+# 여기서 하는 것은 두 방향이다: ① 선언된 공백이 아직 실재하는가(미해소) ②
+# 수리됐는데 기록만 남았는가(낡은 기록). 정의 유무 판정은 휴리스틱이라 FAIL이 아니라
+# REVIEW/WARN으로 낸다 — 사람이 판단할 자리를 기계가 차단하면 오탐이 되고, 오탐은 끈다.
+# 이음매의 knownGaps 항목이 어느 축 팩의 공백을 승계한 것인지 찾는다.
+# 이음매 매니페스트가 아니거나 어느 팩도 그 심볼을 선언하지 않으면 빈 문자열.
+_kg_owner_pack() {   # $1 매니페스트  $2 심볼
+  local j="$1" sym="$2" axis pk pj
+  case "$j" in */seam.json) ;; *) return 0;; esac
+  for axis in frontend backend; do
+    pk=$(grep -oE "\"${axis}Pack\"[[:space:]]*:[[:space:]]*\"[^\"]+\"" "$j" | sed -E 's|.*/||; s|"$||')
+    [ -n "$pk" ] || continue
+    pj="$PLUGIN_GUIDES/$axis/$pk/pack.json"
+    [ -f "$pj" ] || continue
+    if tr -d '\n' < "$pj" | grep -oE '"knownGaps"[[:space:]]*:[[:space:]]*\[[^]]*\]' \
+         | grep -qF "\"$sym\""; then
+      printf '%s/%s' "$axis" "$pk"; return 0
+    fi
+  done
+  return 0
+}
+
+check_known_gaps() {   # $1 디렉토리  $2 매니페스트(pack.json 또는 seam.json)
+  local D="$1" j="$2" ent sym whr tgt
+  [ -f "$j" ] || return 0
+  grep -q '"knownGaps"' "$j" 2>/dev/null || return 0
+  while IFS= read -r ent; do
+    sym=$(printf '%s' "$ent" | grep -oE '"symbol"[[:space:]]*:[[:space:]]*"[^"]+"' | sed -E 's/.*"([^"]+)"$/\1/')
+    [ -n "$sym" ] || continue
+    # where의 첫 토큰만 쓴다 — "resources/x.md §1·§2" 같은 표기가 있다.
+    whr=$(printf '%s' "$ent" | grep -oE '"where"[[:space:]]*:[[:space:]]*"[^"]+"' | sed -E 's/.*"([^"]+)"$/\1/' | sed 's/ .*//')
+    if [ -z "$whr" ]; then
+      # 3상태. 어디서 소비되는지 선언되지 않았으면 **판정하지 않는다** — 아무 데나 찾으면
+      # Task 같은 흔한 심볼이 도메인 어휘에 걸려 언제나 "미해소"가 된다(실측).
+      #
+      # 다만 이음매의 항목은 대개 **축 팩의 공백을 승계 기록**한 것이라 where를 쓸 자리가
+      # 없다(공백이 팩 안에 있다). 그 경우 팩 쪽 검사가 이미 판정하므로 경고하지 않는다 —
+      # 꺼지지 않는 경고는 무시를 학습시킨다.
+      if [ -n "$(_kg_owner_pack "$j" "$sym")" ]; then
+        ok "알려진 공백 $sym — $(_kg_owner_pack "$j" "$sym") 승계 (그 팩에서 판정된다)"
+      else
+        warn "알려진 공백 '$sym' — where 미선언" "어느 파일에서 소비되는지 없으면 해소 여부를 기계로 볼 수 없다. knownGaps 항목에 where를 적는다"
+      fi
+    elif [ ! -f "$D/$whr" ]; then
+      warn "알려진 공백 '$sym' — where 파일 없음: $whr" "기록이 실물과 어긋났다. 파일이 사라졌으면 항목도 지운다"
+    elif grep -qF -- "$sym" "$D/$whr" 2>/dev/null; then
+      rev "알려진 공백: $sym — $whr에 있다" "선언된 자리에서 여전히 소비된다. 팩이 정의하거나 이음매가 provides로 메웠는지 확인한다"
+    else
+      # **결론을 내지 않는다.** where가 두 의미로 쓰인다: 어떤 항목은 "심볼이 소비되는
+      # 자리"를(react-vite/routing.md) 가리키고, 어떤 항목은 "심볼이 **없는** 자리 —
+      # 그 부재가 곧 공백"을(aws-container/data-access.md의 CRUD 중 C 누락) 가리킨다.
+      # 존재 여부만으로 "수리됨"과 "여전히 빠져 있음"을 구분할 수 없으므로 사실만 보고한다.
+      rev "알려진 공백: $sym — $whr에 없다" "수리돼 기록만 남은 것인지, 부재 자체가 그 공백인지는 사람이 판단한다. 수리됐다면 knownGaps에서 지운다"
+    fi
+  done < <(tr -d '\n' < "$j" | grep -oE '"knownGaps"[[:space:]]*:[[:space:]]*\[[^]]*\]' | sed 's/},/}\n/g')
+  return 0
+}
+
 check_pack_meta() {
   local P="$1" j="$1/pack.json"
   sec "팩 메타 (pack.json)"
@@ -1566,6 +1629,7 @@ run_pack() {
   cut -f3 "$TMP/code.tsv" > "$TMP/code.txt"
 
   check_pack_meta "$P"
+  check_known_gaps "$P" "$P/pack.json"
   check_budget "$P"
   check_fences "$P"
   check_symbols "$P"
@@ -1851,6 +1915,58 @@ run_shipped_corpus() {
 # 팩의 requires가 늘거나 정책이 바뀌면 이음매가 조용히 어긋난다. 그 검사가 사람의
 # 성실함에 달려 있으면 놓친다. 조립해서 조립본 게이트와 --pair를 돌린다.
 # (조합당 3검사 × 이음매 수. --pack만으로는 requires 충족·대상=seam 정책이 켜지지 않는다)
+# seamSlots 3중 대조 (축 팩 선언 ↔ seam.json ↔ 실파일).
+# 축 팩에는 이 대조가 있었다(check_pack_meta의 resources[] ↔ 실파일) — **이음매에는 없었다.**
+# SKILL.md가 seamSlots를 "만들 파일 이름"으로 정의하므로 불일치는 스펙 위반이다.
+# 지금 안 깨지는 이유는 조립기(install-guide.sh)가 *.md를 **글롭으로** 복사해 슬롯 이름을
+# 해석하지 않기 때문이다 — 슬롯 이름으로 파일을 찾는 것이 하나라도 생기면 그 순간 깨지고,
+# 슬롯 기반 생성기는 기존 파일 **옆에** 슬롯 이름 파일을 하나 더 만들어 중복을 낳는다.
+check_seam_slots() {   # $1 이음매 디렉토리 (guides/seams/<조합>)
+  local S="$1" sj="$1/seam.json" combo; combo=$(basename "$S")
+  [ -f "$sj" ] || { warn "이음매 $combo — seam.json 없음"; return 0; }
+  local axis
+
+  # ① seam.json 선언 ↔ 실파일 (check_pack_meta와 같은 양방향 차집합)
+  grep -oE '"file"[[:space:]]*:[[:space:]]*"[^"]+"' "$sj" | sed -E 's/.*"([^"]+)"$/\1/' | sort -u > "$TMP/sjres.txt"
+  for axis in frontend backend; do
+    ls "$S/$axis"/resources/*.md 2>/dev/null | while read -r f; do basename "$f"; done
+  done | sort -u > "$TMP/sjreal.txt"
+  local smiss sghost
+  smiss=$(comm -13 "$TMP/sjres.txt" "$TMP/sjreal.txt" | tr '\n' ' ')
+  sghost=$(comm -23 "$TMP/sjres.txt" "$TMP/sjreal.txt" | tr '\n' ' ')
+  [ -n "$(printf '%s' "$smiss" | tr -d ' ')" ] && bad "이음매 $combo — seam.json resources[]에 없는 실파일: $smiss" "HUB Navigation 행이 생기지 않아 조립본에서 도달 불가가 된다"
+  [ -n "$(printf '%s' "$sghost" | tr -d ' ')" ] && bad "이음매 $combo — seam.json이 없는 파일을 가리킴: $sghost"
+  [ -z "$(printf '%s%s' "$smiss" "$sghost" | tr -d ' ')" ] && ok "이음매 $combo — seam.json resources[] ↔ 실파일 일치"
+
+  check_known_gaps "$S" "$sj"
+
+  # ② 축 팩의 seamSlots ↔ 그 축의 실파일
+  local pk pj sdiff
+  for axis in frontend backend; do
+    [ -d "$S/$axis/resources" ] || continue
+    pk=$(grep -oE "\"${axis}Pack\"[[:space:]]*:[[:space:]]*\"[^\"]+\"" "$sj" | sed -E 's|.*/||; s|"$||')
+    [ -n "$pk" ] || { warn "이음매 $combo/$axis — 팩 참조를 읽지 못함"; continue; }
+    pj="$PLUGIN_GUIDES/$axis/$pk/pack.json"
+    [ -f "$pj" ] || { warn "이음매 $combo/$axis — pack.json 없음 ($pk)"; continue; }
+    tr -d '\n' < "$pj" | grep -oE '"seamSlots"[[:space:]]*:[[:space:]]*\[[^]]*\]' \
+      | grep -oE '"[^"]+"' | sed -E 's/"([^"]+)"/\1/' | grep -vx 'seamSlots' \
+      | sed 's/$/.md/' | sort -u > "$TMP/slots.txt"
+    if [ ! -s "$TMP/slots.txt" ]; then
+      warn "이음매 $combo/$axis — 팩 $pk에 seamSlots 없음" "이음매가 채울 자리가 선언되지 않았다"
+      continue
+    fi
+    ls "$S/$axis"/resources/*.md 2>/dev/null | while read -r f; do basename "$f"; done | sort -u > "$TMP/slotreal.txt"
+    sdiff=$(comm -3 "$TMP/slots.txt" "$TMP/slotreal.txt" | tr -d '\t' | tr '\n' ' ')
+    if [ -n "$(printf '%s' "$sdiff" | tr -d ' ')" ]; then
+      bad "이음매 $combo/$axis — seamSlots ↔ 실파일 불일치: $sdiff" \
+          "$pk/pack.json의 seamSlots는 **만들 파일 이름**이다. 이름이 갈리면 슬롯으로 파일을 찾는 소비자가 생기는 순간 깨진다"
+    else
+      ok "이음매 $combo/$axis — seamSlots $(num "$(wc -l < "$TMP/slots.txt")")개 ↔ 실파일 일치"
+    fi
+  done
+  return 0
+}
+
 run_shipped_seams() {
   local root; root=$(cd "$PLUGIN_GUIDES/.." 2>/dev/null && pwd) || return 0
   local inst="$root/scripts/install-guide.sh"
@@ -1861,6 +1977,7 @@ run_shipped_seams() {
   for sj in "$PLUGIN_GUIDES"/seams/*/seam.json; do
     [ -f "$sj" ] || continue
     combo=$(basename "$(dirname "$sj")")
+    check_seam_slots "$(dirname "$sj")"
     fe=$(grep -oE '"frontendPack"[^"]*"[^"]+"' "$sj" | sed -E 's|.*/||; s|"$||')
     be=$(grep -oE '"backendPack"[^"]*"[^"]+"'  "$sj" | sed -E 's|.*/||; s|"$||')
     [ -n "$fe" ] && [ -n "$be" ] || { warn "이음매 $combo — 팩 참조를 읽지 못함"; continue; }

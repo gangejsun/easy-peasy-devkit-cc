@@ -52,10 +52,15 @@ dev/
 ```bash
 # 두 축의 프리셋 notes를 넘긴다 — 가이드는 한 축의 함수가 아니라 조합의 함수다.
 # 서버 코드가 어디 사는지(프론트 축) · 보안 경계가 어디인지 · 데이터 계층에 정책 엔진이
-# 있는지(백엔드 축)가 두 가이드의 내용을 함께 결정한다
+# 있는지(백엔드 축)가 두 가이드의 내용을 함께 결정한다.
+# 여기에 축이 아닌 차원도 함께 넘긴다 — deliveryModel·clientKind가 조건부 슬롯(오프라인·셸·
+# 인증 전달·멱등 수집·푸시·API 버전 협상)의 존폐를 가른다. 넘기지 않으면 슬롯이 기본값으로
+# 굳어 앱 프로젝트에 브라우저용 지침이 나간다
 mkdir -p .epcc && cat > .epcc/preset-notes.json <<'JSON'
 { "serverCode": "<프론트 프리셋 notes>", "securityBoundary": "<백엔드 프리셋 notes>",
-  "policyEngine": <true|false>, "language": "<TypeScript|JavaScript>" }
+  "policyEngine": <true|false>, "language": "<TypeScript|JavaScript>",
+  "deliveryModel": "<web|hybrid|native|api-only>", "clientKind": "<browser|app>",
+  "pwa": <true|false>, "nativeStack": "<native일 때만>" }
 JSON
 
 SEAM=""

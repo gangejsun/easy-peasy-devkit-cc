@@ -35,13 +35,13 @@
 표의 `증명 예`와 `fixesVariants`는 **의무**다(누락 시 FAIL). 계약(`seams/*/contract.md`)의
 **값은 목록·표 행에만** 쓴다: 산문의 백틱은 설명이고, 부정문을 목록에 쓰면 양쪽 요구가 된다.
 
-**차단 장치를 만들었으면 차단을 증명한다** — 결함을 심은 픽스처가 실제로 exit 1을 받는지,
-그리고 **의도한 이유로** 받는지 확인한다(`EPCC_FX_WHY=1`). 살아있음 ≠ 작동함이다.
+**차단 장치를 만들었으면 차단을 증명한다** — 결함을 심은 픽스처가 exit 1을 받는지, 그리고
+**의도한 이유로** 받는지 확인한다(사유 대조는 자기검사에 내장). 살아있음 ≠ 작동함이다.
 
 ## 변경 후 필수
 
 ```bash
-bash scripts/doctor.sh --fast && bash scripts/doctor.sh --self-test
+bash scripts/doctor.sh --default && bash scripts/doctor.sh --self-test
 bash scripts/doctor.sh --consumer   # 훅·설치기를 건드렸으면 — 소비자 레이아웃 실증
 # 가이드 하네스를 건드렸으면. 버전 올릴 때는 --self-test 대신 --regress (출하 자산 회귀)
 bash skills/stack-guide-generator/scripts/guide-gate.sh --self-test

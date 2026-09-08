@@ -274,4 +274,4 @@ TaskCard.displayName = 'TaskCard';
 | 로그인/로그아웃 · 토큰 보관 · 401 처리 · 캐시 정리 · issuer 교체 | `resources/auth-and-session.md` |
 | TypeScript 설정 · API 타입 좁히기 · 환경변수 타입 | `resources/types-and-testing.md` |
 | 컴포넌트/훅 테스트 · HTTP 모킹 · 스토어 초기화 | `resources/types-and-testing.md` |
-| 기능 하나를 목록 조회 + 생성까지 처음부터 끝까지 | `resources/full-example.md` |
+| 기능 하나를 목록 조회 + 생성까지 처음부터 끝까지 | `resources/complete-example.md` |

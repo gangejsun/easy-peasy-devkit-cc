@@ -63,6 +63,32 @@
           "default": "none+none",
           "description": "레거시 단일축 이름('nextjs-supabase' 등) 또는 복합 표기 '<frontend>+<backend>'. 신규 설정은 presets 객체를 정본으로 쓰고 이 필드는 하위 호환용으로 함께 기록한다"
         },
+        "deliveryModel": {
+          "type": "string",
+          "enum": [
+            "web",
+            "hybrid",
+            "native",
+            "api-only"
+          ],
+          "description": "제품이 사용자에게 도달하는 형태. 축이 아니라 차원이다 — 팩을 고르지 않고 팩의 조건부 슬롯(오프라인·셸·인증 전달·푸시)을 켜고 끈다. hybrid는 웹 코드를 네이티브 셸로 감싸는 형태(Capacitor 등), native는 React Native·Flutter·Swift·Kotlin을 통칭한다(대응 축 팩이 없어 생성 경로를 탄다)"
+        },
+        "clientKind": {
+          "type": "string",
+          "enum": [
+            "browser",
+            "app"
+          ],
+          "description": "deliveryModel의 파생값 — 'web'이면 browser, 나머지 셋은 app. 백엔드·인프라 가이드가 보는 유일한 값이다. 각 팩이 제각기 재유도하면 서술이 갈리므로 여기 한 곳에서 정하고 팩은 이 값만 본다. browser면 쿠키 세션·CSRF, app이면 Bearer + 보안 저장소·멱등 배치 수집·푸시·API 버전 협상 슬롯이 살아난다"
+        },
+        "pwa": {
+          "type": "boolean",
+          "description": "deliveryModel이 'web'일 때만 의미가 있다. true면 프론트엔드 가이드의 서비스워커·매니페스트·오프라인 캐시·설치 프롬프트·업데이트 전략 슬롯이 살아난다"
+        },
+        "nativeStack": {
+          "type": "string",
+          "description": "deliveryModel이 'native'일 때 실제 사용 기술(React Native·Flutter·Swift·Kotlin 등). 대응 축 팩이 없으므로 프론트엔드 가이드는 이 값을 입력으로 생성된다"
+        },
         "framework": {
           "type": "string",
           "description": "프로젝트 대표 프레임워크 (축별 상세는 techStack.frontend/backend). 하위 호환 유지 필드"

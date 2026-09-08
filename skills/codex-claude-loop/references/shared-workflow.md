@@ -1,8 +1,7 @@
-<!-- epcc-doctor: shared-copy — codex-claude-loop과 gemini-claude-loop이 같은 내용을 보유해야 한다 -->
 # AI Review Loop — 공통 워크플로우
 
-이 파일은 codex-claude-loop과 gemini-claude-loop이 공유하는 워크플로우를 정의합니다.
-provider별 차이(CLI 명령어, API 키, 전제조건)는 각 SKILL.md에서 정의합니다.
+이 파일은 `codex-claude-loop`의 워크플로우 본문이다. provider별 차이(CLI 명령어 · API 키 ·
+전제조건)는 SKILL.md가 정의한다.
 
 ## 핵심 철학
 

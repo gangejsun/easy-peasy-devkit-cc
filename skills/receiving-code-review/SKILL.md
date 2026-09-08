@@ -1,6 +1,6 @@
 ---
 name: receiving-code-review
-description: 받은 코드 리뷰 피드백을 기술적으로 검증하고 심각도별로 처리합니다. 내장 /code-review 결과, epcc-reviewer 보고, 외부 AI 교차검증(gemini/codex) 결과, 사용자가 전달한 외부 리뷰를 받았을 때 사용합니다. 피드백을 맹목 수용하지 않고 실제 코드로 사실 확인한 뒤 채택하며, 틀린 지적은 근거와 함께 반박합니다.
+description: 받은 코드 리뷰 피드백을 기술적으로 검증하고 심각도별로 처리합니다. 내장 /code-review 결과, epcc-reviewer 보고, 외부 AI 교차검증(codex) 결과, 사용자가 전달한 외부 리뷰를 받았을 때 사용합니다. 피드백을 맹목 수용하지 않고 실제 코드로 사실 확인한 뒤 채택하며, 틀린 지적은 근거와 함께 반박합니다.
 ---
 
 # Receiving Code Review
@@ -35,7 +35,7 @@ description: 받은 코드 리뷰 피드백을 기술적으로 검증하고 심�
 | 소스 | 실행 경로 |
 |------|----------|
 | 내장 `/code-review` 또는 `epcc-reviewer` 결과 | Step 2 → Step 3 → Step 4 |
-| 외부 AI 교차검증(`gemini-claude-loop`·`codex-claude-loop`) 결과 | Step 2 → Step 3 → Step 4 |
+| 외부 AI 교차검증(`codex-claude-loop`) 결과 | Step 2 → Step 3 → Step 4 |
 | 사용자가 전달한 외부 리뷰 피드백 | Step 2(소스 신뢰도 낮음으로 검증 강화) → Step 3 → Step 4 |
 
 ### Step 2: 피드백 검증

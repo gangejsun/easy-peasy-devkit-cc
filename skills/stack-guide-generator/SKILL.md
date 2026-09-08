@@ -44,7 +44,7 @@ cat .epcc/guide-job.json 2>/dev/null
 | `combo` | 확정된 조합. Step 1의 축 질문을 **하지 않는다** |
 | `need` | 만들 것. 아래 어휘가 Step 2 분기 표의 행과 1:1로 대응한다 |
 | `packs` | 조립된 팩 경로. 그 축은 「팩이 있는 축」이므로 Step 2의 세 파일을 읽는다 |
-| `notes` | 프리셋 notes(serverCode·securityBoundary·policyEngine·language). 조합 의존성의 입력 전부 |
+| `notes` | 축의 프리셋 notes(serverCode·securityBoundary·policyEngine·language) **＋ 축이 아닌 차원**(deliveryModel·clientKind·pwa·nativeStack). 조합 의존성과 조건부 슬롯 판정의 입력 전부 |
 
 | `need` 항목 | 뜻 | 만들 것 |
 | --- | --- | --- |
@@ -74,7 +74,8 @@ epcc-init을 거쳤으면 `techStack.presets`(2축 선택)과 `techStack.fronten
 
 | 차원 | 선택지 예 | 의존 규칙 |
 | --- | --- | --- |
-| 프론트엔드 | Next.js · React+Vite · SvelteKit · 없음(API 전용) | — |
+| **제품 형태** | 웹 · 하이브리드 앱 · 네이티브 계열 · API 전용 | **가장 먼저 확정한다** — 프론트엔드 선택지를 가르고, 파생값 `clientKind`가 backend-guide 슬롯을 가른다. `techStack.deliveryModel`이 있으면 이미 확정 |
+| 프론트엔드 | Next.js · React+Vite · SvelteKit · 없음(API 전용) | 제품 형태가 「네이티브 계열」이면 대응 축 팩이 없어 `nativeStack`을 입력으로 전량 생성한다 |
 | 백엔드 유형 | BaaS(Supabase·Firebase) · 클라우드 자체 구축 · 프레임워크 내장 | `techStack.presets.backend`가 있으면 **이미 확정** — 다시 묻지 않는다. 이 스킬을 단독 호출해 프리셋이 없으면 필수 질문 |
 | 클라우드/호스팅 | AWS · GCP · Azure · Vercel · 자체 | 자체 구축 선택 시 필수 |
 | DB | PostgreSQL · MySQL · MongoDB · DynamoDB | BaaS면 자동 추론 후 확인만, 자체 구축이면 필수 질문 |
@@ -174,6 +175,30 @@ React+Vite SPA와 짝지으면 Edge Functions·브라우저 직접 호출·RLS �
 | **보안 경계가 어디인가** | 백엔드 프리셋의 `notes.securityBoundary` | 양쪽의 인증/권한 슬롯. 서버 런타임이 있으면 애플리케이션 층 검사 + 데이터 층 정책 이중 방어, SPA면 데이터 층 정책이 사실상 유일한 경계 |
 | **데이터 계층에 정책 엔진이 있는가** | 백엔드 프리셋의 `notes.securityBoundary`·`dataModeling` | **가장 크게 갈리는 변수.** 있으면(RLS·Security Rules) 이중 방어를 전제로 쓰고, 없으면(DynamoDB 등) 애플리케이션 층 소유권 검사 누락이 곧 데이터 유출임을 전제로 써야 한다. 여기를 틀리면 가이드가 안전하다고 착각하게 만든다 |
 | **언어가 TS인가 JS인가** | `techStack.frontend.language`·프리셋의 `notes.language` | 타입 표준 슬롯의 존폐. JS면 그 슬롯을 JSDoc 규약·런타임 스키마 검증으로 대체하고, 생성 타입 절은 넣지 않는다 |
+| **클라이언트가 브라우저인가 앱인가** | `techStack.clientKind` (`deliveryModel`의 파생값) | backend-guide의 네 슬롯 존폐. 아래 표 참조 |
+| **제품 형태가 무엇인가** | `techStack.deliveryModel`·`pwa` | frontend-guide의 오프라인·셸 슬롯 존폐. 아래 표 참조 |
+
+**제품 형태(`deliveryModel`)가 가르는 슬롯** — 팩은 슬롯을 갖고만 있고 **채우거나 비우는
+판정은 생성기가 한다.** 팩에 형태별 내용을 산문으로 박으면 나머지 조합에서 틀린 지침이 된다.
+
+| frontend-guide 슬롯 | `web` | `web`+`pwa` | `hybrid` | `native` |
+| --- | --- | --- | --- | --- |
+| 오프라인·설치 | 빈다 | 서비스워커·매니페스트·오프라인 캐시·설치 프롬프트·업데이트 전략 | 셸이 소유 | 축 팩 미적용 — 전량 생성 |
+| 셸 경계 | 빈다 | 빈다 | 셸 배선·네이티브 브리지 경계·딥링크·스토어 심사·강제 업데이트 | — |
+
+| backend-guide 슬롯 | `clientKind: browser` | `clientKind: app` |
+| --- | --- | --- |
+| 클라이언트 인증 전달 | 쿠키 세션 · CORS · CSRF 방어 | **Bearer + 보안 저장소**(쿠키 아님) |
+| 멱등 수집 | 빈다 | **살아난다** — 오프라인 배치 동기화가 전제. 재전송이 이중 반영되면 안 된다 |
+| 푸시 발송 | 빈다 | 살아난다 (FCM/APNs) |
+| API 버전 협상 | 빈다 | 살아난다 — 구버전 앱이 계속 돌기 때문 |
+
+**슬롯이 비는 것은 정상 경로다.** 웹 프로젝트의 backend-guide에 푸시 절이 없는 것은 결함이
+아니라 차원이 작동한 결과다 — 빈 슬롯을 억지로 채우면 그 프로젝트에 없는 요구를 만든다.
+
+**충돌 검출 — `hybrid` × `nextjs`**: Capacitor 셸은 정적 자산을 싣기 때문에
+`output: 'export'`가 강제되고 Server Actions·Route Handlers를 쓸 수 없다. 이 조합이 오면
+가이드에 **제약을 명시**하고 서버 기능을 백엔드 축에 두는 형태로 쓴다.
 
 **정책 엔진 유무는 문구 한 줄이 아니라 가이드 전체의 전제다.** BaaS 조합에서 쓰던
 "RLS가 백업이니 애플리케이션 검사는 이중 방어" 서술을 정책 엔진 없는 조합에 그대로

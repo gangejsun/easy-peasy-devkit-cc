@@ -216,6 +216,11 @@ destructive_gate() {
 # 모델이 파일을 쓰는 경로는 Edit/Write만이 아니다. Bash 힙독·리다이렉션으로 쓰면
 # 매처가 Edit|Write|MultiEdit뿐일 때 시크릿 차단이 **0**이 된다 — 게이트의 실효
 # 커버리지가 도구 선택에 좌우된다 (평가 v5 · E-20).
+# 엣지는 **판정 전에** 남긴다. 아래 block()들 뒤에 두었더니 차단이 발생한 순간
+# 그 줄에 도달하지 못해, --usage의 traversal이 성공 경로만 셌다 —
+# 훅이 존재하는 이유인 사건이 계측에서 가장 안 보였다 (하트비트와 같은 규율).
+[ -n "$EPCC_ROOT" ] && epcc_edge "build" "security-check"
+
 case "$TOOL_NAME" in
   Edit|Write|MultiEdit)
     TEXT="${CONTENT}${NEW_STRING}"
@@ -349,8 +354,6 @@ fi
 if [[ "$FILE_PATH" =~ package\.json$ ]] && has '(AKIA|ghp_|sk_live_|sk_test_|sb_secret_)'; then
   block "package.json에 시크릿 포함" "npm run 시 노출됩니다"
 fi
-
-[ -n "$EPCC_ROOT" ] && epcc_edge "build" "security-check"
 
 # ── 경고 대상 (차단하지 않음) ────────────────────────────────────────
 

@@ -143,6 +143,22 @@ python3 ${CLAUDE_SKILL_DIR}/scripts/search.py "<쿼리>" --stack html-tailwind
 Step 2.5가 **쓰기 전** 게이트라면 이것은 **쓴 뒤** 게이트다. 타입체크 통과는 화면이
 나온다는 증거가 아니다 — 판정 규범의 정본은 `.claude/rules/ui-design.md` §6이다.
 
+**사전 설치 (최초 1회, 이 프로젝트에 아직 없으면)** — 플러그인은 Playwright를 자동
+설치하지 않는다(모든 소비자 프로젝트에 크로미움 다운로드를 강제하지 않기 위해서다).
+프로젝트 루트에서 아래를 그대로 실행한다:
+
+```bash
+npm i -D playwright && npx playwright install chromium
+```
+
+pnpm/yarn을 쓰면:
+
+```bash
+pnpm add -D playwright && pnpm exec playwright install chromium
+# 또는
+yarn add -D playwright && yarn playwright install chromium
+```
+
 서버는 내장 `/run`으로 띄운다(이 스킬은 서버를 관리하지 않는다). 그 URL에 프로브를 건다:
 
 ```bash

@@ -86,7 +86,7 @@ export async function updateSession(request: NextRequest) {
     loginUrl.searchParams.set('redirect', pathname)
 
     // JSON API clients must receive the error envelope, never a login page: a 307 to
-    // /login answers with HTML and breaks the contract in resources/api-routes.md.
+    // /login answers with HTML and breaks the contract in resources/api-endpoints.md.
     const res = pathname.startsWith('/api')
       ? NextResponse.json(
           { error: { code: 'unauthenticated', message: 'Sign in required' } },

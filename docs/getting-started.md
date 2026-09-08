@@ -2,6 +2,11 @@
 
 ## Quick Start
 
+> 🪟 **On Windows?** Read this before installing — [`docs/windows-setup.md`](windows-setup.md).
+> This plugin's hooks are registered as `"bash <script>"` commands. Without **Git for
+> Windows** (Git Bash), they silently do nothing — no error, no warning (WSL users are
+> unaffected). The guide is a beginner-friendly, step-by-step walkthrough.
+
 ### 1. Install the Plugin
 
 ```bash
@@ -26,6 +31,7 @@ Start Claude Code in your project directory, then run:
 ```
 
 This will interactively:
+- Ask what you are building first — web / hybrid app / native / API-only. This is a product question, not a technical one, and it narrows every question that follows
 - Ask you to choose a frontend preset (nextjs / react-vite / vue / vanilla / none) and a backend preset (supabase / firebase / aws-serverless / aws-container / gcp-serverless / fastapi / node-api / node-nest / none)
 - Collect project information
 - Generate `epcc.config.json` and `CLAUDE.md`

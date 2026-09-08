@@ -23,7 +23,7 @@ v2 하네스가 설치된 프로젝트를 v3 구조로 전환합니다.
 먼저 무엇이 있는지 **측정**합니다. 추측으로 지우지 않습니다.
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/doctor.sh" --fast
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/doctor.sh" --default
 ```
 
 그리고 프로젝트 측 자산을 확인합니다:
@@ -113,7 +113,7 @@ v2 CLAUDE.md는 삭제된 파일을 참조하고 있을 가능성이 높습니�
 ## Step 6: 검증 (필수)
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/doctor.sh" --fast
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/doctor.sh" --default
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/doctor.sh" --self-test
 ```
 
@@ -128,7 +128,7 @@ v3 마이그레이션 완료
 설치: .claude/rules/ 규칙 카드 N개
 보존: [프로젝트 고유 자산 목록]
 
-doctor --fast: 통과 N · 경고 N · 실패 N
+doctor --default: 통과 N · 경고 N · 실패 N
 
 확인 필요:
 - [사용자 결정이 필요했던 항목]
@@ -137,7 +137,7 @@ doctor --fast: 통과 N · 경고 N · 실패 N
 ## 주의사항
 
 - **파일을 지우기 전에 반드시 내용을 읽고**, 프로젝트가 추가한 내용이 있으면 사용자에게 확인받습니다
-- 한 번에 전부 지우지 말고 카테고리별로 진행하며 각 단계 후 `doctor --fast`로 확인합니다
+- 한 번에 전부 지우지 말고 카테고리별로 진행하며 각 단계 후 `doctor --default`로 확인합니다
 - `git status`가 깨끗한 상태에서 시작하면 되돌리기 쉽습니다
 
 ## 마이그레이션 후: 스택 가이드

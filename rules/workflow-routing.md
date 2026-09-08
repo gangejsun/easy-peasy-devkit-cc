@@ -1,4 +1,4 @@
-<!-- epcc-rule-version: 3.22.0 -->
+<!-- epcc-rule-version: 3.27.0 -->
 <!-- **paths: 프론트매터를 넣지 마세요.** 넣는 순간 조건부 로딩으로 바뀌어
      세션 시작 시 뜨지 않습니다. 이 카드는 "작업을 시작하기 전"에 필요하므로
      어떤 파일도 아직 열지 않은 시점에 이미 로드되어 있어야 합니다.
@@ -58,7 +58,7 @@
 | P3 | 작업이 세션을 넘어감 (다중 태스크) | `/dev-docs-generator` |
 | P4 | 항상 | 메인 세션이 직접 구현 |
 | P5 | **되돌림 클래스가 강도를 정함** | Reversible → `/completion-review` · Costly 이상 → `epcc-reviewer` |
-| P6 | **Irreversible** | `epcc-reviewer` 다관점 팬아웃 (+선택 `/gemini-claude-loop` · `/codex-claude-loop`) |
+| P6 | **Irreversible** | `epcc-reviewer` 다관점 팬아웃 (+선택 `/codex-claude-loop`) |
 
 **진입 조건 4상태**(의도 명확 · 컨텍스트 최신 · 영향 반경 파악 · 검증 경로 존재)가
 모두 충족되면 **P0~P3을 건너뛴다.** 번호는 순서를 표시할 뿐 의무가 아니다 —

@@ -176,6 +176,40 @@ epcc_handoff_dir() {
   printf '%s' "${EPCC_HANDOFF_DIR:-${EPCC_ROOT:-.}/dev/handoff}"
 }
 
+# ── 워킹트리 스냅샷 ──────────────────────────────────────────────────
+# session-brief가 세션 시작 시 만들고 build-gate가 Stop에서 대조한다.
+#
+# **파일 이름만 담으면 안 된다.** 이름 집합은 「더러운가」를 담고 「바뀌었는가」를
+# 담지 못한다. 그래서 세션 시작 시 이미 미커밋이던 소스 파일은 아무리 고쳐도
+# `comm -13`에서 빠져 빌드 게이트가 통째로 침묵했다 — 작업을 이어서 하는
+# 가장 흔한 경로에서 게이트의 차단력이 0이었다.
+#
+# 줄 형식: `<경로><TAB><mtime><TAB><크기>`. 내용 해시가 더 정확하지만 파일당
+# 프로세스를 하나씩 띄운다 — mtime+크기는 `stat` 한 번으로 끝나고 "고쳤는데
+# 못 잡는" 경우가 실질적으로 없다.
+#
+# **두 훅이 각자 계산하지 않는다.** 이 버그가 난 이유가 생성기와 대조기가 같은
+# 파이프라인의 사본 둘이었기 때문이다. 사본이 하나면 어긋날 자리가 없다.
+#
+# 삭제된 파일은 stat이 실패한다 — 빈 값 대신 `-`를 넣어 **줄을 남긴다.**
+# 건너뛰면 "지웠다가 되살린" 경우가 무변경으로 보인다.
+epcc_worktree_snapshot() {
+  local f st
+  git status --porcelain 2>/dev/null | sed -E 's/^.{3}//; s/^.* -> //' | sort -u   | while IFS= read -r f; do
+      [ -z "$f" ] && continue
+      if [ -e "$f" ]; then
+        st=$(stat -f '%m	%z' "$f" 2>/dev/null || stat -c '%Y	%s' "$f" 2>/dev/null || printf -- '-	-')
+      else
+        st=$(printf -- '-	-')
+      fi
+      printf '%s	%s
+' "$f" "$st"
+    done
+}
+
+# 스냅샷 줄에서 경로만 꺼낸다 (TAB 이전). 경로에 공백이 있어도 안전하다.
+epcc_snapshot_paths() { cut -f1; }
+
 # ── 하트비트 ─────────────────────────────────────────────────────────
 # 매 훅이 첫 동작으로 자기 실행을 기록한다. 다른 컴포넌트(session-brief)가
 # 이 로그를 읽어 죽은 훅을 보고한다. 컴포넌트는 자기를 보증하지 않는다 (P1).
@@ -190,10 +224,31 @@ epcc_heartbeat() {
     "${EPCC_ROOT}" \
     "$code" >> "$dir/hookrun.log" 2>/dev/null || true
 
-  # 로테이션: 2000행 초과 시 최근 1000행만 유지 (무한 축적 방지)
+  # 로테이션: 2000행 초과 시 최근 1000행 유지 (무한 축적 방지).
+  #
+  # **불변식: 회전은 어떤 컴포넌트의 마지막 증거도 지우지 않는다.**
+  # 단순 tail은 이 로그를 거짓말하게 만든다 — security-check는 Edit/Write/MultiEdit/Bash
+  # 전부에 걸려 행의 97%를 차지하고, 다른 훅의 이력을 창 밖으로 밀어낸다. 그러면
+  # session-brief가 **실제로 돈 훅을 "실행된 적 없음"으로 보고한다** (track-skill 실측:
+  # skilluse.log에 7행이 남아 있는데 hookrun.log에서는 증발했다). 지표가 재던 것은
+  # "돈 적 있는가"가 아니라 "회전에서 살아남을 만큼 최근에 돌았는가"였다.
+  #
+  # 창 밖으로 밀리는 이름만 골라 그 마지막 행 하나를 함께 남긴다. 전역 dedup을 쓰지 않는
+  # 이유는 같은 훅이 같은 초에 두 번 도는 것이 정상이고, 그것을 지우면 행 수가 왜곡되기
+  # 때문이다. 비용은 회전 시점(2000행마다 한 번)에만 들고 훅 호출마다 드는 비용은 0이다.
   local n; n=$(epcc_count_lines "$dir/hookrun.log")
   if [ "$n" -gt 2000 ]; then
-    tail -1000 "$dir/hookrun.log" > "$dir/hookrun.log.tmp" 2>/dev/null \
+    awk -F'|' -v keep=1000 '
+      # NF>=4 이고 이름이 비지 않은 행만 carry 후보로 본다 — 부분 쓰기로 생긴 오염 행이
+      # 매 회전마다 마지막 증거로 영구 carry 되는 것을 막는다 (정상 writer는 4필드를 쓴다).
+      # 주의: 이 awk 프로그램은 셸 작은따옴표 안이다. 주석에도 작은따옴표를 쓰지 않는다.
+      { rows[NR] = $0; if (NF >= 4 && $1 != "") last[$1] = NR }
+      END {
+        start = NR - keep + 1; if (start < 1) start = 1
+        for (k in last) if (last[k] < start) print rows[last[k]]
+        for (i = start; i <= NR; i++) print rows[i]
+      }
+    ' "$dir/hookrun.log" > "$dir/hookrun.log.tmp" 2>/dev/null \
       && mv "$dir/hookrun.log.tmp" "$dir/hookrun.log" 2>/dev/null || true
   fi
 }

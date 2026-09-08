@@ -110,10 +110,11 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
   if [ "$DIRTY" -gt 0 ]; then
     printf -- '- 미커밋 %s개 파일\n' "$DIRTY"
   fi
-  # 세션 시작 시점 스냅샷 — build-gate가 "이번 세션에 바뀐 것"을 판별하는 기준
+  # 세션 시작 시점 스냅샷 — build-gate가 "이번 세션에 바뀐 것"을 판별하는 기준.
+  # 형식(경로+mtime+크기)과 계산은 common.sh의 epcc_worktree_snapshot이 단독으로 갖는다 —
+  # 여기서 파이프라인을 다시 쓰면 build-gate 쪽 사본과 어긋난다.
   mkdir -p "$(epcc_state_dir)" 2>/dev/null || true
-  git status --porcelain 2>/dev/null | awk '{print $NF}' | sort \
-    > "$(epcc_state_dir)/session-baseline.txt" 2>/dev/null || true
+  epcc_worktree_snapshot > "$(epcc_state_dir)/session-baseline.txt" 2>/dev/null || true
   # build-gate의 UI 렌더 알림은 세션당 1회다. 그 마커를 여기서 연다 —
   # 꺼지지 않는 경고는 무시를 학습시킨다.
   rm -f "$(epcc_state_dir)/ui-notice.stamp" 2>/dev/null || true
@@ -140,7 +141,9 @@ if [ -f "$HOOKS_JSON" ] && command -v jq >/dev/null 2>&1; then
   EXPECTED=$(epcc_num "$(jq -r '[.hooks|to_entries[].value[]?.hooks[]?.command
                   | capture("(?<f>[a-z0-9-]+)\\.sh").f] | unique | length' "$HOOKS_JSON" 2>/dev/null)")
   if [ -f "$HB" ]; then
-    # 최근 7일 내 실행된 고유 훅 수
+    # 로그에 남은 **고유 훅 이름 수**. 시간 필터는 없다 — 여기 있던 "최근 7일 내"는
+    # 코드에 없는 조건이었다. 의미는 메시지대로 "돈 적 있는가"이고, 그것이 성립하려면
+    # 회전이 이름의 마지막 증거를 지우지 않아야 한다 (common.sh epcc_heartbeat의 불변식).
     SEEN=$(epcc_num "$(awk -F'|' '{print $1}' "$HB" 2>/dev/null | sort -u | wc -l)")
     FAILED=$(awk -F'|' '$4!="0" {print $1}' "$HB" 2>/dev/null | sort -u | tr '\n' ' ')
     if [ "$SEEN" -lt "$EXPECTED" ]; then

@@ -22,7 +22,7 @@ description: "[Preset: nextjs-supabase] Next.js App Router backend guide. Covers
 **New Server Action:**
 
 - [ ] Create `actions.ts` colocated with the feature, `'use server'` at the top
-- [ ] Pick the shape: form action `(prevState, formData)` for `useActionState`, or a directly-called action `(id, …args)` for button handlers (`resources/api-routes.md`) — both need their own auth check
+- [ ] Pick the shape: form action `(prevState, formData)` for `useActionState`, or a directly-called action `(id, …args)` for button handlers (`resources/api-endpoints.md`) — both need their own auth check
 - [ ] Validate `formData` with the shared Zod schema — never trust the client form
 - [ ] Auth-check with `getUser()` inside the action (actions are public HTTP endpoints)
 - [ ] Mutate via the server client; map DB errors into the typed `ActionResult`
@@ -190,7 +190,7 @@ export async function createTask(formData: FormData) {
 // Good — serializable result + revalidation on success
 export async function createTask(prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
   'use server'
-  // validate → getUser → insert (see resources/api-routes.md)
+  // validate → getUser → insert (see resources/api-endpoints.md)
   revalidatePath('/tasks')
   return { ok: true }
 }
@@ -260,8 +260,8 @@ import type { Database } from '@/types/database'
 
 | If you need to... | Read |
 | --- | --- |
-| Create/modify a Route Handler; handler vs action; webhooks + signature verification; caching | `resources/api-routes.md` |
-| Write a Server Action — form action vs directly-called action, revalidation, redirect, file upload | `resources/api-routes.md` |
+| Create/modify a Route Handler; handler vs action; webhooks + signature verification; caching | `resources/api-endpoints.md` |
+| Write a Server Action — form action vs directly-called action, revalidation, redirect, file upload | `resources/api-endpoints.md` |
 | Query/insert/update/delete via Supabase; filters; pagination; RPC transactions | `resources/database-patterns.md` |
 | Upload files or issue signed URLs (Storage); avoid N+1; index queries | `resources/database-patterns.md` |
 | Enable table change events (Realtime) | `resources/database-patterns.md` |

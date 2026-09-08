@@ -29,13 +29,19 @@ TRANSCRIPT=$(epcc_field "$INPUT" '.transcript_path')
 # ── 1. 이번 세션에 바뀐 소스 파일이 있는가 ───────────────────────────
 git rev-parse --git-dir >/dev/null 2>&1 || exit 0
 
+# 스냅샷 줄은 `경로<TAB>mtime<TAB>크기`다 (common.sh · epcc_worktree_snapshot).
+# 이름만 비교하면 **세션 시작 시 이미 미커밋이던 소스 파일**이 아무리 바뀌어도
+# 차집합에서 빠진다 — 작업을 이어서 하는 가장 흔한 경로에서 게이트가 침묵했다.
 BASELINE="$(epcc_state_dir)/session-baseline.txt"
-CURRENT=$(git status --porcelain 2>/dev/null | awk '{print $NF}' | sort)
+CURRENT=$(epcc_worktree_snapshot)
 
 if [ -f "$BASELINE" ]; then
-  CHANGED=$(comm -13 "$BASELINE" <(printf '%s\n' "$CURRENT") 2>/dev/null)
+  # 차집합은 스냅샷 **줄** 단위로 낸 뒤 경로만 꺼낸다: 새로 더러워진 파일과
+  # 이미 더러웠으나 이번에 또 바뀐 파일이 함께 남는다.
+  CHANGED=$(comm -13 <(sort "$BASELINE") <(printf '%s\n' "$CURRENT" | sort) 2>/dev/null \
+            | epcc_snapshot_paths | sort -u)
 else
-  CHANGED="$CURRENT"
+  CHANGED=$(printf '%s\n' "$CURRENT" | epcc_snapshot_paths | sort -u)
 fi
 
 # 소스 확장자만 (설정·문서·마크다운 제외)

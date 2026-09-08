@@ -58,7 +58,7 @@ ls <대상>/references <대상>/resources 2>/dev/null; grep -c '언제 읽' <대
 - [ ] 강화 후에도 description의 모든 약속이 본문에 실재하는가
 - [ ] 새로 넣은 반복 상한·강등 규칙·금지 문구에 각각 이유가 붙어 있는가
 - [ ] 줄 수: 강화 후 SKILL.md ≤ 300줄 (넘으면 리소스로 분리하거나 뺄셈 재수행)
-- [ ] doctor가 있으면(플러그인 또는 저장소): `bash "${CLAUDE_PLUGIN_ROOT:-.}/scripts/doctor.sh" --fast` 통과
+- [ ] doctor가 있으면(플러그인 또는 저장소): `bash "${CLAUDE_PLUGIN_ROOT:-.}/scripts/doctor.sh" --default` 통과
 - [ ] 그래프 파일이 있으면: 노드/엣지 추가 후 `--graph` 통과
 
 하나라도 실패하면 해당 주입을 되돌리고 실패 항목을 보고한다.

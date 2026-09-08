@@ -46,7 +46,7 @@
     {
       "symbol": "FullPageSpinner",
       "where": "resources/routing.md",
-      "detail": "3회 소비되나 정의가 없다. 원본 react-aws-frontend-guide에도 없던 기존 결함이며 이번 재배치가 드러냈을 뿐이다. 게이트가 REVIEW로 보고한다",
+      "detail": "3회 소비되나 정의가 없다. 원본 react-aws-frontend-guide에도 없던 기존 결함이며 이번 재배치가 드러냈을 뿐이다. guide-gate.sh의 check_known_gaps가 REVIEW로 보고한다",
       "carriedFrom": "v3.11.0"
     }
   ]

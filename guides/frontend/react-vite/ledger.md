@@ -64,4 +64,4 @@ TypeScript도 게이트도 잡지 못했고(모든 단건 조회가 404), 배수
 
 | 심볼 | 상태 |
 | --- | --- |
-| `FullPageSpinner` | routing.md에서 3회 소비되나 팩·이음매 어디에도 정의가 없다. **원본 `react-aws-frontend-guide`에도 없던 기존 결함**이며, 이번 재배치는 이를 드러냈을 뿐 만들지 않았다. 게이트가 REVIEW로 보고한다 |
+| `FullPageSpinner` | routing.md에서 3회 소비되나 팩·이음매 어디에도 정의가 없다. **원본 `react-aws-frontend-guide`에도 없던 기존 결함**이며, 이번 재배치는 이를 드러냈을 뿐 만들지 않았다. `guide-gate.sh`의 `check_known_gaps`가 REVIEW로 보고한다 |
