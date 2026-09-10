@@ -1,0 +1,146 @@
+<svg viewBox="0 0 1600 1090" role="img" aria-label="workflow.graph.json 의 핵심 경로를 노드와 엣지로 그린 그림. 위 띠는 작업 흐름으로 세션 시작에서 탐색·계획을 거쳐 구현으로 모이고 검증과 교차검증으로 이어진다. 구현 주변에 훅 네 개가 붙어 있고 차단하는 둘은 경고색이다. 아래 띠는 피드백 루프로 계측이 doctor 로, doctor 가 평가와 자산 승격으로, 결과가 사람에게 보고된다. 모양이 자산 종류를 나타내고 청록 엣지만 코드가 실제로 방출한다.">
+<defs>
+<marker id="ga" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--g-edge)"/></marker>
+<marker id="gi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--g-inst)"/></marker>
+</defs>
+<rect x="44" y="40" width="1512" height="620" rx="10" fill="var(--g-band)" stroke="var(--g-line)" stroke-width="1"/>
+<text class="gb" x="62" y="64" fill="var(--g-faint)">작업 흐름</text>
+<rect x="44" y="700" width="1512" height="366" rx="10" fill="var(--g-band)" stroke="var(--g-line)" stroke-width="1"/>
+<text class="gb" x="62" y="724" fill="var(--g-faint)">피드백 루프 — 하네스가 자기를 고치는 곳</text>
+<line x1="44" y1="700" x2="1556" y2="700" stroke="var(--g-line)" stroke-width="1" stroke-dasharray="3 7"/>
+<rect x="300" y="348" width="240" height="104" rx="8" fill="none" stroke="var(--g-agent)" stroke-width="1.2" stroke-dasharray="6 5" opacity=".7"/>
+<text class="gg" x="304" y="342" fill="var(--g-faint)">서브에이전트 · 별도 컨텍스트</text>
+<rect x="1210" y="72" width="240" height="108" rx="8" fill="none" stroke="var(--g-agent)" stroke-width="1.2" stroke-dasharray="6 5" opacity=".7"/>
+<text class="gg" x="1214" y="66" fill="var(--g-faint)">서브에이전트 · 별도 컨텍스트</text>
+<rect x="1210" y="222" width="240" height="340" rx="8" fill="none" stroke="var(--g-agent)" stroke-width="1.2" stroke-dasharray="6 5" opacity=".7"/>
+<text class="gg" x="1214" y="216" fill="var(--g-faint)">Irreversible 전용 묶음</text>
+<path d="M260,328 C260,236 320,216 320,124" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M260,328 C422,328 458,264 620,264" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M260,328 C548,328 612,776 900,776" fill="none" stroke="var(--g-inst)" stroke-width="1.7" marker-end="url(#gi)"/>
+<path d="M260,328 C548,328 612,964 900,964" fill="none" stroke="var(--g-inst)" stroke-width="1.7" marker-end="url(#gi)"/>
+<path d="M420,152 C420,198 420,140 420,186" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M520,124 C520,187 620,201 620,264" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M420,242 C420,300 420,314 420,372" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M520,400 C520,339 620,325 620,264" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M520,214 C566,214 574,264 620,264" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M720,236 C720,189 720,179 720,132" fill="none" stroke="var(--g-inst)" stroke-width="1.7" marker-end="url(#gi)"/>
+<path d="M720,132 C720,179 720,189 720,236" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M720,292 C720,338 720,290 720,336" fill="none" stroke="var(--g-inst)" stroke-width="1.7" marker-end="url(#gi)"/>
+<path d="M720,336 C720,290 720,338 720,292" fill="none" stroke="var(--g-inst)" stroke-width="1.7" marker-end="url(#gi)"/>
+<path d="M820,264 C866,264 874,274 920,274" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1120,274 C1120,206 1230,192 1230,124" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1230,124 C1046,124 1004,264 820,264" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1120,274 C1170,274 1180,274 1230,274" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1230,274 C1046,274 1004,264 820,264" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M720,292 C720,397 720,421 720,526" fill="none" stroke="var(--g-inst)" stroke-width="1.7" marker-end="url(#gi)"/>
+<path d="M1120,274 C1120,498 1240,548 1240,772" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1330,302 C1330,501 1340,545 1340,744" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1240,772 C1177,772 1163,776 1100,776" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M900,776 C837,776 823,772 760,772" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M560,772 C470,772 450,772 360,772" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M720,292 C720,357 720,371 720,436" fill="none" stroke="var(--g-inst)" stroke-width="1.7" marker-end="url(#gi)"/>
+<path d="M820,464 C820,604 900,636 900,776" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1120,274 C1120,391 1230,417 1230,534" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1330,302 C1330,394 1330,414 1330,506" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1230,534 C1046,534 1004,264 820,264" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1000,804 C1000,863 1000,877 1000,936" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M900,964 C657,964 603,772 360,772" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1330,302 C1330,348 1330,350 1330,396" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1330,452 C1330,498 1330,460 1330,506" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M900,964 C837,964 823,968 760,968" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M660,940 C660,877 660,863 660,800" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M560,968 C488,968 472,964 400,964" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M300,936 C300,875 260,861 260,800" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M320,214 C320,334 260,360 260,480" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M260,480 C260,360 320,334 320,214" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M320,214 C320,374 260,410 260,570" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M260,570 C422,570 458,264 620,264" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M820,264 C820,201 920,187 920,124" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M920,124 C920,416 360,480 360,772" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M620,264 C620,376 520,402 520,514" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M520,514 C520,402 620,376 620,264" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M760,968 C976,968 1024,772 1240,772" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M60,300 h184 l16,28 l-16,28 h-184 z" fill="var(--g-surface)" stroke="var(--g-hook)" stroke-width="1.6"/>
+<text class="gn" x="160" y="324" text-anchor="middle" fill="var(--g-hook)">session-start</text>
+<text class="gk" x="160" y="342" text-anchor="middle" fill="var(--g-soft)">세션 시작 브리핑</text>
+<rect x="320" y="96" width="200" height="56" rx="10" fill="var(--g-stagebg)" stroke="var(--g-stage)" stroke-width="2"/>
+<text class="gn" x="420" y="120" text-anchor="middle" fill="var(--g-ink)">understand</text>
+<text class="gk" x="420" y="138" text-anchor="middle" fill="var(--g-soft)">탐색</text>
+<rect x="320" y="186" width="200" height="56" rx="10" fill="var(--g-stagebg)" stroke="var(--g-stage)" stroke-width="2"/>
+<text class="gn" x="420" y="210" text-anchor="middle" fill="var(--g-ink)">plan</text>
+<text class="gk" x="420" y="228" text-anchor="middle" fill="var(--g-soft)">계획</text>
+<rect x="60" y="452" width="200" height="56" rx="6" fill="var(--g-surface)" stroke="var(--g-line)" stroke-width="1.4"/>
+<rect x="69" y="463" width="3" height="34" fill="var(--g-skill)"/>
+<text class="gn" x="160" y="476" text-anchor="middle" fill="var(--g-skill)">prd-generator</text>
+<text class="gk" x="160" y="494" text-anchor="middle" fill="var(--g-soft)">PRD 생성</text>
+<rect x="60" y="542" width="200" height="56" rx="6" fill="var(--g-surface)" stroke="var(--g-line)" stroke-width="1.4"/>
+<rect x="69" y="553" width="3" height="34" fill="var(--g-skill)"/>
+<text class="gn" x="160" y="566" text-anchor="middle" fill="var(--g-skill)">dev-docs-generator</text>
+<text class="gk" x="160" y="584" text-anchor="middle" fill="var(--g-soft)">개발 문서</text>
+<rect x="320" y="372" width="200" height="56" rx="8" fill="var(--g-surface)" stroke="var(--g-agent)" stroke-width="1.8"/>
+<text class="gn" x="420" y="396" text-anchor="middle" fill="var(--g-agent)">epcc-planner</text>
+<text class="gk" x="420" y="414" text-anchor="middle" fill="var(--g-soft)">설계 위임</text>
+<rect x="320" y="486" width="200" height="56" rx="6" fill="var(--g-surface)" stroke="var(--g-line)" stroke-width="1.4"/>
+<rect x="329" y="497" width="3" height="34" fill="var(--g-skill)"/>
+<text class="gn" x="420" y="510" text-anchor="middle" fill="var(--g-skill)">ui-ux-design</text>
+<text class="gk" x="420" y="528" text-anchor="middle" fill="var(--g-soft)">디자인 시스템</text>
+<path d="M620,76 h184 l16,28 l-16,28 h-184 z" fill="var(--g-hookbg)" stroke="var(--g-block)" stroke-width="2.2"/>
+<text class="gn" x="720" y="100" text-anchor="middle" fill="var(--g-block)">security-check</text>
+<text class="gk" x="720" y="118" text-anchor="middle" fill="var(--g-soft)">시크릿·파괴 명령 차단</text>
+<rect x="620" y="236" width="200" height="56" rx="10" fill="var(--g-stagebg)" stroke="var(--g-stage)" stroke-width="2"/>
+<text class="gn" x="720" y="260" text-anchor="middle" fill="var(--g-ink)">build</text>
+<text class="gk" x="720" y="278" text-anchor="middle" fill="var(--g-soft)">구현</text>
+<path d="M620,336 h184 l16,28 l-16,28 h-184 z" fill="var(--g-hookbg)" stroke="var(--g-block)" stroke-width="2.2"/>
+<text class="gn" x="720" y="360" text-anchor="middle" fill="var(--g-block)">build-gate</text>
+<text class="gk" x="720" y="378" text-anchor="middle" fill="var(--g-soft)">검증 게이트</text>
+<path d="M620,436 h184 l16,28 l-16,28 h-184 z" fill="var(--g-surface)" stroke="var(--g-hook)" stroke-width="1.6"/>
+<text class="gn" x="720" y="460" text-anchor="middle" fill="var(--g-hook)">track-skill</text>
+<text class="gk" x="720" y="478" text-anchor="middle" fill="var(--g-soft)">스킬 사용 기록</text>
+<path d="M620,526 h184 l16,28 l-16,28 h-184 z" fill="var(--g-surface)" stroke="var(--g-hook)" stroke-width="1.6"/>
+<text class="gn" x="720" y="550" text-anchor="middle" fill="var(--g-hook)">handoff</text>
+<text class="gk" x="720" y="568" text-anchor="middle" fill="var(--g-soft)">핸드오프</text>
+<rect x="920" y="96" width="200" height="56" rx="6" fill="var(--g-surface)" stroke="var(--g-line)" stroke-width="1.4"/>
+<rect x="929" y="107" width="3" height="34" fill="var(--g-skill)"/>
+<text class="gn" x="1020" y="120" text-anchor="middle" fill="var(--g-skill)">completion-review</text>
+<text class="gk" x="1020" y="138" text-anchor="middle" fill="var(--g-soft)">마무리 문서화</text>
+<rect x="920" y="246" width="200" height="56" rx="10" fill="var(--g-stagebg)" stroke="var(--g-stage)" stroke-width="2"/>
+<text class="gn" x="1020" y="270" text-anchor="middle" fill="var(--g-ink)">verify</text>
+<text class="gk" x="1020" y="288" text-anchor="middle" fill="var(--g-soft)">리뷰 맡김</text>
+<rect x="1230" y="96" width="200" height="56" rx="8" fill="var(--g-surface)" stroke="var(--g-agent)" stroke-width="1.8"/>
+<text class="gn" x="1330" y="120" text-anchor="middle" fill="var(--g-agent)">epcc-reviewer</text>
+<text class="gk" x="1330" y="138" text-anchor="middle" fill="var(--g-soft)">독립 리뷰</text>
+<rect x="1230" y="246" width="200" height="56" rx="10" fill="var(--g-stagebg)" stroke="var(--g-stage)" stroke-width="2"/>
+<text class="gn" x="1330" y="270" text-anchor="middle" fill="var(--g-ink)">cross-check</text>
+<text class="gk" x="1330" y="288" text-anchor="middle" fill="var(--g-soft)">리뷰어의 추가 단계</text>
+<rect x="1230" y="396" width="200" height="56" rx="6" fill="var(--g-surface)" stroke="var(--g-line)" stroke-width="1.4"/>
+<rect x="1239" y="407" width="3" height="34" fill="var(--g-skill)"/>
+<text class="gn" x="1330" y="420" text-anchor="middle" fill="var(--g-skill)">codex-claude-loop</text>
+<text class="gk" x="1330" y="438" text-anchor="middle" fill="var(--g-soft)">외부 모델 검증</text>
+<rect x="1230" y="506" width="200" height="56" rx="6" fill="var(--g-surface)" stroke="var(--g-line)" stroke-width="1.4"/>
+<rect x="1239" y="517" width="3" height="34" fill="var(--g-skill)"/>
+<text class="gn" x="1330" y="530" text-anchor="middle" fill="var(--g-skill)">receiving-code-review</text>
+<text class="gk" x="1330" y="548" text-anchor="middle" fill="var(--g-soft)">받은 지적 검증</text>
+<rect x="1240" y="744" width="200" height="56" rx="28" fill="var(--g-surface)" stroke="var(--g-store)" stroke-width="1.6"/>
+<text class="gn" x="1340" y="768" text-anchor="middle" fill="var(--g-store)">lessons</text>
+<text class="gk" x="1340" y="786" text-anchor="middle" fill="var(--g-soft)">교훈 기록</text>
+<path d="M918,748 h164 l18,28 l-18,28 h-164 l-18,-28 z" fill="var(--g-surface)" stroke="var(--g-tool)" stroke-width="1.8"/>
+<text class="gn" x="1000" y="772" text-anchor="middle" fill="var(--g-tool)">doctor</text>
+<text class="gk" x="1000" y="790" text-anchor="middle" fill="var(--g-soft)">자기검증</text>
+<rect x="560" y="744" width="200" height="56" rx="10" fill="var(--g-stagebg)" stroke="var(--g-stage)" stroke-width="2"/>
+<text class="gn" x="660" y="768" text-anchor="middle" fill="var(--g-ink)">rule-promotion</text>
+<text class="gk" x="660" y="786" text-anchor="middle" fill="var(--g-soft)">자산 승격</text>
+<rect x="160" y="744" width="200" height="56" rx="28" fill="var(--g-termbg)" stroke="var(--g-term)" stroke-width="1.6"/>
+<text class="gn" x="260" y="768" text-anchor="middle" fill="var(--g-term)">user-report</text>
+<text class="gk" x="260" y="786" text-anchor="middle" fill="var(--g-soft)">사람에게 보고</text>
+<rect x="900" y="936" width="200" height="56" rx="6" fill="var(--g-surface)" stroke="var(--g-line)" stroke-width="1.4"/>
+<rect x="909" y="947" width="3" height="34" fill="var(--g-skill)"/>
+<text class="gn" x="1000" y="960" text-anchor="middle" fill="var(--g-skill)">harness-evaluation</text>
+<text class="gk" x="1000" y="978" text-anchor="middle" fill="var(--g-soft)">하네스 평가</text>
+<rect x="560" y="940" width="200" height="56" rx="28" fill="var(--g-surface)" stroke="var(--g-store)" stroke-width="1.6"/>
+<text class="gn" x="660" y="964" text-anchor="middle" fill="var(--g-store)">eval-report</text>
+<text class="gk" x="660" y="982" text-anchor="middle" fill="var(--g-soft)">평가 보고</text>
+<rect x="200" y="936" width="200" height="56" rx="6" fill="var(--g-surface)" stroke="var(--g-line)" stroke-width="1.4"/>
+<rect x="209" y="947" width="3" height="34" fill="var(--g-skill)"/>
+<text class="gn" x="300" y="960" text-anchor="middle" fill="var(--g-skill)">skill-enhancer</text>
+<text class="gk" x="300" y="978" text-anchor="middle" fill="var(--g-soft)">스킬 재설계</text>
+</svg>

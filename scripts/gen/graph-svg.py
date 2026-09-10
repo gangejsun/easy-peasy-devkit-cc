@@ -1,12 +1,22 @@
 #!/usr/bin/env python3
-"""workflow.graph.json → 작업 흐름 SVG.
+"""workflow.graph.json → 작업 흐름 SVG (docs/manual/user.html 의 그래프 그림).
 
 레이아웃은 손으로 정하고(POS), 라벨·kind·엣지는 그래프에서 읽는다.
-자산이 늘거나 이름이 바뀌면 다시 돌리면 된다 — 사본을 손으로 고치지 않는다.
+자산이 늘거나 이름이 바뀌면 다시 돌려서 나온 SVG 를 user.html 에 갈아넣는다 —
+사본을 손으로 고치지 않는다.
+
+사용:
+  python3 scripts/gen/graph-svg.py [그래프.json] [출력.svg]
+  기본값: workflow.graph.json → docs/manual/graph.svg
 """
 import json, pathlib, sys
 
-G = json.load(open(sys.argv[1] if len(sys.argv) > 1 else "workflow.graph.json"))
+SRC = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "workflow.graph.json")
+OUT = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else "docs/manual/graph.svg")
+if not SRC.exists():
+    sys.exit("그래프를 찾지 못했습니다: %s (저장소 루트에서 실행하세요)" % SRC)
+
+G = json.load(open(SRC))
 NODES = {n["id"]: n for n in G["nodes"]}
 
 W, H = 200, 56          # 노드 박스
@@ -173,6 +183,11 @@ for nid, (x, y) in POS.items():
     parts.append(shape(nid, x, y))
 parts.append("</svg>")
 
-pathlib.Path("parts/graph.svg").write_text("\n".join(parts))
-print("노드 %d개 · 엣지 %d개 → parts/graph.svg (%d bytes)"
-      % (len(POS), drawn, pathlib.Path("parts/graph.svg").stat().st_size))
+OUT.parent.mkdir(parents=True, exist_ok=True)
+OUT.write_text("\n".join(parts))
+print("노드 %d개 · 엣지 %d개 → %s (%d bytes)" % (len(POS), drawn, OUT, OUT.stat().st_size))
+
+# 선언되지 않은 노드를 POS 에 두면 조용히 라벨이 빈다 — 즉시 알린다
+missing = [n for n in POS if n not in NODES]
+if missing:
+    sys.exit("그래프에 없는 노드가 POS 에 있습니다: %s" % ", ".join(missing))
