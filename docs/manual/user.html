@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="EPCC 하네스 전체 지도 — Phase를 세로 사다리로 읽는 경로 탐색기, 유형별 사용 점 매트릭스, 플러그인 3개와 이중 루트, 가이드 축 조립.">
+<meta name="description" content="EPCC 하네스 전체 지도 — workflow.graph.json에서 생성한 작업 흐름 그래프, Phase 세로 사다리 탐색기, 플러그인 3개와 이중 루트, 가이드 축 조립.">
 <meta property="og:title" content="EPCC 하네스 지도">
-<meta property="og:description" content="EPCC 하네스 전체 지도 — Phase를 세로 사다리로 읽는 경로 탐색기, 유형별 사용 점 매트릭스, 플러그인 3개와 이중 루트, 가이드 축 조립.">
+<meta property="og:description" content="EPCC 하네스 전체 지도 — workflow.graph.json에서 생성한 작업 흐름 그래프, Phase 세로 사다리 탐색기, 플러그인 3개와 이중 루트, 가이드 축 조립.">
 <meta property="og:type" content="article">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧭</text></svg>">
 <style>:root{color-scheme:light dark}body{margin:0;padding:0}img{max-width:100%}</style>
@@ -152,6 +152,29 @@
   footer code{font-family:var(--mono);font-size:13px;background:var(--sunk);padding:2px 6px}
 
 
+
+  /* ── 작업 흐름 그래프 ─────────────────────────────────────── */
+  :root{
+    --g-band:rgba(0,0,0,.03); --g-surface:var(--surface); --g-stagebg:var(--sunk);
+    --g-line:var(--line); --g-edge:var(--line-hard); --g-inst:var(--skill);
+    --g-ink:var(--ink); --g-soft:var(--soft); --g-faint:var(--faint);
+    --g-stage:var(--ink); --g-skill:var(--skill); --g-rule:var(--rule);
+    --g-hook:var(--hook); --g-hookbg:var(--hook-soft); --g-block:var(--alert);
+    --g-agent:var(--agent); --g-store:var(--store); --g-tool:var(--ink);
+    --g-term:var(--webbing); --g-termbg:var(--webbing-soft);
+  }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){ --g-band:rgba(255,255,255,.025) } }
+  :root[data-theme="dark"]{ --g-band:rgba(255,255,255,.025) }
+  .graph svg text.gn{font-family:var(--mono);font-size:14px;font-weight:600}
+  .graph svg text.gk{font-family:var(--body);font-size:11.5px}
+  .graph svg text.gb{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em}
+  .graph svg text.gg{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em}
+  .shapekey{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:2px;margin-top:20px;background:var(--line)}
+  .shapekey > div{background:var(--surface);padding:12px 14px;display:flex;gap:10px;align-items:center;font-size:12.5px}
+  .shapekey svg{width:46px;height:22px;flex:0 0 auto}
+  .shapekey b{font-family:var(--mono);font-size:11.5px;font-weight:600}
+  .shapekey span{color:var(--soft);font-size:11.5px}
+
   /* ── Phase 사다리 (화살표 없이 세로로) ─────────────────── */
   .ladder{margin:0 0 22px;background:var(--line);display:grid;gap:1px}
   .lrow{background:var(--surface);display:grid;grid-template-columns:52px 88px 132px 1fr;gap:14px;padding:9px 14px;align-items:baseline;font-size:13.5px}
@@ -235,6 +258,7 @@
   </div>
   <nav class="toc">
     <a href="#canvas">한 장의 캔버스</a>
+    <a href="#graph">작업 흐름 그래프</a>
     <a href="#ships">저장소가 내는 것</a>
     <a href="#phases">유형이 고른다</a>
     <a href="#depth">클래스가 깊이를 정한다</a>
@@ -272,7 +296,7 @@
         <text class="mm" x="64" y="134" font-size="11" fill="var(--soft)">마켓플레이스 또는</text>
         <text class="mm" x="64" y="151" font-size="11" fill="var(--soft)">로컬 디렉토리 경로</text>
 
-        <rect x="304" y="82" width="196" height="94" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.5"/>
+        <rect x="304" y="82" width="196" height="94" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.5"/><rect x="309" y="87" width="2.5" height="84" fill="var(--skill)"/>
         <text class="mm" x="320" y="112" font-size="14" font-weight="600" fill="var(--skill)">/epcc-init</text>
         <text class="mm" x="320" y="134" font-size="11" fill="var(--soft)">스택을 구조화된</text>
         <text class="mm" x="320" y="151" font-size="11" fill="var(--soft)">질문으로 고른다</text>
@@ -299,7 +323,7 @@
       <rect x="48" y="238" width="300" height="16" fill="var(--ground)"/>
       <text class="mm" x="56" y="250" font-size="10" letter-spacing=".13em" fill="var(--faint)">매 세션 — 무엇이 로드되고 배선되나</text>
       <g>
-        <rect x="48" y="278" width="330" height="98" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.8"/>
+        <rect x="48" y="278" width="330" height="98" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.8"/><rect x="53" y="283" width="2.5" height="88" fill="var(--rule)"/>
         <text class="mm" x="64" y="302" font-size="11" font-weight="600" fill="var(--rule)">항상 로드 — 세션마다 값을 낸다</text>
         <text x="64" y="326" font-size="14" font-weight="700" fill="currentColor">T0 운영 규칙 42줄 예산</text>
         <text x="64" y="348" font-size="14" font-weight="700" fill="currentColor">+ workflow-routing 카드</text>
@@ -311,7 +335,7 @@
         <text class="mm" x="410" y="348" font-size="10.5" fill="var(--soft)">code-change · security · reversibility</text>
         <text class="mm" x="410" y="364" font-size="10.5" fill="var(--soft)">data-modeling · ui-design · doc-dependency …</text>
 
-        <rect x="700" y="278" width="432" height="98" fill="var(--hook-soft)" stroke="var(--hook)" stroke-width="1.8"/>
+        <rect x="700" y="278" width="432" height="98" fill="var(--hook-soft)" stroke="var(--hook)" stroke-width="1.8"/><rect x="705" y="283" width="2.5" height="88" fill="var(--hook)"/>
         <text class="mm" x="716" y="302" font-size="11" font-weight="600" fill="var(--hook)">기계가 강제하는 유일한 층</text>
         <text x="716" y="326" font-size="14" font-weight="700" fill="currentColor">훅 5개 스크립트 · 6개 이벤트 등록</text>
         <text class="mm" x="716" y="348" font-size="10.5" fill="var(--soft)">모델이 기억하든 말든 실행된다 · 토큰을 쓰지 않는다</text>
@@ -379,7 +403,7 @@
         <text class="mm" x="346" y="741" font-size="10.5" fill="var(--soft)">8개 모드 — 사실만 잰다</text>
         <text class="mm" x="346" y="758" font-size="10.5" fill="var(--soft)">손으로 적은 수를 실물과 대조</text>
 
-        <rect x="612" y="694" width="238" height="86" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.5"/>
+        <rect x="612" y="694" width="238" height="86" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.5"/><rect x="617" y="699" width="2.5" height="76" fill="var(--skill)"/>
         <text class="mm" x="628" y="720" font-size="13" font-weight="600" fill="var(--skill)">/harness-evaluation</text>
         <text class="mm" x="628" y="741" font-size="10.5" fill="var(--soft)">8축 전수 · 판단만 한다</text>
         <text class="mm" x="628" y="758" font-size="10.5" fill="var(--soft)">사실은 doctor에게서 받는다</text>
@@ -402,6 +426,177 @@
   </figure>
 </section>
 
+
+
+<!-- ══════════ 1-a. 작업 흐름 그래프 ══════════ -->
+<section id="graph">
+  <p class="eyebrow">작업 흐름 — 노드 25 · 엣지 46 (핵심 경로)</p>
+  <h2>하네스는 선언이고, 이게 그 선언입니다</h2>
+  <p class="say">이 그림은 <span class="m">workflow.graph.json</span>에서 <strong>직접 생성한 것</strong>입니다 — 라벨·종류·엣지를 손으로 옮겨 적지 않았습니다. <strong>모양이 자산 종류를 나타내고</strong>, 청록 엣지만 <strong>코드가 실제로 방출</strong>합니다(나머지는 모델 행동이라 코드가 방출할 수 없습니다).</p>
+
+  <div class="shapekey">
+    <div><svg viewBox="0 0 46 22"><rect x="1" y="1" width="44" height="20" rx="6" fill="var(--sunk)" stroke="var(--ink)" stroke-width="2"/></svg><div><b>스테이지</b><br><span>모델의 행동</span></div></div>
+    <div><svg viewBox="0 0 46 22"><rect x="1" y="1" width="44" height="20" rx="4" fill="var(--surface)" stroke="var(--line-hard)"/><rect x="6" y="5" width="2.5" height="12" fill="var(--skill)"/></svg><div><b>스킬</b><br><span>불릴 때만 로드</span></div></div>
+    <div><svg viewBox="0 0 46 22"><path d="M1,1 h38 l6,10 l-6,10 h-38 z" fill="var(--surface)" stroke="var(--hook)" stroke-width="1.6"/></svg><div><b>훅</b><br><span>기계가 실행</span></div></div>
+    <div><svg viewBox="0 0 46 22"><path d="M1,1 h38 l6,10 l-6,10 h-38 z" fill="var(--hook-soft)" stroke="var(--alert)" stroke-width="2.2"/></svg><div><b>차단 훅</b><br><span>거부할 수 있다</span></div></div>
+    <div><svg viewBox="0 0 46 22"><rect x="1" y="1" width="44" height="20" rx="6" fill="var(--surface)" stroke="var(--agent)" stroke-width="1.8"/></svg><div><b>에이전트</b><br><span>별도 컨텍스트</span></div></div>
+    <div><svg viewBox="0 0 46 22"><rect x="1" y="1" width="44" height="20" rx="10" fill="var(--surface)" stroke="var(--store)" stroke-width="1.6"/></svg><div><b>저장소</b><br><span>쓰고 다시 읽는다</span></div></div>
+    <div><svg viewBox="0 0 46 22"><path d="M8,1 h30 l7,10 l-7,10 h-30 l-7,-10 z" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.8"/></svg><div><b>도구</b><br><span>사실을 잰다</span></div></div>
+    <div><svg viewBox="0 0 46 22"><rect x="1" y="1" width="44" height="20" rx="10" fill="var(--webbing-soft)" stroke="var(--webbing)" stroke-width="1.6"/></svg><div><b>종단</b><br><span>사람에게서 끝난다</span></div></div>
+  </div>
+
+  <figure class="scroller graph">
+<svg viewBox="0 0 1600 1090" role="img" aria-label="workflow.graph.json 의 핵심 경로를 노드와 엣지로 그린 그림. 위 띠는 작업 흐름으로 세션 시작에서 탐색·계획을 거쳐 구현으로 모이고 검증과 교차검증으로 이어진다. 구현 주변에 훅 네 개가 붙어 있고 차단하는 둘은 경고색이다. 아래 띠는 피드백 루프로 계측이 doctor 로, doctor 가 평가와 자산 승격으로, 결과가 사람에게 보고된다. 모양이 자산 종류를 나타내고 청록 엣지만 코드가 실제로 방출한다.">
+<defs>
+<marker id="ga" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--g-edge)"/></marker>
+<marker id="gi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--g-inst)"/></marker>
+</defs>
+<rect x="44" y="40" width="1512" height="620" rx="10" fill="var(--g-band)" stroke="var(--g-line)" stroke-width="1"/>
+<text class="gb" x="62" y="64" fill="var(--g-faint)">작업 흐름</text>
+<rect x="44" y="700" width="1512" height="366" rx="10" fill="var(--g-band)" stroke="var(--g-line)" stroke-width="1"/>
+<text class="gb" x="62" y="724" fill="var(--g-faint)">피드백 루프 — 하네스가 자기를 고치는 곳</text>
+<line x1="44" y1="700" x2="1556" y2="700" stroke="var(--g-line)" stroke-width="1" stroke-dasharray="3 7"/>
+<rect x="300" y="348" width="240" height="104" rx="8" fill="none" stroke="var(--g-agent)" stroke-width="1.2" stroke-dasharray="6 5" opacity=".7"/>
+<text class="gg" x="304" y="342" fill="var(--g-faint)">서브에이전트 · 별도 컨텍스트</text>
+<rect x="1210" y="72" width="240" height="108" rx="8" fill="none" stroke="var(--g-agent)" stroke-width="1.2" stroke-dasharray="6 5" opacity=".7"/>
+<text class="gg" x="1214" y="66" fill="var(--g-faint)">서브에이전트 · 별도 컨텍스트</text>
+<rect x="1210" y="222" width="240" height="340" rx="8" fill="none" stroke="var(--g-agent)" stroke-width="1.2" stroke-dasharray="6 5" opacity=".7"/>
+<text class="gg" x="1214" y="216" fill="var(--g-faint)">Irreversible 전용 묶음</text>
+<path d="M260,328 C260,236 320,216 320,124" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M260,328 C422,328 458,264 620,264" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M260,328 C548,328 612,776 900,776" fill="none" stroke="var(--g-inst)" stroke-width="1.7" marker-end="url(#gi)"/>
+<path d="M260,328 C548,328 612,964 900,964" fill="none" stroke="var(--g-inst)" stroke-width="1.7" marker-end="url(#gi)"/>
+<path d="M420,152 C420,198 420,140 420,186" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M520,124 C520,187 620,201 620,264" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M420,242 C420,300 420,314 420,372" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M520,400 C520,339 620,325 620,264" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M520,214 C566,214 574,264 620,264" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M720,236 C720,189 720,179 720,132" fill="none" stroke="var(--g-inst)" stroke-width="1.7" marker-end="url(#gi)"/>
+<path d="M720,132 C720,179 720,189 720,236" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M720,292 C720,338 720,290 720,336" fill="none" stroke="var(--g-inst)" stroke-width="1.7" marker-end="url(#gi)"/>
+<path d="M720,336 C720,290 720,338 720,292" fill="none" stroke="var(--g-inst)" stroke-width="1.7" marker-end="url(#gi)"/>
+<path d="M820,264 C866,264 874,274 920,274" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1120,274 C1120,206 1230,192 1230,124" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1230,124 C1046,124 1004,264 820,264" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1120,274 C1170,274 1180,274 1230,274" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1230,274 C1046,274 1004,264 820,264" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M720,292 C720,397 720,421 720,526" fill="none" stroke="var(--g-inst)" stroke-width="1.7" marker-end="url(#gi)"/>
+<path d="M1120,274 C1120,498 1240,548 1240,772" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1330,302 C1330,501 1340,545 1340,744" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1240,772 C1177,772 1163,776 1100,776" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M900,776 C837,776 823,772 760,772" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M560,772 C470,772 450,772 360,772" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M720,292 C720,357 720,371 720,436" fill="none" stroke="var(--g-inst)" stroke-width="1.7" marker-end="url(#gi)"/>
+<path d="M820,464 C820,604 900,636 900,776" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1120,274 C1120,391 1230,417 1230,534" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1330,302 C1330,394 1330,414 1330,506" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1230,534 C1046,534 1004,264 820,264" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1000,804 C1000,863 1000,877 1000,936" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M900,964 C657,964 603,772 360,772" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1330,302 C1330,348 1330,350 1330,396" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M1330,452 C1330,498 1330,460 1330,506" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M900,964 C837,964 823,968 760,968" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M660,940 C660,877 660,863 660,800" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M560,968 C488,968 472,964 400,964" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M300,936 C300,875 260,861 260,800" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M320,214 C320,334 260,360 260,480" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M260,480 C260,360 320,334 320,214" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M320,214 C320,374 260,410 260,570" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M260,570 C422,570 458,264 620,264" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M820,264 C820,201 920,187 920,124" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M920,124 C920,416 360,480 360,772" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M620,264 C620,376 520,402 520,514" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M520,514 C520,402 620,376 620,264" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M760,968 C976,968 1024,772 1240,772" fill="none" stroke="var(--g-edge)" stroke-width="1.3" opacity="0.85" marker-end="url(#ga)"/>
+<path d="M60,300 h184 l16,28 l-16,28 h-184 z" fill="var(--g-surface)" stroke="var(--g-hook)" stroke-width="1.6"/>
+<text class="gn" x="160" y="324" text-anchor="middle" fill="var(--g-hook)">session-start</text>
+<text class="gk" x="160" y="342" text-anchor="middle" fill="var(--g-soft)">세션 시작 브리핑</text>
+<rect x="320" y="96" width="200" height="56" rx="10" fill="var(--g-stagebg)" stroke="var(--g-stage)" stroke-width="2"/>
+<text class="gn" x="420" y="120" text-anchor="middle" fill="var(--g-ink)">understand</text>
+<text class="gk" x="420" y="138" text-anchor="middle" fill="var(--g-soft)">탐색</text>
+<rect x="320" y="186" width="200" height="56" rx="10" fill="var(--g-stagebg)" stroke="var(--g-stage)" stroke-width="2"/>
+<text class="gn" x="420" y="210" text-anchor="middle" fill="var(--g-ink)">plan</text>
+<text class="gk" x="420" y="228" text-anchor="middle" fill="var(--g-soft)">계획</text>
+<rect x="60" y="452" width="200" height="56" rx="6" fill="var(--g-surface)" stroke="var(--g-line)" stroke-width="1.4"/>
+<rect x="69" y="463" width="3" height="34" fill="var(--g-skill)"/>
+<text class="gn" x="160" y="476" text-anchor="middle" fill="var(--g-skill)">prd-generator</text>
+<text class="gk" x="160" y="494" text-anchor="middle" fill="var(--g-soft)">PRD 생성</text>
+<rect x="60" y="542" width="200" height="56" rx="6" fill="var(--g-surface)" stroke="var(--g-line)" stroke-width="1.4"/>
+<rect x="69" y="553" width="3" height="34" fill="var(--g-skill)"/>
+<text class="gn" x="160" y="566" text-anchor="middle" fill="var(--g-skill)">dev-docs-generator</text>
+<text class="gk" x="160" y="584" text-anchor="middle" fill="var(--g-soft)">개발 문서</text>
+<rect x="320" y="372" width="200" height="56" rx="8" fill="var(--g-surface)" stroke="var(--g-agent)" stroke-width="1.8"/>
+<text class="gn" x="420" y="396" text-anchor="middle" fill="var(--g-agent)">epcc-planner</text>
+<text class="gk" x="420" y="414" text-anchor="middle" fill="var(--g-soft)">설계 위임</text>
+<rect x="320" y="486" width="200" height="56" rx="6" fill="var(--g-surface)" stroke="var(--g-line)" stroke-width="1.4"/>
+<rect x="329" y="497" width="3" height="34" fill="var(--g-skill)"/>
+<text class="gn" x="420" y="510" text-anchor="middle" fill="var(--g-skill)">ui-ux-design</text>
+<text class="gk" x="420" y="528" text-anchor="middle" fill="var(--g-soft)">디자인 시스템</text>
+<path d="M620,76 h184 l16,28 l-16,28 h-184 z" fill="var(--g-hookbg)" stroke="var(--g-block)" stroke-width="2.2"/>
+<text class="gn" x="720" y="100" text-anchor="middle" fill="var(--g-block)">security-check</text>
+<text class="gk" x="720" y="118" text-anchor="middle" fill="var(--g-soft)">시크릿·파괴 명령 차단</text>
+<rect x="620" y="236" width="200" height="56" rx="10" fill="var(--g-stagebg)" stroke="var(--g-stage)" stroke-width="2"/>
+<text class="gn" x="720" y="260" text-anchor="middle" fill="var(--g-ink)">build</text>
+<text class="gk" x="720" y="278" text-anchor="middle" fill="var(--g-soft)">구현</text>
+<path d="M620,336 h184 l16,28 l-16,28 h-184 z" fill="var(--g-hookbg)" stroke="var(--g-block)" stroke-width="2.2"/>
+<text class="gn" x="720" y="360" text-anchor="middle" fill="var(--g-block)">build-gate</text>
+<text class="gk" x="720" y="378" text-anchor="middle" fill="var(--g-soft)">검증 게이트</text>
+<path d="M620,436 h184 l16,28 l-16,28 h-184 z" fill="var(--g-surface)" stroke="var(--g-hook)" stroke-width="1.6"/>
+<text class="gn" x="720" y="460" text-anchor="middle" fill="var(--g-hook)">track-skill</text>
+<text class="gk" x="720" y="478" text-anchor="middle" fill="var(--g-soft)">스킬 사용 기록</text>
+<path d="M620,526 h184 l16,28 l-16,28 h-184 z" fill="var(--g-surface)" stroke="var(--g-hook)" stroke-width="1.6"/>
+<text class="gn" x="720" y="550" text-anchor="middle" fill="var(--g-hook)">handoff</text>
+<text class="gk" x="720" y="568" text-anchor="middle" fill="var(--g-soft)">핸드오프</text>
+<rect x="920" y="96" width="200" height="56" rx="6" fill="var(--g-surface)" stroke="var(--g-line)" stroke-width="1.4"/>
+<rect x="929" y="107" width="3" height="34" fill="var(--g-skill)"/>
+<text class="gn" x="1020" y="120" text-anchor="middle" fill="var(--g-skill)">completion-review</text>
+<text class="gk" x="1020" y="138" text-anchor="middle" fill="var(--g-soft)">마무리 문서화</text>
+<rect x="920" y="246" width="200" height="56" rx="10" fill="var(--g-stagebg)" stroke="var(--g-stage)" stroke-width="2"/>
+<text class="gn" x="1020" y="270" text-anchor="middle" fill="var(--g-ink)">verify</text>
+<text class="gk" x="1020" y="288" text-anchor="middle" fill="var(--g-soft)">리뷰 맡김</text>
+<rect x="1230" y="96" width="200" height="56" rx="8" fill="var(--g-surface)" stroke="var(--g-agent)" stroke-width="1.8"/>
+<text class="gn" x="1330" y="120" text-anchor="middle" fill="var(--g-agent)">epcc-reviewer</text>
+<text class="gk" x="1330" y="138" text-anchor="middle" fill="var(--g-soft)">독립 리뷰</text>
+<rect x="1230" y="246" width="200" height="56" rx="10" fill="var(--g-stagebg)" stroke="var(--g-stage)" stroke-width="2"/>
+<text class="gn" x="1330" y="270" text-anchor="middle" fill="var(--g-ink)">cross-check</text>
+<text class="gk" x="1330" y="288" text-anchor="middle" fill="var(--g-soft)">리뷰어의 추가 단계</text>
+<rect x="1230" y="396" width="200" height="56" rx="6" fill="var(--g-surface)" stroke="var(--g-line)" stroke-width="1.4"/>
+<rect x="1239" y="407" width="3" height="34" fill="var(--g-skill)"/>
+<text class="gn" x="1330" y="420" text-anchor="middle" fill="var(--g-skill)">codex-claude-loop</text>
+<text class="gk" x="1330" y="438" text-anchor="middle" fill="var(--g-soft)">외부 모델 검증</text>
+<rect x="1230" y="506" width="200" height="56" rx="6" fill="var(--g-surface)" stroke="var(--g-line)" stroke-width="1.4"/>
+<rect x="1239" y="517" width="3" height="34" fill="var(--g-skill)"/>
+<text class="gn" x="1330" y="530" text-anchor="middle" fill="var(--g-skill)">receiving-code-review</text>
+<text class="gk" x="1330" y="548" text-anchor="middle" fill="var(--g-soft)">받은 지적 검증</text>
+<rect x="1240" y="744" width="200" height="56" rx="28" fill="var(--g-surface)" stroke="var(--g-store)" stroke-width="1.6"/>
+<text class="gn" x="1340" y="768" text-anchor="middle" fill="var(--g-store)">lessons</text>
+<text class="gk" x="1340" y="786" text-anchor="middle" fill="var(--g-soft)">교훈 기록</text>
+<path d="M918,748 h164 l18,28 l-18,28 h-164 l-18,-28 z" fill="var(--g-surface)" stroke="var(--g-tool)" stroke-width="1.8"/>
+<text class="gn" x="1000" y="772" text-anchor="middle" fill="var(--g-tool)">doctor</text>
+<text class="gk" x="1000" y="790" text-anchor="middle" fill="var(--g-soft)">자기검증</text>
+<rect x="560" y="744" width="200" height="56" rx="10" fill="var(--g-stagebg)" stroke="var(--g-stage)" stroke-width="2"/>
+<text class="gn" x="660" y="768" text-anchor="middle" fill="var(--g-ink)">rule-promotion</text>
+<text class="gk" x="660" y="786" text-anchor="middle" fill="var(--g-soft)">자산 승격</text>
+<rect x="160" y="744" width="200" height="56" rx="28" fill="var(--g-termbg)" stroke="var(--g-term)" stroke-width="1.6"/>
+<text class="gn" x="260" y="768" text-anchor="middle" fill="var(--g-term)">user-report</text>
+<text class="gk" x="260" y="786" text-anchor="middle" fill="var(--g-soft)">사람에게 보고</text>
+<rect x="900" y="936" width="200" height="56" rx="6" fill="var(--g-surface)" stroke="var(--g-line)" stroke-width="1.4"/>
+<rect x="909" y="947" width="3" height="34" fill="var(--g-skill)"/>
+<text class="gn" x="1000" y="960" text-anchor="middle" fill="var(--g-skill)">harness-evaluation</text>
+<text class="gk" x="1000" y="978" text-anchor="middle" fill="var(--g-soft)">하네스 평가</text>
+<rect x="560" y="940" width="200" height="56" rx="28" fill="var(--g-surface)" stroke="var(--g-store)" stroke-width="1.6"/>
+<text class="gn" x="660" y="964" text-anchor="middle" fill="var(--g-store)">eval-report</text>
+<text class="gk" x="660" y="982" text-anchor="middle" fill="var(--g-soft)">평가 보고</text>
+<rect x="200" y="936" width="200" height="56" rx="6" fill="var(--g-surface)" stroke="var(--g-line)" stroke-width="1.4"/>
+<rect x="209" y="947" width="3" height="34" fill="var(--g-skill)"/>
+<text class="gn" x="300" y="960" text-anchor="middle" fill="var(--g-skill)">skill-enhancer</text>
+<text class="gk" x="300" y="978" text-anchor="middle" fill="var(--g-soft)">스킬 재설계</text>
+</svg>
+    <figcaption><strong>구현(<span class="m">build</span>)이 허브입니다.</strong> 모든 준비 단계가 여기로 모이고, 검증에서 결함이 나오면 <b>다시 여기로 돌아옵니다</b> — 위 띠의 되돌아오는 엣지가 그것입니다. 아래 띠는 <b>하네스가 자기를 고치는 루프</b>이고, 끝이 <span class="m">user-report</span>인 이유는 <b>실패가 조용히 사라지지 않게</b> 하려는 것입니다.</figcaption>
+  </figure>
+
+  <div class="note"><b>계측 엣지는 8개뿐입니다</b>(전체 87개 중). 청록으로 그린 것만 코드가 실제로 방출하고, 나머지는 <b>모델 행동이라 코드가 방출할 수 없습니다</b> — 그래서 「죽은 엣지」 판정에서 제외됩니다. <b>잴 수 없는 것을 잰 척하지 않습니다.</b></div>
+</section>
 
 <!-- ══════════ 1-b. 저장소가 내는 것 ══════════ -->
 <section id="ships">
@@ -427,17 +622,17 @@
       <text class="mm" x="20" y="24" font-size="11" font-weight="600" fill="var(--faint)">이 저장소 (플러그인)</text>
       <text class="mm" x="700" y="24" font-size="11" font-weight="600" fill="var(--faint)">당신의 프로젝트 (소비자)</text>
       <g>
-        <rect x="20" y="38" width="230" height="34" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.4"/>
+        <rect x="20" y="38" width="230" height="34" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.4"/><rect x="25" y="43" width="2.5" height="24" fill="var(--rule)"/>
         <text class="mm" x="34" y="60" font-size="12" fill="var(--rule)">rules/ — 카드 9장</text>
         <rect x="20" y="84" width="230" height="34" fill="var(--surface)" stroke="var(--line-hard)"/>
         <text class="mm" x="34" y="106" font-size="12" fill="currentColor">guides/ — 축 12 · 이음매 3</text>
-        <rect x="20" y="130" width="230" height="34" fill="var(--hook-soft)" stroke="var(--hook)" stroke-width="1.4"/>
+        <rect x="20" y="130" width="230" height="34" fill="var(--hook-soft)" stroke="var(--hook)" stroke-width="1.4"/><rect x="25" y="135" width="2.5" height="24" fill="var(--hook)"/>
         <text class="mm" x="34" y="152" font-size="12" fill="var(--hook)">scripts/ + hooks/</text>
-        <rect x="20" y="176" width="230" height="34" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.4"/>
+        <rect x="20" y="176" width="230" height="34" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.4"/><rect x="25" y="181" width="2.5" height="24" fill="var(--skill)"/>
         <text class="mm" x="34" y="198" font-size="12" fill="var(--skill)">skills/ — 26개</text>
       </g>
       <g>
-        <rect x="700" y="38" width="400" height="34" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.4"/>
+        <rect x="700" y="38" width="400" height="34" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.4"/><rect x="705" y="43" width="2.5" height="24" fill="var(--rule)"/>
         <text class="mm" x="714" y="60" font-size="12" fill="var(--rule)">.claude/rules/ — 실제 파일로 복사된다</text>
         <rect x="700" y="84" width="400" height="34" fill="var(--surface)" stroke="var(--skill)" stroke-width="1.4"/>
         <text class="mm" x="714" y="106" font-size="12" fill="var(--skill)">.claude/skills/frontend-guide · backend-guide</text>
@@ -702,6 +897,18 @@
   <figure class="scroller">
     <svg viewBox="0 0 1400 350" role="img" aria-label="결제 화면 신규 개발의 전체 흐름. 기획에서 화면 목록과 다관점 검토를 거쳐 PRD와 개발 문서를 만들고, 디자인 국면에서 방향 심사와 캔버스를 지나 구현한다. 결제 경로이므로 data-modeling 카드가 함께 붙고 Irreversible로 판정되어 팬아웃 리뷰와 사용자 확인 롤백이 요구된다.">
       <defs><marker id="s3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--line-hard)"/></marker></defs>
+      <rect x="94" y="4" width="1288" height="196" fill="var(--sunk)" opacity=".35"/>
+      <line x1="1214" y1="4" x2="1214" y2="248" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 6" opacity=".8"/>
+      <line x1="1054" y1="4" x2="1054" y2="248" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 6" opacity=".8"/>
+      <line x1="894" y1="4" x2="894" y2="248" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 6" opacity=".8"/>
+      <line x1="734" y1="4" x2="734" y2="248" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 6" opacity=".8"/>
+      <line x1="574" y1="4" x2="574" y2="248" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 6" opacity=".8"/>
+      <line x1="414" y1="4" x2="414" y2="248" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 6" opacity=".8"/>
+      <line x1="254" y1="4" x2="254" y2="248" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 6" opacity=".8"/>
+      <rect x="94" y="4" width="1010" height="196" fill="var(--sunk)" opacity=".35"/>
+      <line x1="274" y1="4" x2="274" y2="248" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 6" opacity=".8"/>
+      <line x1="514" y1="4" x2="514" y2="248" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 6" opacity=".8"/>
+      <line x1="774" y1="4" x2="774" y2="248" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 6" opacity=".8"/>
       <g class="mm" font-size="11" fill="var(--faint)" text-anchor="end">
         <text x="88" y="42">스킬</text><text x="88" y="90">규칙</text><text x="88" y="138">에이전트</text><text x="88" y="186">훅</text>
       </g>
@@ -711,53 +918,53 @@
       </g>
       <!-- 스킬 lane : 8 columns, col width 160, start 100 -->
       <g>
-        <rect x="102" y="6" width="152" height="24" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.3"/>
+        <rect x="102" y="6" width="152" height="24" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.3"/><rect x="107" y="11" width="2.5" height="14" fill="var(--skill)"/>
         <text class="mm" x="178" y="22" font-size="10" fill="var(--skill)" text-anchor="middle">/service-planner</text>
-        <rect x="102" y="32" width="152" height="24" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.3"/>
+        <rect x="102" y="32" width="152" height="24" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.3"/><rect x="107" y="37" width="2.5" height="14" fill="var(--skill)"/>
         <text class="mm" x="178" y="48" font-size="10" fill="var(--skill)" text-anchor="middle">/council-review</text>
-        <rect x="262" y="18" width="152" height="28" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.3"/>
+        <rect x="262" y="18" width="152" height="28" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.3"/><rect x="267" y="23" width="2.5" height="18" fill="var(--skill)"/>
         <text class="mm" x="338" y="37" font-size="10" fill="var(--skill)" text-anchor="middle">/prd-generator</text>
-        <rect x="422" y="18" width="152" height="28" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.3"/>
+        <rect x="422" y="18" width="152" height="28" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.3"/><rect x="427" y="23" width="2.5" height="18" fill="var(--skill)"/>
         <text class="mm" x="498" y="37" font-size="10" fill="var(--skill)" text-anchor="middle">/dev-docs-generator</text>
-        <rect x="582" y="18" width="152" height="28" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.3"/>
+        <rect x="582" y="18" width="152" height="28" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.3"/><rect x="587" y="23" width="2.5" height="18" fill="var(--skill)"/>
         <text class="mm" x="658" y="37" font-size="10" fill="var(--skill)" text-anchor="middle">/ui-ux-design</text>
-        <rect x="742" y="6" width="152" height="20" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.3"/>
+        <rect x="742" y="6" width="152" height="20" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.3"/><rect x="747" y="11" width="2.5" height="10" fill="var(--skill)"/>
         <text class="mm" x="818" y="20" font-size="9.5" fill="var(--skill)" text-anchor="middle">/test-driven-dev</text>
         <rect x="742" y="28" width="152" height="26" fill="var(--surface)" stroke="var(--skill)" stroke-width="1.3" stroke-dasharray="3 2"/>
         <text class="mm" x="818" y="40" font-size="9" fill="var(--skill)" text-anchor="middle">frontend-guide</text>
         <text class="mm" x="818" y="51" font-size="9" fill="var(--skill)" text-anchor="middle">backend-guide</text>
-        <rect x="1062" y="18" width="152" height="28" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.3"/>
+        <rect x="1062" y="18" width="152" height="28" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.3"/><rect x="1067" y="23" width="2.5" height="18" fill="var(--skill)"/>
         <text class="mm" x="1138" y="37" font-size="10" fill="var(--skill)" text-anchor="middle">/security-review</text>
-        <rect x="1222" y="18" width="152" height="28" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.3"/>
+        <rect x="1222" y="18" width="152" height="28" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.3"/><rect x="1227" y="23" width="2.5" height="18" fill="var(--skill)"/>
         <text class="mm" x="1298" y="37" font-size="10" fill="var(--skill)" text-anchor="middle">/pr-prep</text>
       </g>
       <!-- 규칙 lane -->
       <g>
-        <rect x="422" y="66" width="152" height="28" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.3"/>
+        <rect x="422" y="66" width="152" height="28" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.3"/><rect x="427" y="71" width="2.5" height="18" fill="var(--rule)"/>
         <text class="mm" x="498" y="85" font-size="10" fill="var(--rule)" text-anchor="middle">doc-dependency</text>
-        <rect x="582" y="66" width="152" height="28" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.3"/>
+        <rect x="582" y="66" width="152" height="28" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.3"/><rect x="587" y="71" width="2.5" height="18" fill="var(--rule)"/>
         <text class="mm" x="658" y="85" font-size="10" fill="var(--rule)" text-anchor="middle">ui-design</text>
-        <rect x="742" y="56" width="152" height="22" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.3"/>
+        <rect x="742" y="56" width="152" height="22" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.3"/><rect x="747" y="61" width="2.5" height="12" fill="var(--rule)"/>
         <text class="mm" x="818" y="71" font-size="9.5" fill="var(--rule)" text-anchor="middle">code-change · security</text>
-        <rect x="742" y="80" width="152" height="22" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.3"/>
+        <rect x="742" y="80" width="152" height="22" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.3"/><rect x="747" y="85" width="2.5" height="12" fill="var(--rule)"/>
         <text class="mm" x="818" y="95" font-size="9.5" fill="var(--rule)" text-anchor="middle">data-modeling</text>
-        <rect x="902" y="66" width="152" height="28" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.3"/>
+        <rect x="902" y="66" width="152" height="28" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.3"/><rect x="907" y="71" width="2.5" height="18" fill="var(--rule)"/>
         <text class="mm" x="978" y="85" font-size="10" fill="var(--rule)" text-anchor="middle">reversibility</text>
       </g>
       <!-- 에이전트 lane -->
       <g>
         <rect x="102" y="114" width="152" height="28" fill="none" stroke="var(--agent)" stroke-width="1.3" stroke-dasharray="4 3"/>
         <text class="mm" x="178" y="133" font-size="9.5" fill="var(--agent)" text-anchor="middle">epcc-planner (조건부)</text>
-        <rect x="1062" y="114" width="152" height="28" fill="var(--agent-soft)" stroke="var(--agent)" stroke-width="1.8"/>
+        <rect x="1062" y="114" width="152" height="28" fill="var(--agent-soft)" stroke="var(--agent)" stroke-width="1.8"/><rect x="1067" y="119" width="2.5" height="18" fill="var(--agent)"/>
         <text class="mm" x="1138" y="133" font-size="10" fill="var(--agent)" text-anchor="middle">epcc-reviewer ×3</text>
       </g>
       <!-- 훅 lane -->
       <g>
-        <rect x="102" y="162" width="152" height="28" fill="var(--hook-soft)" stroke="var(--hook)" stroke-width="1.8"/>
+        <rect x="102" y="162" width="152" height="28" fill="var(--hook-soft)" stroke="var(--hook)" stroke-width="1.8"/><rect x="107" y="167" width="2.5" height="18" fill="var(--hook)"/>
         <text class="mm" x="178" y="181" font-size="10" fill="var(--hook)" text-anchor="middle">session-brief</text>
-        <rect x="742" y="162" width="152" height="28" fill="var(--hook-soft)" stroke="var(--hook)" stroke-width="1.8"/>
+        <rect x="742" y="162" width="152" height="28" fill="var(--hook-soft)" stroke="var(--hook)" stroke-width="1.8"/><rect x="747" y="167" width="2.5" height="18" fill="var(--hook)"/>
         <text class="mm" x="818" y="181" font-size="10" fill="var(--hook)" text-anchor="middle">security-check</text>
-        <rect x="1222" y="162" width="152" height="28" fill="var(--hook-soft)" stroke="var(--hook)" stroke-width="1.8"/>
+        <rect x="1222" y="162" width="152" height="28" fill="var(--hook-soft)" stroke="var(--hook)" stroke-width="1.8"/><rect x="1227" y="167" width="2.5" height="18" fill="var(--hook)"/>
         <text class="mm" x="1298" y="181" font-size="10" fill="var(--hook)" text-anchor="middle">build-gate</text>
       </g>
       <!-- spine -->
@@ -808,9 +1015,9 @@
         <line x1="96" y1="52" x2="1104" y2="52"/><line x1="96" y1="100" x2="1104" y2="100"/>
         <line x1="96" y1="148" x2="1104" y2="148"/><line x1="96" y1="196" x2="1104" y2="196"/>
       </g>
-      <rect x="522" y="18" width="240" height="28" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.4"/>
+      <rect x="522" y="18" width="240" height="28" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.4"/><rect x="527" y="23" width="2.5" height="18" fill="var(--skill)"/>
       <text class="mm" x="642" y="37" font-size="11" fill="var(--skill)" text-anchor="middle">/prd-reviewer — 필수</text>
-      <rect x="282" y="66" width="220" height="28" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.8"/>
+      <rect x="282" y="66" width="220" height="28" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.8"/><rect x="287" y="71" width="2.5" height="18" fill="var(--rule)"/>
       <text class="mm" x="392" y="85" font-size="11" fill="var(--rule)" text-anchor="middle">doc-dependency</text>
       <rect x="282" y="114" width="220" height="28" fill="none" stroke="var(--line-hard)" stroke-width="1.4" stroke-dasharray="5 4"/>
       <text class="mm" x="392" y="133" font-size="10.5" fill="var(--faint)" text-anchor="middle">붙지 않는다</text>
@@ -1102,7 +1309,7 @@
 
       <text class="mm" x="20" y="22" font-size="11" font-weight="600" fill="var(--faint)">프론트엔드 축 · 4</text>
       <g class="mm" font-size="11.5">
-        <rect x="20" y="32" width="150" height="26" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.2"/><text x="34" y="50" fill="var(--skill)">nextjs</text>
+        <rect x="20" y="32" width="150" height="26" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.2"/><rect x="25" y="37" width="2.5" height="16" fill="var(--skill)"/><text x="34" y="50" fill="var(--skill)">nextjs</text>
         <rect x="20" y="62" width="150" height="26" fill="var(--surface)" stroke="var(--line-hard)"/><text x="34" y="80" fill="currentColor">react-vite</text>
         <rect x="20" y="92" width="150" height="26" fill="var(--surface)" stroke="var(--line-hard)"/><text x="34" y="110" fill="currentColor">vue</text>
         <rect x="20" y="122" width="150" height="26" fill="var(--surface)" stroke="var(--line-hard)"/><text x="34" y="140" fill="currentColor">vanilla</text>
@@ -1110,7 +1317,7 @@
 
       <text class="mm" x="20" y="186" font-size="11" font-weight="600" fill="var(--faint)">백엔드 축 · 8</text>
       <g class="mm" font-size="11">
-        <rect x="20" y="196" width="150" height="24" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.2"/><text x="34" y="212" fill="var(--skill)">supabase</text>
+        <rect x="20" y="196" width="150" height="24" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.2"/><rect x="25" y="201" width="2.5" height="14" fill="var(--skill)"/><text x="34" y="212" fill="var(--skill)">supabase</text>
         <rect x="20" y="224" width="150" height="24" fill="var(--surface)" stroke="var(--line-hard)"/><text x="34" y="240" fill="currentColor">aws-container</text>
         <rect x="20" y="252" width="150" height="24" fill="var(--surface)" stroke="var(--line-hard)"/><text x="34" y="268" fill="currentColor">aws-serverless</text>
         <rect x="20" y="280" width="150" height="24" fill="var(--surface)" stroke="var(--line-hard)"/><text x="34" y="296" fill="currentColor">node-api · nest · fastapi …</text>
@@ -1130,7 +1337,7 @@
       </g>
 
       <!-- seam -->
-      <rect x="556" y="32" width="250" height="140" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.6"/>
+      <rect x="556" y="32" width="250" height="140" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.6"/><rect x="561" y="37" width="2.5" height="130" fill="var(--rule)"/>
       <text class="mm" x="570" y="54" font-size="12" font-weight="600" fill="var(--rule)">이음매 · 3개 사전 제작</text>
       <g class="mm" font-size="11" fill="currentColor">
         <text x="570" y="76">nextjs + supabase</text>
@@ -1148,7 +1355,7 @@
       <text class="mm" x="570" y="294" font-size="10.5" fill="var(--alert)">거짓 계약이 구조적으로 불가</text>
 
       <!-- output -->
-      <rect x="864" y="80" width="236" height="120" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.8"/>
+      <rect x="864" y="80" width="236" height="120" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.8"/><rect x="869" y="85" width="2.5" height="110" fill="var(--skill)"/>
       <text class="mm" x="878" y="104" font-size="12" font-weight="600" fill="var(--skill)">프로젝트에 놓인다</text>
       <text class="mm" x="878" y="128" font-size="11.5" fill="currentColor">.claude/skills/</text>
       <text class="mm" x="878" y="148" font-size="11.5" fill="currentColor">  frontend-guide</text>
