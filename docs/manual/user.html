@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="EPCC 하네스 전체 지도 — 플러그인 3개와 이중 루트, 가이드 축 조립, 산출물과 읽는 노드, 훅 실패 3상태, 케이스 4건 스윔레인, 스킬 26개.">
+<meta name="description" content="EPCC 하네스 전체 지도 — 경우의 수를 고르면 그 경로가 나오는 탐색기, 플러그인 3개와 이중 루트, 가이드 축 조립, 스킬 26개.">
 <meta property="og:title" content="EPCC 하네스 지도">
-<meta property="og:description" content="EPCC 하네스 전체 지도 — 플러그인 3개와 이중 루트, 가이드 축 조립, 산출물과 읽는 노드, 훅 실패 3상태, 케이스 4건 스윔레인, 스킬 26개.">
+<meta property="og:description" content="EPCC 하네스 전체 지도 — 경우의 수를 고르면 그 경로가 나오는 탐색기, 플러그인 3개와 이중 루트, 가이드 축 조립, 스킬 26개.">
 <meta property="og:type" content="article">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧭</text></svg>">
 <style>:root{color-scheme:light dark}body{margin:0;padding:0}img{max-width:100%}</style>
@@ -151,6 +151,40 @@
   footer p{margin:0 0 10px;font-size:14px;color:var(--soft)}
   footer code{font-family:var(--mono);font-size:13px;background:var(--sunk);padding:2px 6px}
 
+  /* ── 경로 탐색기 ───────────────────────────────────────── */
+  .explorer{margin-top:28px;background:var(--line);display:grid;gap:2px}
+  .ctrls{background:var(--surface);padding:22px 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:24px}
+  .ctrls fieldset{border:0;margin:0;padding:0}
+  .ctrls legend{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:9px;padding:0}
+  .ctrls label{display:block;font-size:14px;padding:5px 0;cursor:pointer;color:var(--soft)}
+  .ctrls label:hover{color:var(--ink)}
+  .ctrls input{margin-right:8px;accent-color:var(--skill)}
+  .ctrls input:checked + span{color:var(--ink);font-weight:600}
+  .ctrls label small{display:block;margin-left:24px;font-size:11.5px;color:var(--faint)}
+  .res{background:var(--surface);padding:24px}
+  .res .verdict{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 20px;padding-bottom:18px;border-bottom:2px solid var(--line)}
+  .res .cls{font-family:var(--mono);font-size:12.5px;font-weight:600;padding:4px 10px;border:2px solid currentColor}
+  .res .meta{font-size:13.5px;color:var(--soft)}
+  .res .meta b{color:var(--ink)}
+  .spine{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 22px}
+  .spine .ph{font-family:var(--mono);font-size:12.5px;font-weight:600;padding:6px 12px;background:var(--sunk);color:var(--ink)}
+  .spine .ph.hot{background:var(--ink);color:var(--surface)}
+  .spine .ph.irr{background:var(--alert-soft);color:var(--alert);border:1.5px solid var(--alert)}
+  .spine .sep{color:var(--faint);font-family:var(--mono);font-size:12px}
+  .lane{display:grid;grid-template-columns:96px 1fr;gap:16px;padding:11px 0;border-top:1px solid var(--line);align-items:start}
+  .lane .lname{font-family:var(--mono);font-size:11.5px;color:var(--faint);padding-top:4px}
+  .lane .items{display:flex;flex-wrap:wrap;gap:7px}
+  .lane .none{font-size:13px;color:var(--faint);font-style:normal;padding-top:3px}
+  .chip{font-family:var(--mono);font-size:12px;font-weight:600;padding:3px 9px;border:1.5px solid currentColor;white-space:nowrap}
+  .chip.dash{border-style:dashed}
+  .chip em{font-style:normal;font-weight:400;opacity:.75}
+  .human{margin:20px 0 0;padding:15px 18px;background:var(--webbing-soft);border-left:4px solid var(--webbing);font-size:13.5px}
+  .human b{display:block;font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--webbing);margin-bottom:6px}
+  .human ol{margin:0;padding-left:19px}
+  .gates{margin:14px 0 0;padding:15px 18px;background:var(--sunk);font-size:13.5px}
+  .gates b{display:block;font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+  .gates ul{margin:0;padding-left:19px}
+
   svg text{font-family:var(--body)}
   svg .mm{font-family:var(--mono)}
 </style>
@@ -176,7 +210,7 @@
     <a href="#phases">유형이 고른다</a>
     <a href="#depth">클래스가 깊이를 정한다</a>
     <a href="#matrix">전 경우 매트릭스</a>
-    <a href="#cases">사례 낱낱이</a>
+    <a href="#cases">경로 탐색기</a>
     <a href="#agents">서브에이전트 2</a>
     <a href="#runtime">런타임 — 훅·카드</a>
     <a href="#skills">스킬 26</a>
@@ -542,151 +576,50 @@
   <div class="note"><b>모든 칸 밑에 깔린 바닥</b> — 클래스가 무엇이든 <b>소스를 고쳤으면 빌드/테스트까지가 한 동작</b>이고, <span class="pill p-hook">build-gate</span>가 그것을 강제합니다. 그리고 사용자가 지적하면 <b>경로와 무관하게</b> 즉시 <span class="m">docs/lessons.md</span>에 기록됩니다.</div>
 </section>
 
-<!-- ══════════ 5. 케이스별 흐름도 ══════════ -->
+<!-- ══════════ 5. 경로 탐색기 ══════════ -->
 <section id="cases">
-  <p class="eyebrow">케이스별 전체 프로세스</p>
-  <h2>네 종류의 자산이 한 작업에서 어떻게 겹치나</h2>
-  <p class="say">아래 흐름도는 <strong>레인이 자산 종류</strong>입니다 — 위에서부터 스킬 · 규칙 카드 · 서브에이전트 · 훅, 그리고 맨 아래가 시간 축입니다. 같은 하네스인데 케이스마다 <strong>어느 레인이 비고 어느 레인이 채워지는지</strong>가 완전히 다릅니다.</p>
+  <p class="eyebrow">경우의 수 — 6 유형 × 5 경로 × 화면 × 테스트</p>
+  <h2>고르면 그 경우의 경로가 나옵니다</h2>
+  <p class="say">아래 넷을 고르면 <strong>그 조합에서 실제로 발동하는 것 전부</strong>가 레인별로 나옵니다 — 어떤 스킬이 불리고, 어떤 규칙 카드가 로드되고, 에이전트가 붙는지, 훅이 어디서 막는지. <strong>레인이 비어 있는 것도 정보입니다.</strong></p>
 
-  <div class="note" style="margin-top:18px"><b>점선 칩은 프로젝트 소유 자산입니다.</b> <span class="m">frontend-guide</span>·<span class="m">backend-guide</span>는 축을 조립해 <b>당신의</b> <span class="m">.claude/skills/</span>에 놓인 것이라 플러그인 스킬 26개에 포함되지 않습니다 — 그런데 <b>P4에서는 항상 발동합니다.</b> 스택 관행(컴포넌트 경계·클래스 병합·파일 배치)의 정본이 그쪽이기 때문입니다.</div>
-
-  <div class="legend" style="margin-top:20px">
-    <b><i style="background:var(--skill)"></i>스킬 — 불릴 때만 로드</b>
-    <b><i style="background:var(--rule)"></i>규칙 카드 — 경로가 부른다</b>
-    <b><i style="background:var(--agent)"></i>서브에이전트 — 별도 세션</b>
-    <b><i style="background:var(--hook)"></i>훅 — 기계가 강제</b>
+  <div class="explorer" id="explorer">
+    <div class="ctrls">
+      <fieldset>
+        <legend>작업 유형</legend>
+        <label><input type="radio" name="etype" value="new-noprd"><span>신규 기능 — PRD 없음</span></label>
+        <label><input type="radio" name="etype" value="new-prd"><span>신규 기능 — PRD 있음</span></label>
+        <label><input type="radio" name="etype" value="modify"><span>기존 기능 수정 · 삭제</span></label>
+        <label><input type="radio" name="etype" value="bug" checked><span>버그 수정</span></label>
+        <label><input type="radio" name="etype" value="refactor"><span>리팩토링</span></label>
+        <label><input type="radio" name="etype" value="docs"><span>문서 · 조사</span></label>
+      </fieldset>
+      <fieldset>
+        <legend>건드리는 경로</legend>
+        <label><input type="radio" name="epath" value="db"><span>migrations/ · DB 스키마</span></label>
+        <label><input type="radio" name="epath" value="auth" checked><span>auth · RLS</span></label>
+        <label><input type="radio" name="epath" value="pay"><span>결제 · 정산 · 운영 데이터</span></label>
+        <label><input type="radio" name="epath" value="costly"><span>api/ · actions.ts · 공유 패키지</span></label>
+        <label><input type="radio" name="epath" value="plain"><span>그 외 — 컴포넌트 · 유틸 · 테스트</span></label>
+      </fieldset>
+      <fieldset>
+        <legend>화면(UI)을 건드리나</legend>
+        <label><input type="radio" name="eui" value="y"><span>예</span><small>components/ · page.tsx · css</small></label>
+        <label><input type="radio" name="eui" value="n" checked><span>아니오</span></label>
+      </fieldset>
+      <fieldset>
+        <legend>테스트 러너가 있나</legend>
+        <label><input type="radio" name="etest" value="y" checked><span>예</span><small>동작을 바꾸면 테스트가 먼저</small></label>
+        <label><input type="radio" name="etest" value="n"><span>아니오</span></label>
+      </fieldset>
+    </div>
+    <div class="res" id="res"></div>
   </div>
 
-  <!-- CASE 1 -->
-  <h3 style="margin-top:40px">케이스 1 — auth 가드의 버그 한 줄</h3>
-  <p class="say" style="margin-bottom:0">버그 수정 × <b style="color:var(--alert)">Irreversible</b> — 밟는 Phase는 둘뿐인데 검증은 가장 깊습니다.</p>
-  <figure class="scroller">
-    <svg viewBox="0 0 1120 330" role="img" aria-label="auth 가드 버그 한 줄 수정의 전체 흐름. 진입 판정에서 준비 단계를 건너뛰고 구현으로 가며, 구현 중 code-change security reversibility 카드가 로드되고 security-check 훅이 쓰기 직전에 검사한다. 경로가 auth이므로 Irreversible로 판정되어 epcc-reviewer가 세 관점으로 팬아웃하고 사용자 확인과 롤백 절차가 붙으며, 끝내려 할 때 build-gate가 빌드 실행을 확인한다.">
-      <defs><marker id="s1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--line-hard)"/></marker></defs>
-      <g class="mm" font-size="11" fill="var(--faint)" text-anchor="end">
-        <text x="88" y="42">스킬</text><text x="88" y="90">규칙</text><text x="88" y="138">에이전트</text><text x="88" y="186">훅</text>
-      </g>
-      <g stroke="var(--line)" stroke-width="1">
-        <line x1="96" y1="52" x2="1104" y2="52"/><line x1="96" y1="100" x2="1104" y2="100"/>
-        <line x1="96" y1="148" x2="1104" y2="148"/><line x1="96" y1="196" x2="1104" y2="196"/>
-      </g>
-      <!-- 스킬 -->
-      <rect x="354" y="6" width="156" height="22" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.4"/>
-      <text class="mm" x="432" y="21" font-size="10" fill="var(--skill)" text-anchor="middle">/test-driven-dev</text>
-      <rect x="354" y="30" width="156" height="22" fill="var(--surface)" stroke="var(--skill)" stroke-width="1.4" stroke-dasharray="3 2"/>
-      <text class="mm" x="432" y="45" font-size="9.5" fill="var(--skill)" text-anchor="middle">backend-guide · 프로젝트 소유</text>
-      <rect x="1026" y="18" width="78" height="28" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.4"/>
-      <text class="mm" x="1065" y="37" font-size="11" fill="var(--skill)" text-anchor="middle">/pr-prep</text>
-      <!-- 규칙 -->
-      <rect x="354" y="66" width="156" height="28" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.4"/>
-      <text class="mm" x="432" y="85" font-size="10.5" fill="var(--rule)" text-anchor="middle">code-change</text>
-      <rect x="518" y="66" width="156" height="28" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.4"/>
-      <text class="mm" x="596" y="85" font-size="10.5" fill="var(--rule)" text-anchor="middle">security</text>
-      <rect x="682" y="66" width="156" height="28" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.4"/>
-      <text class="mm" x="760" y="85" font-size="10.5" fill="var(--rule)" text-anchor="middle">reversibility</text>
-      <!-- 에이전트 -->
-      <rect x="846" y="114" width="156" height="28" fill="var(--agent-soft)" stroke="var(--agent)" stroke-width="1.8"/>
-      <text class="mm" x="924" y="133" font-size="10.5" fill="var(--agent)" text-anchor="middle">epcc-reviewer ×3</text>
-      <!-- 훅 -->
-      <rect x="354" y="162" width="156" height="28" fill="var(--hook-soft)" stroke="var(--hook)" stroke-width="1.8"/>
-      <text class="mm" x="432" y="181" font-size="10.5" fill="var(--hook)" text-anchor="middle">security-check</text>
-      <rect x="1026" y="162" width="78" height="28" fill="var(--hook-soft)" stroke="var(--hook)" stroke-width="1.8"/>
-      <text class="mm" x="1065" y="181" font-size="10.5" fill="var(--hook)" text-anchor="middle">build-gate</text>
-      <!-- spine -->
-      <g>
-        <rect x="102" y="214" width="156" height="34" fill="var(--surface)" stroke="var(--line-hard)"/>
-        <text x="180" y="235" font-size="11.5" fill="currentColor" text-anchor="middle">진입 판정 — 4상태 충족</text>
-        <rect x="354" y="214" width="156" height="34" fill="var(--ink)"/>
-        <text x="432" y="235" font-size="12" font-weight="700" fill="var(--surface)" text-anchor="middle">P4 구현</text>
-        <rect x="518" y="214" width="156" height="34" fill="var(--surface)" stroke="var(--line-hard)"/>
-        <text x="596" y="235" font-size="11.5" fill="currentColor" text-anchor="middle">클래스 판정</text>
-        <rect x="682" y="214" width="156" height="34" fill="var(--alert-soft)" stroke="var(--alert)" stroke-width="1.5"/>
-        <text x="760" y="235" font-size="11.5" font-weight="600" fill="var(--alert)" text-anchor="middle">auth → Irreversible</text>
-        <rect x="846" y="214" width="156" height="34" fill="var(--surface)" stroke="var(--alert)" stroke-width="1.5"/>
-        <text x="924" y="235" font-size="11.5" fill="currentColor" text-anchor="middle">P5·P6 + 확인·롤백</text>
-        <rect x="1026" y="214" width="78" height="34" fill="var(--surface)" stroke="var(--line-hard)"/>
-        <text x="1065" y="235" font-size="11.5" fill="currentColor" text-anchor="middle">출하</text>
-      </g>
-      <g stroke="var(--line-hard)" stroke-width="1.4" marker-end="url(#s1)">
-        <line x1="260" y1="231" x2="350" y2="231"/><line x1="512" y1="231" x2="514" y2="231"/>
-        <line x1="676" y1="231" x2="678" y2="231"/><line x1="840" y1="231" x2="842" y2="231"/>
-        <line x1="1004" y1="231" x2="1022" y2="231"/>
-      </g>
-      <text class="mm" x="102" y="278" font-size="11" fill="var(--soft)">준비 단계 0 — P0~P3 전부 건너뜀</text>
-      <text class="mm" x="682" y="278" font-size="11" fill="var(--alert)">경로가 auth 라는 사실 하나가 검증 깊이를 결정한다</text>
-      <text class="mm" x="102" y="302" font-size="11" fill="var(--faint)">세션 시작에 session-brief 가 이미 규칙을 깔아두었다 — 위 레인에는 그리지 않았다</text>
-    </svg>
-    <figcaption><strong>한 줄인데 가장 무겁습니다.</strong> 규칙 레인 셋과 에이전트 레인이 모두 채워지고, 사용자 확인이 붙습니다 — 줄 수가 아니라 경로가 정하기 때문입니다.</figcaption>
-  </figure>
+  <div class="note"><b>몇 가지 해볼 만한 조합</b> — ⓐ <b>버그 수정 × auth</b>(기본값): Phase는 둘뿐인데 에이전트가 셋으로 팬아웃합니다. ⓑ <b>리팩토링 × 그 외</b>: 400줄이어도 에이전트 레인이 빕니다. ⓒ <b>문서 · 조사</b>: Phase가 0인데 카드가 스킬을 의무화합니다. ⓓ <b>신규 · PRD 없음 × 결제 × 화면 예</b>: 모든 레인이 채워집니다.</div>
 
-  <!-- CASE 2 -->
-  <h3 style="margin-top:44px">케이스 2 — 400줄 컴포넌트 리팩토링</h3>
-  <p class="say" style="margin-bottom:0">리팩토링 × <b style="color:var(--skill)">Reversible</b> — 케이스 1보다 100배 크지만 <b>에이전트 레인이 빕니다.</b></p>
-  <figure class="scroller">
-    <svg viewBox="0 0 1120 330" role="img" aria-label="400줄 컴포넌트 리팩토링의 전체 흐름. 개발 문서로 범위를 못 박고 구현하며, components 경로라 ui-design 카드가 함께 로드된다. 공유 계약을 건드리지 않으므로 Reversible로 판정되어 리뷰 에이전트가 붙지 않고 completion-review로 마무리한다.">
-      <defs><marker id="s2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--line-hard)"/></marker></defs>
-      <g class="mm" font-size="11" fill="var(--faint)" text-anchor="end">
-        <text x="88" y="42">스킬</text><text x="88" y="90">규칙</text><text x="88" y="138">에이전트</text><text x="88" y="186">훅</text>
-      </g>
-      <g stroke="var(--line)" stroke-width="1">
-        <line x1="96" y1="52" x2="1104" y2="52"/><line x1="96" y1="100" x2="1104" y2="100"/>
-        <line x1="96" y1="148" x2="1104" y2="148"/><line x1="96" y1="196" x2="1104" y2="196"/>
-      </g>
-      <!-- 스킬 -->
-      <rect x="270" y="18" width="156" height="28" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.4"/>
-      <text class="mm" x="348" y="37" font-size="10.5" fill="var(--skill)" text-anchor="middle">/dev-docs-generator</text>
-      <rect x="438" y="6" width="156" height="22" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.4"/>
-      <text class="mm" x="516" y="21" font-size="10" fill="var(--skill)" text-anchor="middle">/ui-ux-design</text>
-      <rect x="438" y="30" width="156" height="22" fill="var(--surface)" stroke="var(--skill)" stroke-width="1.4" stroke-dasharray="3 2"/>
-      <text class="mm" x="516" y="45" font-size="9.5" fill="var(--skill)" text-anchor="middle">frontend-guide · 프로젝트 소유</text>
-      <rect x="774" y="18" width="156" height="28" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.4"/>
-      <text class="mm" x="852" y="37" font-size="10.5" fill="var(--skill)" text-anchor="middle">/completion-review</text>
-      <rect x="942" y="18" width="162" height="28" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.4"/>
-      <text class="mm" x="1023" y="37" font-size="10.5" fill="var(--skill)" text-anchor="middle">/pr-prep</text>
-      <!-- 규칙 -->
-      <rect x="438" y="66" width="156" height="28" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.4"/>
-      <text class="mm" x="516" y="85" font-size="10.5" fill="var(--rule)" text-anchor="middle">code-change</text>
-      <rect x="606" y="66" width="156" height="28" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.4"/>
-      <text class="mm" x="684" y="85" font-size="10.5" fill="var(--rule)" text-anchor="middle">ui-design</text>
-      <rect x="774" y="66" width="156" height="28" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.4"/>
-      <text class="mm" x="852" y="85" font-size="10.5" fill="var(--rule)" text-anchor="middle">reversibility</text>
-      <!-- 에이전트 : 없음 -->
-      <rect x="774" y="114" width="156" height="28" fill="none" stroke="var(--line-hard)" stroke-width="1.4" stroke-dasharray="5 4"/>
-      <text class="mm" x="852" y="133" font-size="10.5" fill="var(--faint)" text-anchor="middle">붙지 않는다</text>
-      <!-- 훅 -->
-      <rect x="438" y="162" width="156" height="28" fill="var(--hook-soft)" stroke="var(--hook)" stroke-width="1.8"/>
-      <text class="mm" x="516" y="181" font-size="10.5" fill="var(--hook)" text-anchor="middle">security-check</text>
-      <rect x="942" y="162" width="162" height="28" fill="var(--hook-soft)" stroke="var(--hook)" stroke-width="1.8"/>
-      <text class="mm" x="1023" y="181" font-size="10.5" fill="var(--hook)" text-anchor="middle">build-gate</text>
-      <!-- spine -->
-      <g>
-        <rect x="102" y="214" width="156" height="34" fill="var(--surface)" stroke="var(--line-hard)"/>
-        <text x="180" y="235" font-size="11.5" fill="currentColor" text-anchor="middle">진입 판정</text>
-        <rect x="270" y="214" width="156" height="34" fill="var(--surface)" stroke="var(--line-hard)"/>
-        <text x="348" y="235" font-size="11.5" fill="currentColor" text-anchor="middle">P3 범위 못 박기</text>
-        <rect x="438" y="214" width="156" height="34" fill="var(--ink)"/>
-        <text x="516" y="235" font-size="12" font-weight="700" fill="var(--surface)" text-anchor="middle">P4 구현</text>
-        <rect x="606" y="214" width="156" height="34" fill="var(--surface)" stroke="var(--line-hard)"/>
-        <text x="684" y="235" font-size="11.5" fill="currentColor" text-anchor="middle">렌더 증명</text>
-        <rect x="774" y="214" width="156" height="34" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.5"/>
-        <text x="852" y="235" font-size="11.5" font-weight="600" fill="var(--skill)" text-anchor="middle">Reversible → P5</text>
-        <rect x="942" y="214" width="162" height="34" fill="var(--surface)" stroke="var(--line-hard)"/>
-        <text x="1023" y="235" font-size="11.5" fill="currentColor" text-anchor="middle">출하</text>
-      </g>
-      <g stroke="var(--line-hard)" stroke-width="1.4" marker-end="url(#s2)">
-        <line x1="260" y1="231" x2="266" y2="231"/><line x1="428" y1="231" x2="434" y2="231"/>
-        <line x1="596" y1="231" x2="602" y2="231"/><line x1="764" y1="231" x2="770" y2="231"/>
-        <line x1="932" y1="231" x2="938" y2="231"/>
-      </g>
-      <text class="mm" x="606" y="278" font-size="11" fill="var(--soft)">콘솔 error 0 · 빈/로딩/에러 3상태를 실제로 렌더</text>
-      <text class="mm" x="774" y="302" font-size="11" fill="var(--alert)">actions.ts · middleware.ts 를 하나라도 건드리면 즉시 Costly 로 올라간다</text>
-    </svg>
-    <figcaption><strong>400줄인데 가볍습니다.</strong> 에이전트 레인이 빈 것이 이 케이스의 핵심입니다 — 공유 계약을 건드리지 않았기 때문입니다.</figcaption>
-  </figure>
-
+  <h3 style="margin-top:44px">레인 형식을 한 번 크게 — 모든 레인이 채워지는 경우</h3>
+  <p class="say" style="margin-bottom:0">위 탐색기의 ⓓ 조합을 다이어그램으로 펼친 것입니다. <b>맨 아래가 시간 축</b>이고 위 네 줄이 자산 종류입니다.</p>
   <!-- CASE 3 -->
-  <h3 style="margin-top:44px">케이스 3 — 결제 화면을 새로 만든다</h3>
-  <p class="say" style="margin-bottom:0">신규 기능(PRD 없음) × <b style="color:var(--alert)">Irreversible</b> — <b>모든 레인이 채워지는 유일한 경우</b>입니다.</p>
   <figure class="scroller">
     <svg viewBox="0 0 1400 350" role="img" aria-label="결제 화면 신규 개발의 전체 흐름. 기획에서 화면 목록과 다관점 검토를 거쳐 PRD와 개발 문서를 만들고, 디자인 국면에서 방향 심사와 캔버스를 지나 구현한다. 결제 경로이므로 data-modeling 카드가 함께 붙고 Irreversible로 판정되어 팬아웃 리뷰와 사용자 확인 롤백이 요구된다.">
       <defs><marker id="s3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--line-hard)"/></marker></defs>
@@ -784,7 +717,7 @@
   </figure>
 
   <!-- CASE 4 -->
-  <h3 style="margin-top:44px">케이스 4 — PRD 문서만 고친다</h3>
+  <h3 style="margin-top:44px">가장 비어 있는 경우 — PRD 문서만 고친다</h3>
   <p class="say" style="margin-bottom:0">문서 작업 — <b>Phase가 적용되지 않는데도 규칙이 스킬을 부릅니다.</b></p>
   <figure class="scroller">
     <svg viewBox="0 0 1120 250" role="img" aria-label="PRD 문서만 수정하는 흐름. Phase 절차는 적용되지 않지만 doc-dependency 카드가 로드되어 prd-reviewer를 부른다. 소스가 바뀌지 않았으므로 build-gate는 걸리지 않는다.">
@@ -822,10 +755,10 @@
     <figcaption><strong>Phase 축과 카드 축은 독립입니다.</strong> 절차가 하나도 안 도는 작업에서도 카드가 발동하고, 그 카드가 스킬을 의무화합니다 — 문서 하나를 고치면 그것에 의존하는 문서가 조용히 어긋나기 때문입니다.</figcaption>
   </figure>
 
-  <h3 style="margin-top:44px">네 케이스를 겹쳐 보면</h3>
+  <h3 style="margin-top:44px">네 극단을 겹쳐 보면</h3>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th style="width:230px">케이스</th><th style="width:110px">Phase 수</th><th style="width:150px">규칙 카드</th><th style="width:130px">에이전트</th><th>사람이 개입하는 자리</th></tr></thead>
+      <thead><tr><th style="width:230px">조합</th><th style="width:110px">Phase 수</th><th style="width:150px">규칙 카드</th><th style="width:130px">에이전트</th><th>사람이 개입하는 자리</th></tr></thead>
       <tbody>
         <tr><td><b>auth 가드 한 줄</b><br><small style="color:var(--soft)">버그 × Irreversible</small></td><td class="m">2</td><td class="m" style="color:var(--rule)">3장</td><td class="m" style="color:var(--agent)">reviewer ×3</td><td><b>Irreversible 승인</b></td></tr>
         <tr><td><b>400줄 리팩토링</b><br><small style="color:var(--soft)">리팩토링 × Reversible</small></td><td class="m">3</td><td class="m" style="color:var(--rule)">3장</td><td class="m" style="color:var(--faint)">없음</td><td>없음</td></tr>
@@ -1246,6 +1179,146 @@
 </footer>
 
 </div>
+
+<script>
+(function(){
+  var TYPES = {
+    'new-noprd': {label:'신규 기능 · PRD 없음', phases:['P0','P1','P2','P3','P4','P5'], code:true},
+    'new-prd':   {label:'신규 기능 · PRD 있음', phases:['P3','P4','P5'], code:true},
+    'modify':    {label:'기존 기능 수정 · 삭제', phases:['P4','P5'], code:true},
+    'bug':       {label:'버그 수정', phases:['P4','P5'], code:true},
+    'refactor':  {label:'리팩토링', phases:['P3','P4','P5'], code:true},
+    'docs':      {label:'문서 · 조사', phases:[], code:false}
+  };
+  var PATHS = {
+    'db':    {label:'migrations/ · DB 스키마', cls:'irr', extraRule:'data-modeling'},
+    'auth':  {label:'auth · RLS', cls:'irr'},
+    'pay':   {label:'결제 · 정산 · 운영 데이터', cls:'irr'},
+    'costly':{label:'api/ · actions.ts · middleware.ts · 공유 패키지', cls:'cos'},
+    'plain': {label:'그 외 — 컴포넌트 · 유틸 · 테스트', cls:'rev'}
+  };
+  var CLS = {
+    irr:{name:'Irreversible', color:'var(--alert)', verify:'다관점 팬아웃 + 사용자 확인 + 롤백 절차'},
+    cos:{name:'Costly',       color:'var(--webbing)', verify:'epcc-reviewer 독립 리뷰 — 필수'},
+    rev:{name:'Reversible',   color:'var(--skill)', verify:'/completion-review 로 마무리'}
+  };
+
+  function q(n){ var e=document.querySelector('input[name="'+n+'"]:checked'); return e?e.value:null; }
+  function chip(text, kind, dashed, note){
+    var c = 'var(--'+kind+')';
+    return '<span class="chip'+(dashed?' dash':'')+'" style="color:'+c+'">'+text+
+           (note?' <em>'+note+'</em>':'')+'</span>';
+  }
+  function lane(name, items){
+    var body = items.length ? '<div class="items">'+items.join('')+'</div>'
+                            : '<div class="none">— 이 경우엔 발동하지 않습니다</div>';
+    return '<div class="lane"><div class="lname">'+name+'</div>'+body+'</div>';
+  }
+
+  function render(){
+    var t = q('etype'), pth = q('epath'), ui = q('eui')==='y', tr = q('etest')==='y';
+    if(!t || !pth) return;
+    var T = TYPES[t], P = PATHS[pth];
+    var cls = T.code ? P.cls : 'rev';
+    var C = CLS[cls];
+    var phases = T.phases.slice();
+    if(T.code && cls==='irr') phases.push('P6');
+
+    // ── 스킬 ──
+    var skills = [];
+    if(t==='new-noprd'){
+      skills.push(chip('/brainstorming','skill',false,'의도가 흐릴 때'));
+      skills.push(chip('/service-planner','skill'));
+      if(cls==='irr') skills.push(chip('/council-review','skill',false,'되돌리기 어려운 기획'));
+      skills.push(chip('/prompt-enhancer','skill',true,'P1 · 조건부'));
+      skills.push(chip('/prd-generator','skill'));
+    }
+    if(t==='new-prd' || t==='refactor' || t==='new-noprd')
+      skills.push(chip('/dev-docs-generator','skill',true,'세션을 넘어갈 때만'));
+    if(t==='bug') skills.push(chip('/fix-issue','skill',true,'이슈 번호가 있을 때'));
+    if(T.code && tr) skills.push(chip('/test-driven-development','skill'));
+    if(T.code && ui){
+      skills.push(chip('/ui-ux-design','skill'));
+      skills.push(chip('frontend-guide','skill',true,'프로젝트 소유'));
+    }
+    if(T.code) skills.push(chip('backend-guide','skill',true,'프로젝트 소유'));
+    if(t==='docs') skills.push(chip('/prd-reviewer','skill',false,'PRD 를 고쳤으면 필수'));
+    if(T.code && cls==='rev') skills.push(chip('/completion-review','skill'));
+    if(T.code && cls==='irr') skills.push(chip('/security-review','skill',true,'결제·인증 경로'));
+    if(T.code) skills.push(chip('/pr-prep','skill'));
+
+    // ── 규칙 카드 ──
+    var rules = [chip('workflow-routing','rule',false,'상시')];
+    if(T.code){
+      rules.push(chip('code-change','rule'));
+      rules.push(chip('security','rule'));
+      rules.push(chip('reversibility','rule'));
+      rules.push(chip('lessons','rule',false,'지적이 나오면'));
+      if(ui) rules.push(chip('ui-design','rule'));
+      if(P.extraRule) rules.push(chip(P.extraRule,'rule'));
+    } else {
+      rules.push(chip('doc-dependency','rule'));
+      rules.push(chip('lessons','rule',false,'지적이 나오면'));
+    }
+
+    // ── 에이전트 ──
+    var agents = [];
+    if(t==='new-noprd') agents.push(chip('epcc-planner','agent',true,'진입 조건 2개↑ 미충족일 때'));
+    if(T.code && cls==='cos') agents.push(chip('epcc-reviewer','agent',false,'1회'));
+    if(T.code && cls==='irr') agents.push(chip('epcc-reviewer ×3','agent',false,'correctness · security · reversibility'));
+
+    // ── 훅 ──
+    var hooks = [chip('session-brief','hook',false,'세션 시작')];
+    if(T.code){
+      hooks.push(chip('security-check','hook',false,'쓰기·실행 직전 · 차단'));
+      hooks.push(chip('build-gate','hook',false,'끝내려 할 때 · 차단'));
+    } else {
+      hooks.push(chip('security-check','hook',true,'문서에도 시크릿 검사는 돈다'));
+      hooks.push(chip('build-gate','hook',true,'소스 변경 0 — 걸리지 않는다'));
+    }
+    hooks.push(chip('track-skill','hook',false,'스킬 호출 기록'));
+
+    // ── 사람 ──
+    var human = ['의도를 준다 — 넷 중 이것만은 Claude 가 채울 수 없습니다'];
+    if(T.code && ui) human.push('캔버스 시안을 직접 고친다 (/design 이 있을 때)');
+    if(T.code && cls==='irr') human.push('되돌릴 수 없는 변경을 승인한다 — 되돌리기 가장 싼 마지막 지점');
+
+    // ── 종료 조건 ──
+    var gates = [];
+    if(T.code) gates.push('소스를 고쳤으면 <b>빌드·테스트 실행</b>까지가 한 동작 — build-gate 가 강제');
+    if(T.code && ui) gates.push('<b>렌더 증명</b> — 스크린샷 · 콘솔 error 0 · 빈/로딩/에러 3상태');
+    if(T.code && cls==='irr') gates.push('<b>롤백 절차</b>를 문서로 남긴다');
+    if(T.code && cls!=='rev') gates.push('리뷰 결과를 <b>받은 뒤</b> /receiving-code-review 로 검증한다');
+    if(!T.code) gates.push('빌드 게이트도 리뷰도 붙지 않는다 — 그러나 <b>카드가 스킬을 의무화</b>한다');
+
+    var spine = phases.length
+      ? phases.map(function(x){
+          var k = x==='P4' ? ' hot' : (x==='P6' ? ' irr' : '');
+          return '<span class="ph'+k+'">'+x+'</span>';
+        }).join('<span class="sep">→</span>')
+      : '<span class="ph">Phase 미적용</span>';
+
+    var html =
+      '<div class="verdict">'+
+        '<span class="cls" style="color:'+C.color+'">'+C.name+'</span>'+
+        '<span class="meta"><b>'+T.label+'</b> · '+P.label+'</span>'+
+        '<span class="meta">검증: '+C.verify+'</span>'+
+      '</div>'+
+      '<div class="spine">'+spine+'</div>'+
+      lane('스킬', skills)+
+      lane('규칙 카드', rules)+
+      lane('에이전트', agents)+
+      lane('훅', hooks)+
+      '<div class="human"><b>사람이 실행하는 자리 · '+human.length+'곳</b><ol><li>'+human.join('</li><li>')+'</li></ol></div>'+
+      '<div class="gates"><b>이 경우의 종료 조건</b><ul><li>'+gates.join('</li><li>')+'</li></ul></div>';
+
+    document.getElementById('res').innerHTML = html;
+  }
+
+  var box = document.getElementById('explorer');
+  if(box){ box.addEventListener('change', render); render(); }
+})();
+</script>
 
 <script>
 (function(){
