@@ -303,6 +303,8 @@ PostToolUse 추적기 3종
 
 ## Next Steps
 
+- [사용자 매뉴얼](docs/user-manual.md) — **작업 유형별로 무엇을 언제 쓰는가** (여정 중심)
+- [운영 매뉴얼](docs/operations-manual.md) — 하네스를 고치고 유지보수하는 사람용 (절차·런북)
 - [하네스 해부](docs/harness-anatomy.md) — 훅·규칙 3계층·루프·그래프가 **왜 그렇게 구현됐는가**
 - [Configuration Reference](docs/configuration.md) — `epcc.config.json` 전체 옵션
 - [Presets Guide](docs/presets.md) — 프리셋 상세
