@@ -3,24 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="EPCC 하네스 전체 지도 — 결정 흐름도, 스킬 26개 전수, 규칙 카드 9장의 발동 경로, 훅 5개와 차단 23종.">
-<meta property="og:title" content="EPCC 작업 지도">
-<meta property="og:description" content="EPCC 하네스 전체 지도 — 결정 흐름도, 스킬 26개 전수, 규칙 카드 9장의 발동 경로, 훅 5개와 차단 23종.">
+<meta name="description" content="EPCC 하네스 전체 지도 — 네 리듬의 마스터 캔버스, 유형×클래스 전 경우 매트릭스, 훅 5개가 고친 v2 결함, 규칙 카드 9장의 발동 경로, 스킬 26개.">
+<meta property="og:title" content="EPCC 하네스 지도">
+<meta property="og:description" content="EPCC 하네스 전체 지도 — 네 리듬의 마스터 캔버스, 유형×클래스 전 경우 매트릭스, 훅 5개가 고친 v2 결함, 규칙 카드 9장의 발동 경로, 스킬 26개.">
 <meta property="og:type" content="article">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧭</text></svg>">
 <style>:root{color-scheme:light dark}body{margin:0;padding:0}img{max-width:100%}</style>
-<title>EPCC 작업 지도</title>
+<title>EPCC 하네스 지도</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
 <style>
   :root{
     --ground:#E8EBEA; --surface:#F7F9F8; --sunk:#DDE2E1;
     --ink:#14191A; --soft:#4C5A58; --faint:#7B8886;
     --line:#C4CCCA; --line-hard:#9EAAA8;
-    --anod:#0B7B85; --anod-soft:#D2E6E7;
+    /* 자산 종류마다 고유 색 — 어디서 보든 같은 색이면 같은 종류다 */
+    --skill:#0B7B85;  --skill-soft:#D2E6E7;
+    --rule:#2F4BA8;   --rule-soft:#DCE2F5;
+    --hook:#A8461B;   --hook-soft:#F6E0D5;
+    --agent:#6E3596;  --agent-soft:#EADCF3;
+    --store:#5A6472;  --store-soft:#DFE3E6;
     --webbing:#B87E05; --webbing-soft:#F6E7BE;
-    --alert:#A81F23; --alert-soft:#F3D8D8;
+    --alert:#A81F23;  --alert-soft:#F3D8D8;
     --display:"Black Han Sans","IBM Plex Sans KR",sans-serif;
     --body:"IBM Plex Sans KR","Noto Sans KR",system-ui,sans-serif;
     --mono:"IBM Plex Mono",ui-monospace,monospace;
@@ -30,7 +35,11 @@
       --ground:#0F1413; --surface:#171E1D; --sunk:#1F2827;
       --ink:#E7EEEC; --soft:#A0B0AD; --faint:#7A8886;
       --line:#2B3634; --line-hard:#43524F;
-      --anod:#3FC8D2; --anod-soft:#12363A;
+      --skill:#3FC8D2; --skill-soft:#12363A;
+      --rule:#8CA2F0;  --rule-soft:#1A2140;
+      --hook:#E8975E;  --hook-soft:#3A2115;
+      --agent:#C08BE0; --agent-soft:#2C1B38;
+      --store:#9BA6B3; --store-soft:#232A2E;
       --webbing:#F0BE45; --webbing-soft:#3A2E10;
       --alert:#EF6A6D; --alert-soft:#3A1B1C;
     }
@@ -39,14 +48,18 @@
     --ground:#0F1413; --surface:#171E1D; --sunk:#1F2827;
     --ink:#E7EEEC; --soft:#A0B0AD; --faint:#7A8886;
     --line:#2B3634; --line-hard:#43524F;
-    --anod:#3FC8D2; --anod-soft:#12363A;
+    --skill:#3FC8D2; --skill-soft:#12363A;
+    --rule:#8CA2F0;  --rule-soft:#1A2140;
+    --hook:#E8975E;  --hook-soft:#3A2115;
+    --agent:#C08BE0; --agent-soft:#2C1B38;
+    --store:#9BA6B3; --store-soft:#232A2E;
     --webbing:#F0BE45; --webbing-soft:#3A2E10;
     --alert:#EF6A6D; --alert-soft:#3A1B1C;
   }
 
   *{box-sizing:border-box}
-  body{background:var(--ground);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.7;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1080px;margin:0 auto;padding:0 24px 96px}
+  body{background:var(--ground);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.72;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px 96px}
 
   .strap{background:var(--webbing);color:#1A1405;font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;padding:9px 24px;display:flex;gap:18px;flex-wrap:wrap;border-bottom:3px solid var(--ink)}
   .strap span:last-child{margin-left:auto;opacity:.72}
@@ -54,85 +67,89 @@
   .strap a:hover{opacity:.7}
   .strap a:focus-visible{outline:2px solid currentColor;outline-offset:3px}
 
-  header{padding:60px 0 36px;border-bottom:2px solid var(--ink)}
-  h1{font-family:var(--display);font-weight:400;font-size:clamp(42px,8vw,80px);line-height:1.02;margin:0 0 18px;text-wrap:balance;letter-spacing:-.01em}
-  .lede{font-size:clamp(17px,2.2vw,21px);color:var(--soft);max-width:54ch;margin:0}
+  header{padding:58px 0 34px;border-bottom:2px solid var(--ink)}
+  h1{font-family:var(--display);font-weight:400;font-size:clamp(40px,7.5vw,76px);line-height:1.03;margin:0 0 18px;text-wrap:balance;letter-spacing:-.01em}
+  .lede{font-size:clamp(16.5px,2.1vw,20px);color:var(--soft);max-width:60ch;margin:0}
   .lede strong{color:var(--ink);font-weight:600}
-  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--anod);margin:0 0 20px;font-weight:600}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--skill);margin:0 0 20px;font-weight:600}
 
-  nav.toc{display:flex;flex-wrap:wrap;gap:2px;background:var(--line);margin:28px 0 0}
-  nav.toc a{background:var(--surface);padding:11px 16px;font-size:13.5px;text-decoration:none;color:var(--soft);flex:1 1 auto;text-align:center}
-  nav.toc a:hover{background:var(--anod-soft);color:var(--ink)}
-  nav.toc a:focus-visible{outline:2px solid var(--anod);outline-offset:-2px}
+  .legend{display:flex;flex-wrap:wrap;gap:0 20px;margin:24px 0 0;font-family:var(--mono);font-size:12px;color:var(--soft)}
+  .legend b{display:inline-flex;align-items:center;gap:6px;font-weight:500}
+  .legend i{width:11px;height:11px;display:inline-block}
 
-  section{padding:58px 0;border-bottom:1px solid var(--line);scroll-margin-top:12px}
+  nav.toc{display:flex;flex-wrap:wrap;gap:2px;background:var(--line);margin:26px 0 0}
+  nav.toc a{background:var(--surface);padding:11px 14px;font-size:13px;text-decoration:none;color:var(--soft);flex:1 1 auto;text-align:center}
+  nav.toc a:hover{background:var(--skill-soft);color:var(--ink)}
+  nav.toc a:focus-visible{outline:2px solid var(--skill);outline-offset:-2px}
+
+  section{padding:56px 0;border-bottom:1px solid var(--line);scroll-margin-top:12px}
   section:last-of-type{border-bottom:0}
   .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin:0 0 12px}
-  h2{font-family:var(--display);font-weight:400;font-size:clamp(28px,5vw,48px);line-height:1.08;margin:0 0 16px;text-wrap:balance}
-  h3{font-size:17px;font-weight:700;margin:34px 0 12px}
-  .say{font-size:clamp(15.5px,2vw,18px);color:var(--soft);max-width:62ch;margin:0}
+  h2{font-family:var(--display);font-weight:400;font-size:clamp(27px,4.6vw,44px);line-height:1.1;margin:0 0 16px;text-wrap:balance}
+  h3{font-size:17px;font-weight:700;margin:36px 0 10px}
+  .say{font-size:clamp(15.5px,1.9vw,17.5px);color:var(--soft);max-width:70ch;margin:0}
   .say strong{color:var(--ink);font-weight:600}
   .m{font-family:var(--mono)}
 
-  figure{margin:32px 0 0}
+  figure{margin:30px 0 0}
   figure svg{display:block;width:100%;max-width:100%;height:auto}
   .scroller{overflow-x:auto}
-  figcaption{margin-top:14px;font-size:14.5px;color:var(--soft);max-width:66ch;border-left:3px solid var(--anod);padding-left:14px}
+  figcaption{margin-top:14px;font-size:14px;color:var(--soft);max-width:74ch;border-left:3px solid var(--skill);padding-left:14px}
 
-  table{border-collapse:collapse;width:100%;margin-top:22px;font-size:14.5px}
-  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
-  th{font-size:12px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:600;border-bottom:2px solid var(--line-hard)}
-  td:first-child{white-space:nowrap}
-  .tbl-wrap{overflow-x:auto}
-  .cmd{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--anod)}
-  .paths{font-family:var(--mono);font-size:12.5px;color:var(--soft);line-height:1.6}
+  .tbl-wrap{overflow-x:auto;margin-top:22px}
+  table{border-collapse:collapse;width:100%;font-size:14px}
+  th,td{text-align:left;padding:10px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11.5px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:600;border-bottom:2px solid var(--line-hard)}
+  tr.grouphead td{background:var(--sunk);font-weight:700;font-size:13px;padding-top:14px}
+  tr.grouphead .cnt{font-family:var(--mono);color:var(--skill);font-weight:600}
+  tr.grouphead .why{font-weight:400;color:var(--soft);font-size:12.5px}
+  .nowrap{white-space:nowrap}
+  .paths{font-family:var(--mono);font-size:12px;color:var(--soft);line-height:1.65}
 
-  .badge{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.08em;padding:2px 7px;border:1.5px solid currentColor;margin-left:7px;vertical-align:2px}
-  .b-man{color:var(--webbing)}
-  .b-always{color:var(--alert)}
+  .pill{display:inline-block;font-family:var(--mono);font-size:12.5px;font-weight:600;padding:2px 8px;border:1.5px solid currentColor;white-space:nowrap}
+  .p-skill{color:var(--skill)} .p-rule{color:var(--rule)} .p-hook{color:var(--hook)} .p-agent{color:var(--agent)}
+  .badge{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.06em;padding:2px 6px;border:1.5px solid currentColor}
+  .b-auto{color:var(--skill)} .b-cmd{color:var(--webbing)} .b-always{color:var(--alert)}
 
-  .filterbar{margin:26px 0 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-  .filterbar input{flex:1 1 320px;font-family:var(--body);font-size:15px;padding:12px 15px;background:var(--surface);color:var(--ink);border:2px solid var(--line-hard);outline:none}
-  .filterbar input:focus{border-color:var(--anod)}
-  .filterbar .count{font-family:var(--mono);font-size:12.5px;color:var(--faint)}
-  .grp{margin-top:30px}
-  .grp > h3{margin:0 0 2px;font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--anod)}
-  .empty{display:none;font-size:14px;color:var(--faint);padding:16px 0}
-  .grp[hidden]{display:none}
+  .matrix td{font-family:var(--mono);font-size:12.5px}
+  .matrix td.who{font-family:var(--body);font-size:14px;font-weight:600}
+  .matrix td small{display:block;font-family:var(--body);font-size:11.5px;color:var(--soft);margin-top:3px;font-weight:400}
+  .matrix th small{display:block;font-family:var(--body);font-size:11px;text-transform:none;letter-spacing:0;color:var(--faint);font-weight:400;margin-top:2px}
+  .c-rev{background:var(--skill-soft)} .c-cos{background:var(--webbing-soft)} .c-irr{background:var(--alert-soft)}
 
-  .stack{display:grid;gap:2px;margin-top:30px;background:var(--line)}
-  .row{background:var(--surface);display:grid;grid-template-columns:130px 1fr;gap:20px;padding:18px 22px;align-items:start}
+  .cases{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:2px;margin-top:26px;background:var(--line)}
+  .case{background:var(--surface);padding:24px 24px 22px}
+  .case h4{margin:0 0 4px;font-size:16px;font-weight:700}
+  .case .path{font-family:var(--mono);font-size:12px;color:var(--soft);margin:0 0 14px}
+  .case ol{margin:0;padding-left:20px;font-size:13.5px;color:var(--soft);line-height:1.8}
+  .case ol b{color:var(--ink)}
+  .case .verdict{margin:14px 0 0;padding-top:12px;border-top:1px solid var(--line);font-size:13px;font-weight:600}
+
+  .stack{display:grid;gap:2px;margin-top:28px;background:var(--line)}
+  .row{background:var(--surface);display:grid;grid-template-columns:130px 1fr;gap:20px;padding:17px 22px;align-items:start}
   .row .tag{font-family:var(--mono);font-size:12.5px;font-weight:600}
-  .row p{margin:0;font-size:14.5px;color:var(--soft)}
+  .row p{margin:0;font-size:14px;color:var(--soft)}
   .row b{color:var(--ink)}
-  .t-ok{color:var(--anod)} .t-warn{color:var(--webbing)} .t-bad{color:var(--alert)}
   @media (max-width:640px){.row{grid-template-columns:1fr;gap:6px}}
 
-  .triad{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:2px;margin-top:30px;background:var(--line)}
-  .triad > div{background:var(--surface);padding:22px 20px}
-  .triad h4{font-family:var(--display);font-weight:400;font-size:21px;margin:12px 0 8px;line-height:1.2}
-  .triad p{margin:0;font-size:14px;color:var(--soft)}
-  .num{font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--anod);letter-spacing:.12em}
-
-  .blocks{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:2px;margin-top:22px;background:var(--line)}
+  .blocks{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:2px;margin-top:22px;background:var(--line)}
   .blocks > div{background:var(--surface);padding:18px 20px}
-  .blocks h4{margin:0 0 12px;font-size:14px;font-weight:700}
-  .blocks ul{margin:0;padding-left:17px;font-size:13.5px;color:var(--soft);line-height:1.85}
-  .blocks .m{font-size:12.5px}
+  .blocks h4{margin:0 0 11px;font-size:13.5px;font-weight:700}
+  .blocks ul{margin:0;padding-left:16px;font-size:13px;color:var(--soft);line-height:1.85}
+  .blocks .m{font-size:12px}
 
-  .dont{list-style:none;padding:0;margin:30px 0 0;display:grid;gap:2px;background:var(--line)}
-  .dont li{background:var(--surface);padding:17px 22px;display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:14.5px}
-  .dont b{font-weight:600}
-  .dont span{color:var(--soft)}
-  @media (max-width:640px){.dont li{grid-template-columns:1fr;gap:4px}}
-
-  .pull{margin:32px 0 0;padding:24px 26px;background:var(--alert-soft);border-left:5px solid var(--alert);font-size:clamp(17px,2.3vw,21px);font-weight:600;line-height:1.45}
-  .note{margin:24px 0 0;padding:17px 22px;background:var(--sunk);font-size:14.5px;color:var(--soft)}
+  .pull{margin:30px 0 0;padding:22px 26px;background:var(--alert-soft);border-left:5px solid var(--alert);font-size:clamp(16.5px,2.2vw,20px);font-weight:600;line-height:1.5}
+  .note{margin:22px 0 0;padding:16px 22px;background:var(--sunk);font-size:14px;color:var(--soft)}
   .note b{color:var(--ink)}
 
-  footer{padding:46px 0 0;border-top:2px solid var(--ink);margin-top:20px}
-  footer p{margin:0 0 10px;font-size:14.5px;color:var(--soft)}
-  footer code{font-family:var(--mono);font-size:13.5px;background:var(--sunk);padding:2px 6px}
+  .filterbar{margin:24px 0 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .filterbar input{flex:1 1 320px;font-family:var(--body);font-size:15px;padding:11px 14px;background:var(--surface);color:var(--ink);border:2px solid var(--line-hard);outline:none}
+  .filterbar input:focus{border-color:var(--skill)}
+  .filterbar .count{font-family:var(--mono);font-size:12.5px;color:var(--faint)}
+
+  footer{padding:44px 0 0;border-top:2px solid var(--ink);margin-top:20px}
+  footer p{margin:0 0 10px;font-size:14px;color:var(--soft)}
+  footer code{font-family:var(--mono);font-size:13px;background:var(--sunk);padding:2px 6px}
 
   svg text{font-family:var(--body)}
   svg .mm{font-family:var(--mono)}
@@ -143,409 +160,408 @@
 <div class="wrap">
 
 <header>
-  <p class="kicker">하네스 = 안전벨트</p>
-  <h1>EPCC<br>작업 지도</h1>
-  <p class="lede">요청 하나가 들어와서 코드가 나가기까지, <strong>어디서 무엇이 발동하고 왜 그러는지</strong> 전부 적었습니다. 스킬 26개 · 규칙 카드 9장 · 훅 5개 · 차단 23종.</p>
+  <p class="kicker">스킬 26 · 규칙 카드 9 · 훅 5 · 그래프 노드 48</p>
+  <h1>EPCC 하네스<br>지도</h1>
+  <p class="lede">설치 한 번, 매 세션, 작업 하나, 그리고 그 밑에서 계속 도는 자기검증. <strong>네 가지 리듬으로 나눠서, 각각 무엇이 언제 왜 발동하는지</strong> 전부 적었습니다.</p>
+  <div class="legend">
+    <b><i style="background:var(--skill)"></i>스킬</b>
+    <b><i style="background:var(--rule)"></i>규칙 카드</b>
+    <b><i style="background:var(--hook)"></i>훅</b>
+    <b><i style="background:var(--agent)"></i>서브에이전트</b>
+    <b><i style="background:var(--store)"></i>저장소</b>
+  </div>
   <nav class="toc">
-    <a href="#flow">전체 흐름도</a>
-    <a href="#entry">진입 판정</a>
-    <a href="#class">되돌림 클래스</a>
+    <a href="#canvas">한 장의 캔버스</a>
+    <a href="#phases">유형이 고른다</a>
+    <a href="#depth">클래스가 깊이를 정한다</a>
+    <a href="#matrix">전 경우 매트릭스</a>
+    <a href="#cases">사례 낱낱이</a>
+    <a href="#agents">서브에이전트 2</a>
+    <a href="#runtime">런타임 — 훅·카드</a>
     <a href="#skills">스킬 26</a>
-    <a href="#rules">규칙 카드 9</a>
-    <a href="#hooks">훅 5 · 차단 23</a>
-    <a href="#stuck">막혔을 때</a>
   </nav>
 </header>
 
-<!-- ══════════════ 흐름도 ══════════════ -->
-<section id="flow">
-  <p class="eyebrow">전체 흐름도</p>
-  <h2>요청 하나가 지나가는 길</h2>
-  <p class="say">마름모는 <strong>판정</strong>이고, 거기서 길이 갈립니다. 회색 화살표에 붙은 글자가 <strong>갈림 조건</strong>입니다.</p>
+<!-- ══════════ 1. 캔버스 ══════════ -->
+<section id="canvas">
+  <p class="eyebrow">한 장의 캔버스</p>
+  <h2>네 가지 리듬으로 나뉩니다</h2>
+  <p class="say"><strong>얼마나 자주 일어나는가</strong>로 묶었습니다. 설치는 프로젝트당 한 번. 규칙 두 갈래와 훅 여섯 등록은 매 세션. 작업마다 7개 Phase 중 <strong>일부만</strong> 밟습니다. 그리고 그 밑에서 "이게 실제로 살아있나"를 재는 루프가 계속 돕니다.</p>
 
   <figure class="scroller">
-    <svg viewBox="0 0 1000 1010" role="img" aria-label="요청 도착부터 출하까지의 결정 흐름도. 진입 조건 판정에서 의도가 불명확하면 사용자에게 묻고, 두 개 이상 미충족이면 epcc-planner가 진단한다. 작업 유형 판정에서 네 갈래로 나뉘어 구현으로 모이고, 구현 중에는 훅과 규칙 카드가 작동한다. 되돌림 클래스 판정에서 검증 강도가 셋으로 갈린다.">
+    <svg viewBox="0 0 1180 910" role="img" aria-label="하네스 전체를 네 개의 띠로 나눈 그림. 프로젝트당 한 번의 설치, 매 세션 로드되는 규칙과 배선되는 훅, 작업마다 밟는 일곱 Phase 중 일부, 그리고 계측에서 doctor와 평가를 거쳐 결함이 다시 작업으로 돌아오는 상시 루프.">
       <defs>
-        <marker id="fa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
-        </marker>
-        <marker id="fb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M0 0 L10 5 L0 10 z" fill="var(--webbing)"/>
+        <marker id="ca" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="var(--line-hard)"/>
         </marker>
       </defs>
 
-      <!-- 0. 요청 -->
-      <rect x="200" y="16" width="220" height="42" fill="var(--ink)"/>
-      <text x="310" y="43" font-size="15" font-weight="700" fill="var(--surface)" text-anchor="middle">사용자 요청 도착</text>
-      <line x1="310" y1="58" x2="310" y2="84" stroke="currentColor" stroke-width="2" opacity=".5" marker-end="url(#fa)"/>
-
-      <!-- 1. 진입 조건 판정 -->
-      <polygon points="310,88 452,140 310,192 168,140" fill="var(--surface)" stroke="var(--anod)" stroke-width="2.5"/>
-      <text x="310" y="132" font-size="13.5" font-weight="700" fill="currentColor" text-anchor="middle">진입 조건 4상태</text>
-      <text x="310" y="152" font-size="11.5" fill="currentColor" opacity=".65" text-anchor="middle">의도·컨텍스트·반경·검증</text>
-
-      <!-- branch: 의도 불명확 -->
-      <line x1="452" y1="126" x2="596" y2="126" stroke="var(--webbing)" stroke-width="2.5" marker-end="url(#fb)"/>
-      <text class="mm" x="524" y="117" font-size="11" fill="var(--webbing)" text-anchor="middle">의도 불명확</text>
-      <rect x="602" y="104" width="286" height="44" fill="var(--webbing-soft)" stroke="var(--webbing)" stroke-width="2"/>
-      <text x="616" y="132" font-size="13.5" font-weight="600" fill="currentColor">사용자에게 묻는다 — 개수 무관</text>
-
-      <!-- branch: 2개 이상 미충족 -->
-      <line x1="452" y1="160" x2="596" y2="176" stroke="currentColor" stroke-width="2" opacity=".5" marker-end="url(#fa)"/>
-      <text class="mm" x="524" y="185" font-size="11" fill="currentColor" opacity=".6" text-anchor="middle">2개↑ 미충족</text>
-      <rect x="602" y="156" width="286" height="44" fill="var(--surface)" stroke="var(--line-hard)" stroke-width="2"/>
-      <text class="mm" x="616" y="176" font-size="12" fill="currentColor">epcc-planner</text>
-      <text x="616" y="193" font-size="11.5" fill="currentColor" opacity=".65">서브에이전트가 영향 반경을 진단 (쓰기 없음)</text>
-
-      <line x1="310" y1="192" x2="310" y2="220" stroke="currentColor" stroke-width="2" opacity=".5" marker-end="url(#fa)"/>
-      <text class="mm" x="322" y="212" font-size="11" fill="currentColor" opacity=".6">모두 충족</text>
-
-      <!-- 2. 작업 유형 판정 -->
-      <polygon points="310,224 452,272 310,320 168,272" fill="var(--surface)" stroke="var(--anod)" stroke-width="2.5"/>
-      <text x="310" y="268" font-size="13.5" font-weight="700" fill="currentColor" text-anchor="middle">작업 유형은?</text>
-      <text x="310" y="287" font-size="11.5" fill="currentColor" opacity=".65" text-anchor="middle">라우팅 카드가 정함</text>
-
-      <!-- four lanes -->
-      <line x1="310" y1="320" x2="310" y2="348" stroke="currentColor" stroke-width="2" opacity=".5"/>
-      <line x1="70" y1="348" x2="890" y2="348" stroke="currentColor" stroke-width="2" opacity=".5"/>
-      <g stroke="currentColor" stroke-width="2" opacity=".5" marker-end="url(#fa)">
-        <line x1="118" y1="348" x2="118" y2="378"/>
-        <line x1="360" y1="348" x2="360" y2="378"/>
-        <line x1="602" y1="348" x2="602" y2="378"/>
-        <line x1="844" y1="348" x2="844" y2="378"/>
-      </g>
-
+      <!-- band 1 -->
+      <rect x="24" y="42" width="1132" height="170" rx="8" fill="var(--sunk)" stroke="var(--line)"/>
+      <rect x="48" y="34" width="256" height="16" fill="var(--ground)"/>
+      <text class="mm" x="56" y="46" font-size="10" letter-spacing=".13em" fill="var(--faint)">프로젝트당 한 번 — 설치</text>
       <g>
-        <rect x="20" y="382" width="196" height="96" fill="var(--surface)" stroke="var(--line-hard)"/>
-        <text x="34" y="404" font-size="12.5" font-weight="700" fill="currentColor">신규 · PRD 없음</text>
-        <text class="mm" x="34" y="426" font-size="11.5" fill="var(--anod)">P0 기획 4종</text>
-        <text class="mm" x="34" y="444" font-size="11.5" fill="var(--anod)">P1 prompt-enhancer</text>
-        <text class="mm" x="34" y="462" font-size="11.5" fill="var(--anod)">P2 prd-generator</text>
+        <rect x="48" y="82" width="212" height="94" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+        <text x="64" y="112" font-size="15" font-weight="700" fill="currentColor">epcc-devkit 플러그인</text>
+        <text class="mm" x="64" y="134" font-size="11" fill="var(--soft)">마켓플레이스 또는</text>
+        <text class="mm" x="64" y="151" font-size="11" fill="var(--soft)">로컬 디렉토리 경로</text>
 
-        <rect x="262" y="382" width="196" height="96" fill="var(--surface)" stroke="var(--line-hard)"/>
-        <text x="276" y="404" font-size="12.5" font-weight="700" fill="currentColor">신규 · PRD 있음</text>
-        <text class="mm" x="276" y="426" font-size="11.5" fill="var(--anod)">P3 dev-docs</text>
-        <text x="276" y="448" font-size="11.5" fill="currentColor" opacity=".6">세션을 넘어갈 때만</text>
+        <rect x="304" y="82" width="196" height="94" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.5"/>
+        <text class="mm" x="320" y="112" font-size="14" font-weight="600" fill="var(--skill)">/epcc-init</text>
+        <text class="mm" x="320" y="134" font-size="11" fill="var(--soft)">스택을 구조화된</text>
+        <text class="mm" x="320" y="151" font-size="11" fill="var(--soft)">질문으로 고른다</text>
 
-        <rect x="504" y="382" width="196" height="96" fill="var(--anod-soft)" stroke="var(--anod)" stroke-width="2"/>
-        <text x="518" y="404" font-size="12.5" font-weight="700" fill="currentColor">수정 · 버그</text>
-        <text x="518" y="426" font-size="11.5" fill="currentColor" opacity=".7">준비 단계 없음</text>
-        <text x="518" y="448" font-size="11.5" font-weight="600" fill="var(--anod)">바로 구현으로</text>
+        <rect x="544" y="82" width="212" height="94" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+        <text x="560" y="112" font-size="15" font-weight="700" fill="currentColor">축을 조립한다</text>
+        <text class="mm" x="560" y="134" font-size="11" fill="var(--soft)">프론트 4축 · 백엔드 8축</text>
+        <text class="mm" x="560" y="151" font-size="11" fill="var(--soft)">조합 32개를 미리 안 만든다</text>
 
-        <rect x="746" y="382" width="196" height="96" fill="var(--surface)" stroke="var(--line-hard)"/>
-        <text x="760" y="404" font-size="12.5" font-weight="700" fill="currentColor">리팩토링</text>
-        <text class="mm" x="760" y="426" font-size="11.5" fill="var(--anod)">P3 dev-docs</text>
-        <text x="760" y="448" font-size="11.5" fill="currentColor" opacity=".6">동작은 그대로</text>
+        <rect x="800" y="82" width="332" height="94" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+        <text x="816" y="110" font-size="15" font-weight="700" fill="currentColor">당신의 프로젝트에 남는 것</text>
+        <text class="mm" x="816" y="131" font-size="11" fill="var(--rule)">.claude/rules/ — 규칙 카드 9장 (실제 파일)</text>
+        <text class="mm" x="816" y="148" font-size="11" fill="var(--skill)">frontend-guide · backend-guide 스킬</text>
+        <text class="mm" x="816" y="165" font-size="11" fill="var(--soft)">epcc.config.json · dev/ 트리</text>
+      </g>
+      <g stroke="var(--line-hard)" stroke-width="1.6" marker-end="url(#ca)">
+        <line x1="264" y1="129" x2="298" y2="129"/>
+        <line x1="504" y1="129" x2="538" y2="129"/>
+        <line x1="760" y1="129" x2="794" y2="129"/>
       </g>
 
-      <!-- merge -->
-      <g stroke="currentColor" stroke-width="2" opacity=".5">
-        <line x1="118" y1="478" x2="118" y2="506"/>
-        <line x1="360" y1="478" x2="360" y2="506"/>
-        <line x1="602" y1="478" x2="602" y2="506"/>
-        <line x1="844" y1="478" x2="844" y2="506"/>
-        <line x1="118" y1="506" x2="844" y2="506"/>
+      <!-- band 2 -->
+      <rect x="24" y="246" width="1132" height="150" rx="8" fill="var(--sunk)" stroke="var(--line)"/>
+      <rect x="48" y="238" width="300" height="16" fill="var(--ground)"/>
+      <text class="mm" x="56" y="250" font-size="10" letter-spacing=".13em" fill="var(--faint)">매 세션 — 무엇이 로드되고 배선되나</text>
+      <g>
+        <rect x="48" y="278" width="330" height="98" fill="var(--rule-soft)" stroke="var(--rule)" stroke-width="1.8"/>
+        <text class="mm" x="64" y="302" font-size="11" font-weight="600" fill="var(--rule)">항상 로드 — 세션마다 값을 낸다</text>
+        <text x="64" y="326" font-size="14" font-weight="700" fill="currentColor">T0 운영 규칙 42줄 예산</text>
+        <text x="64" y="348" font-size="14" font-weight="700" fill="currentColor">+ workflow-routing 카드</text>
+        <text class="mm" x="64" y="367" font-size="10.5" fill="var(--soft)">파일을 열기 전에 필요하므로 조건부로 둘 수 없다</text>
+
+        <rect x="394" y="278" width="290" height="98" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.2" stroke-dasharray="4 3"/>
+        <text class="mm" x="410" y="302" font-size="11" font-weight="600" fill="var(--rule)">조건부 — 경로가 맞을 때만</text>
+        <text x="410" y="326" font-size="14" font-weight="700" fill="currentColor">규칙 카드 8장</text>
+        <text class="mm" x="410" y="348" font-size="10.5" fill="var(--soft)">code-change · security · reversibility</text>
+        <text class="mm" x="410" y="364" font-size="10.5" fill="var(--soft)">data-modeling · ui-design · doc-dependency …</text>
+
+        <rect x="700" y="278" width="432" height="98" fill="var(--hook-soft)" stroke="var(--hook)" stroke-width="1.8"/>
+        <text class="mm" x="716" y="302" font-size="11" font-weight="600" fill="var(--hook)">기계가 강제하는 유일한 층</text>
+        <text x="716" y="326" font-size="14" font-weight="700" fill="currentColor">훅 5개 스크립트 · 6개 이벤트 등록</text>
+        <text class="mm" x="716" y="348" font-size="10.5" fill="var(--soft)">모델이 기억하든 말든 실행된다 · 토큰을 쓰지 않는다</text>
+        <text class="mm" x="716" y="364" font-size="10.5" fill="var(--alert)">둘은 아예 거부할 수 있다 — security-check · build-gate</text>
       </g>
-      <line x1="481" y1="506" x2="481" y2="534" stroke="currentColor" stroke-width="2" opacity=".5" marker-end="url(#fa)"/>
 
-      <!-- P4 -->
-      <rect x="311" y="538" width="340" height="46" fill="var(--ink)"/>
-      <text x="481" y="567" font-size="16" font-weight="700" fill="var(--surface)" text-anchor="middle">P4 · 메인 세션이 구현한다</text>
+      <!-- band 3 -->
+      <rect x="24" y="430" width="1132" height="196" rx="8" fill="var(--sunk)" stroke="var(--line)"/>
+      <rect x="48" y="422" width="270" height="16" fill="var(--ground)"/>
+      <text class="mm" x="56" y="434" font-size="10" letter-spacing=".13em" fill="var(--faint)">작업마다 — 실제로 밟는 것</text>
+      <g>
+        <rect x="48" y="470" width="140" height="50" fill="var(--surface)" stroke="var(--line-hard)"/>
+        <text class="mm" x="118" y="492" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">P0</text>
+        <text x="118" y="509" font-size="10.5" fill="var(--soft)" text-anchor="middle">기획 5종</text>
 
-      <!-- guards -->
-      <rect x="20" y="606" width="922" height="102" fill="var(--alert-soft)" stroke="var(--alert)" stroke-width="2" stroke-dasharray="5 4"/>
-      <text x="36" y="630" font-size="13" font-weight="700" fill="var(--alert)">구현하는 내내 — 자동으로 걸리는 것들</text>
-      <text class="mm" x="36" y="654" font-size="11.5" fill="currentColor" opacity=".8">security-check · 쓰기·실행 직전마다 23종 검사 → 걸리면 exit 2</text>
-      <text class="mm" x="36" y="674" font-size="11.5" fill="currentColor" opacity=".8">규칙 카드 · 편집 경로가 paths 와 맞으면 그 카드가 로드된다 (아래 표)</text>
-      <text class="mm" x="36" y="694" font-size="11.5" fill="currentColor" opacity=".8">build-gate · 빌드/테스트 없이 끝내려 하면 대화를 중단시킨다</text>
-      <line x1="481" y1="584" x2="481" y2="602" stroke="currentColor" stroke-width="2" opacity=".5" marker-end="url(#fa)"/>
-      <line x1="481" y1="708" x2="481" y2="734" stroke="currentColor" stroke-width="2" opacity=".5" marker-end="url(#fa)"/>
+        <rect x="204" y="470" width="140" height="50" fill="var(--surface)" stroke="var(--line-hard)"/>
+        <text class="mm" x="274" y="492" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">P1</text>
+        <text x="274" y="509" font-size="10.5" fill="var(--soft)" text-anchor="middle">요청 보강</text>
 
-      <!-- 3. 되돌림 클래스 -->
-      <polygon points="481,738 632,788 481,838 330,788" fill="var(--surface)" stroke="var(--alert)" stroke-width="2.5"/>
-      <text x="481" y="783" font-size="13.5" font-weight="700" fill="currentColor" text-anchor="middle">되돌림 클래스는?</text>
-      <text x="481" y="802" font-size="11.5" fill="currentColor" opacity=".65" text-anchor="middle">건드린 경로로 판정</text>
+        <rect x="360" y="470" width="140" height="50" fill="var(--surface)" stroke="var(--line-hard)"/>
+        <text class="mm" x="430" y="492" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">P2</text>
+        <text x="430" y="509" font-size="10.5" fill="var(--soft)" text-anchor="middle">PRD</text>
 
-      <!-- three outcomes -->
-      <line x1="330" y1="788" x2="252" y2="788" stroke="currentColor" stroke-width="2" opacity=".5" marker-end="url(#fa)"/>
-      <rect x="20" y="766" width="228" height="44" fill="var(--surface)" stroke="var(--line-hard)"/>
-      <text class="mm" x="34" y="784" font-size="11.5" fill="currentColor" opacity=".7">Reversible</text>
-      <text class="mm" x="34" y="801" font-size="12" font-weight="600" fill="var(--anod)">/completion-review</text>
+        <rect x="516" y="470" width="140" height="50" fill="var(--surface)" stroke="var(--line-hard)"/>
+        <text class="mm" x="586" y="492" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">P3</text>
+        <text x="586" y="509" font-size="10.5" fill="var(--soft)" text-anchor="middle">개발 문서</text>
 
-      <line x1="632" y1="788" x2="710" y2="788" stroke="var(--webbing)" stroke-width="2.5" marker-end="url(#fb)"/>
-      <rect x="716" y="766" width="228" height="44" fill="var(--webbing-soft)" stroke="var(--webbing)" stroke-width="2"/>
-      <text class="mm" x="730" y="784" font-size="11.5" fill="var(--webbing)">Costly</text>
-      <text class="mm" x="730" y="801" font-size="12" font-weight="600" fill="currentColor">epcc-reviewer 필수</text>
+        <rect x="672" y="470" width="140" height="50" fill="var(--ink)"/>
+        <text class="mm" x="742" y="492" font-size="13" font-weight="600" fill="var(--surface)" text-anchor="middle">P4</text>
+        <text x="742" y="509" font-size="10.5" fill="var(--surface)" opacity=".8" text-anchor="middle">구현 — 항상</text>
 
-      <line x1="481" y1="838" x2="481" y2="862" stroke="var(--alert)" stroke-width="2.5" marker-end="url(#fa)"/>
-      <rect x="311" y="866" width="340" height="60" fill="var(--alert-soft)" stroke="var(--alert)" stroke-width="2.5"/>
-      <text class="mm" x="326" y="886" font-size="11.5" fill="var(--alert)">Irreversible</text>
-      <text x="326" y="905" font-size="13" font-weight="700" fill="currentColor">다관점 팬아웃 + 사용자 확인 + 롤백 절차</text>
-      <text x="326" y="920" font-size="11" fill="currentColor" opacity=".65">migrations · auth · RLS · 결제 · 운영 데이터</text>
+        <rect x="828" y="470" width="140" height="50" fill="var(--surface)" stroke="var(--line-hard)"/>
+        <text class="mm" x="898" y="492" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">P5</text>
+        <text x="898" y="509" font-size="10.5" fill="var(--soft)" text-anchor="middle">검증</text>
 
-      <!-- ship -->
-      <line x1="481" y1="926" x2="481" y2="950" stroke="currentColor" stroke-width="2" opacity=".5" marker-end="url(#fa)"/>
-      <rect x="361" y="954" width="240" height="42" fill="var(--anod)"/>
-      <text class="mm" x="481" y="981" font-size="14" font-weight="600" fill="var(--surface)" text-anchor="middle">/pr-prep → 출하</text>
+        <rect x="984" y="470" width="148" height="50" fill="var(--alert-soft)" stroke="var(--alert)" stroke-width="1.5"/>
+        <text class="mm" x="1058" y="492" font-size="13" font-weight="600" fill="var(--alert)" text-anchor="middle">P6</text>
+        <text x="1058" y="509" font-size="10.5" fill="var(--soft)" text-anchor="middle">Irreversible만</text>
+      </g>
+      <g stroke="var(--line-hard)" stroke-width="1.4" marker-end="url(#ca)">
+        <line x1="190" y1="495" x2="199" y2="495"/><line x1="346" y1="495" x2="355" y2="495"/>
+        <line x1="502" y1="495" x2="511" y2="495"/><line x1="658" y1="495" x2="667" y2="495"/>
+        <line x1="814" y1="495" x2="823" y2="495"/><line x1="970" y1="495" x2="979" y2="495"/>
+      </g>
+      <rect x="48" y="546" width="536" height="58" fill="var(--surface)" stroke="var(--skill)" stroke-width="1.5"/>
+      <text class="mm" x="64" y="570" font-size="11" font-weight="600" fill="var(--skill)">어느 것을 밟는가</text>
+      <text x="64" y="591" font-size="13.5" fill="currentColor"><tspan font-weight="700">작업 유형</tspan>이 고른다 — 버그 수정은 P4·P5 둘뿐</text>
+
+      <rect x="600" y="546" width="532" height="58" fill="var(--surface)" stroke="var(--alert)" stroke-width="1.5"/>
+      <text class="mm" x="616" y="570" font-size="11" font-weight="600" fill="var(--alert)">얼마나 깊이 밟는가</text>
+      <text x="616" y="591" font-size="13.5" fill="currentColor"><tspan font-weight="700">되돌림 클래스</tspan>가 정한다 — 앞에 단계를 붙이지는 않는다</text>
+
+      <!-- band 4 -->
+      <rect x="24" y="660" width="1132" height="216" rx="8" fill="var(--sunk)" stroke="var(--line)"/>
+      <rect x="48" y="652" width="286" height="16" fill="var(--ground)"/>
+      <text class="mm" x="56" y="664" font-size="10" letter-spacing=".13em" fill="var(--faint)">상시 — 살아있음을 스스로 증명한다</text>
+      <g>
+        <rect x="48" y="694" width="238" height="86" fill="var(--store-soft)" stroke="var(--store)" stroke-width="1.5"/>
+        <text x="64" y="720" font-size="14" font-weight="700" fill="currentColor">계측</text>
+        <text class="mm" x="64" y="741" font-size="10.5" fill="var(--soft)">track-skill 훅 · graph.log</text>
+        <text class="mm" x="64" y="758" font-size="10.5" fill="var(--soft)">누가 실제로 불렸는가</text>
+
+        <rect x="330" y="694" width="238" height="86" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+        <text class="mm" x="346" y="720" font-size="14" font-weight="600" fill="currentColor">doctor.sh</text>
+        <text class="mm" x="346" y="741" font-size="10.5" fill="var(--soft)">8개 모드 — 사실만 잰다</text>
+        <text class="mm" x="346" y="758" font-size="10.5" fill="var(--soft)">손으로 적은 수를 실물과 대조</text>
+
+        <rect x="612" y="694" width="238" height="86" fill="var(--skill-soft)" stroke="var(--skill)" stroke-width="1.5"/>
+        <text class="mm" x="628" y="720" font-size="13" font-weight="600" fill="var(--skill)">/harness-evaluation</text>
+        <text class="mm" x="628" y="741" font-size="10.5" fill="var(--soft)">8축 전수 · 판단만 한다</text>
+        <text class="mm" x="628" y="758" font-size="10.5" fill="var(--soft)">사실은 doctor에게서 받는다</text>
+
+        <rect x="894" y="694" width="238" height="86" fill="var(--store-soft)" stroke="var(--store)" stroke-width="1.5"/>
+        <text x="910" y="720" font-size="14" font-weight="700" fill="currentColor">결함 · 교훈</text>
+        <text class="mm" x="910" y="741" font-size="10.5" fill="var(--soft)">docs/lessons.md</text>
+        <text class="mm" x="910" y="758" font-size="10.5" fill="var(--soft)">같은 범주 3건 → 자산 승격</text>
+      </g>
+      <g stroke="var(--line-hard)" stroke-width="1.6" marker-end="url(#ca)">
+        <line x1="290" y1="737" x2="324" y2="737"/>
+        <line x1="572" y1="737" x2="606" y2="737"/>
+        <line x1="854" y1="737" x2="888" y2="737"/>
+      </g>
+      <path d="M1013 780 V 826 Q1013 838 1001 838 H 179 Q167 838 167 826 V 786" fill="none" stroke="var(--line-hard)" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#ca)"/>
+      <rect x="474" y="830" width="232" height="16" fill="var(--sunk)"/>
+      <text class="mm" x="590" y="842" font-size="10" letter-spacing=".08em" fill="var(--soft)" text-anchor="middle">결함이 다시 작업으로 돌아온다</text>
     </svg>
-    <figcaption>같은 하네스인데 <strong>판정 세 번</strong>으로 길이 완전히 달라집니다. 「수정·버그」는 준비 단계 없이 바로 구현으로 들어가고, 「Reversible」이면 리뷰 없이 마무리로 갑니다.</figcaption>
+    <figcaption>아래 모든 절은 이 네 띠 중 하나를 자세히 본 것입니다. <strong>띠 ③이 당신이 매일 만나는 부분</strong>이고, 띠 ②는 그 동안 조용히 걸려 있습니다.</figcaption>
   </figure>
 </section>
 
-<!-- ══════════════ 진입 판정 ══════════════ -->
-<section id="entry">
-  <p class="eyebrow">첫 번째 판정</p>
-  <h2>넷을 보고 준비 단계를 정합니다</h2>
+<!-- ══════════ 2. 유형 ══════════ -->
+<section id="phases">
+  <p class="eyebrow">첫 번째 축</p>
+  <h2>작업 유형이 Phase를 고릅니다</h2>
+  <p class="say">7개가 다 도는 일은 거의 없습니다. <strong>번호는 순서 표시일 뿐 의무가 아닙니다</strong> — 이미 충족된 항목을 위해 문서를 만들지 않습니다.</p>
 
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>조건</th><th>충족이란</th><th>미충족이면</th></tr></thead>
+      <thead><tr><th style="width:210px">작업 유형</th><th style="width:280px">밟는 Phase</th><th>왜 그만큼인가</th></tr></thead>
       <tbody>
-        <tr><td><b>의도 명확</b></td><td>무엇을 왜 만드는지가 한 문장으로 나온다</td><td class="say" style="font-size:14.5px"><b style="color:var(--webbing)">개수와 무관하게 사용자에게 묻습니다</b> — 넷 중 이것만은 Claude가 채울 수 없습니다</td></tr>
-        <tr><td><b>컨텍스트 최신</b></td><td>인용하려는 코드·문서가 지금도 유효하다</td><td>Claude가 직접 읽어서 채웁니다</td></tr>
-        <tr><td><b>영향 반경 파악</b></td><td>어디까지 바뀌는지 안다</td><td>탐색해서 채웁니다</td></tr>
-        <tr><td><b>검증 경로 존재</b></td><td>됐는지 확인할 방법이 있다</td><td>테스트·빌드 경로를 찾아서 채웁니다</td></tr>
+        <tr><td><b>신규 기능 — PRD 없음</b></td><td class="m">P0 → P1 → P2 → P3 → P4 → P5 <span style="color:var(--faint)">(6/7)</span></td><td>무엇을 만들지부터 정해야 합니다. 기획·PRD·개발문서가 전부 붙습니다.</td></tr>
+        <tr><td><b>신규 기능 — PRD 있음</b></td><td class="m">P3 → P4 → P5 <span style="color:var(--faint)">(3/7)</span></td><td>무엇을 만들지는 정해졌습니다. 세션을 넘어갈 때만 개발문서를 만듭니다.</td></tr>
+        <tr><td><b>기존 기능 수정·확장·삭제</b></td><td class="m">P4 → P5 <span style="color:var(--faint)">(2/7)</span></td><td><b>준비 단계 없음.</b> 진입 조건이 이미 충족돼 있습니다.</td></tr>
+        <tr><td><b>버그 수정</b></td><td class="m">P4 → P5 <span style="color:var(--faint)">(2/7)</span></td><td>〃 — 재현이 먼저 필요하면 <span class="pill p-skill">/fix-issue</span></td></tr>
+        <tr><td><b>리팩토링</b></td><td class="m">P3 → P4 → P5 <span style="color:var(--faint)">(3/7)</span></td><td>동작은 그대로 두지만 <b>범위를 미리 못 박아야</b> 합니다.</td></tr>
+        <tr><td><b>문서 · 도구/환경 · 탐색</b></td><td class="m">해당 없음</td><td>절차를 적용하지 않습니다. 단 <span class="m">dev/docs/prd/</span>를 고치면 <span class="pill p-skill">/prd-reviewer</span>가 붙습니다.</td></tr>
       </tbody>
     </table>
   </div>
 
-  <div class="note"><b>2개 이상 미충족이면</b> <span class="m">epcc-planner</span> 서브에이전트가 진단합니다. 이 에이전트는 <b>Write 도구가 없습니다</b> — 불필요한 문서를 만드는 것이 구조적으로 불가능합니다. 계획만 돌려주고, 기록은 메인 세션이 합니다.</div>
-
-  <h3>작업 유형 → Phase 경로</h3>
+  <h3>그 전에 — 진입 조건 4상태</h3>
+  <p class="say">넷이 모두 충족되면 <strong>P0~P3을 통째로 건너뜁니다.</strong></p>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>작업 유형</th><th>경로</th><th>준비 단계</th></tr></thead>
+      <thead><tr><th style="width:170px">조건</th><th style="width:300px">충족이란</th><th>미충족이면</th></tr></thead>
       <tbody>
-        <tr><td>신규 기능 — PRD 없음</td><td class="m">P0 → P1 → P2 → P3 → P4 → P5</td><td>기획·PRD·개발문서 전부</td></tr>
-        <tr><td>신규 기능 — PRD 있음</td><td class="m">P3 → P4 → P5</td><td>개발문서만</td></tr>
-        <tr><td>기존 기능 수정·확장·삭제</td><td class="m">P4 → P5</td><td><b>없음</b></td></tr>
-        <tr><td>버그 수정</td><td class="m">P4 → P5</td><td><b>없음</b></td></tr>
-        <tr><td>리팩토링</td><td class="m">P3 → P4 → P5</td><td>개발문서만</td></tr>
-        <tr><td>문서 · 도구/환경 · 탐색</td><td class="m">미적용</td><td>절차 없음<br><span style="color:var(--soft)">단 <span class="m">dev/docs/prd/</span> 수정 시 <span class="cmd">/prd-reviewer</span></span></td></tr>
+        <tr><td><b>의도 명확</b></td><td>무엇을 왜 만드는지가 한 문장으로 나온다</td><td style="color:var(--webbing);font-weight:600">개수와 무관하게 사용자에게 묻습니다 — 넷 중 이것만은 Claude가 채울 수 없습니다</td></tr>
+        <tr><td>컨텍스트 최신</td><td>인용하려는 코드·문서가 지금도 유효하다</td><td>Claude가 읽어서 채웁니다</td></tr>
+        <tr><td>영향 반경 파악</td><td>어디까지 바뀌는지 안다</td><td>탐색해서 채웁니다</td></tr>
+        <tr><td>검증 경로 존재</td><td>됐는지 확인할 방법이 있다</td><td>테스트·빌드 경로를 찾습니다</td></tr>
       </tbody>
     </table>
   </div>
+  <div class="note"><b>2개 이상 미충족이면</b> <span class="pill p-agent">epcc-planner</span> 서브에이전트가 진단합니다.</div>
 </section>
 
-<!-- ══════════════ 되돌림 클래스 ══════════════ -->
-<section id="class">
-  <p class="eyebrow">두 번째 판정</p>
-  <h2>검증 강도는 경로가 정합니다</h2>
-  <p class="say">규모(줄 수·파일 수)로 판단하지 않습니다. <strong>5줄 마이그레이션이 400줄 리팩토링보다 위험합니다.</strong></p>
+<!-- ══════════ 3. 깊이 ══════════ -->
+<section id="depth">
+  <p class="eyebrow">두 번째 축</p>
+  <h2>되돌림 클래스가 깊이를 정합니다</h2>
+  <p class="say"><strong>경로로 판정합니다. 규모로 판단하지 않습니다.</strong> 5줄 마이그레이션이 400줄 리팩토링보다 위험합니다.</p>
 
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>클래스</th><th>판정 경로</th><th>요구 — 누가 하는가</th></tr></thead>
+      <thead><tr><th style="width:150px">클래스</th><th style="width:330px">판정 경로</th><th>요구 — 누가 하는가</th></tr></thead>
       <tbody>
         <tr>
-          <td><b style="color:var(--alert)">Irreversible</b></td>
+          <td><b style="color:var(--alert)">Irreversible</b><br><small style="color:var(--soft)">되돌릴 수 없다</small></td>
           <td class="paths">**/migrations/** · auth/RLS<br>결제 · 정산 · 운영 데이터</td>
-          <td><b>epcc-reviewer 다관점 팬아웃</b> + 사용자 확인 + 롤백 절차<br><span style="color:var(--soft)">correctness / security / reversibility 과반</span></td>
+          <td><span class="pill p-agent">epcc-reviewer</span> <b>다관점 팬아웃</b> + 사용자 확인 + 롤백 절차<br><span style="color:var(--soft)">correctness · security · reversibility 세 관점의 과반</span></td>
         </tr>
         <tr>
-          <td><b style="color:var(--webbing)">Costly</b></td>
+          <td><b style="color:var(--webbing)">Costly</b><br><small style="color:var(--soft)">되돌리는 값을 남이 낸다</small></td>
           <td class="paths">공유 패키지 · public API · 타입 계약<br>**/api/** · **/actions.ts** · **/middleware.ts** · 생성 파일</td>
-          <td><b>epcc-reviewer 필수</b> — 자기 리뷰로 대체하지 않습니다<br><span style="color:var(--soft)">구현자 보고와 무관하게 실제 diff를 독립 검토</span></td>
+          <td><span class="pill p-agent">epcc-reviewer</span> <b>필수</b> — 자기 리뷰로 대체하지 않습니다<br><span style="color:var(--soft)">구현자의 보고가 아니라 실제 diff를 독립 검토</span></td>
         </tr>
         <tr>
-          <td><b style="color:var(--anod)">Reversible</b></td>
-          <td class="paths">그 외 전부 — 테스트 코드 포함 <span style="color:var(--faint)">(기본값)</span></td>
-          <td>바로 진행. 마무리 문서화는 <span class="cmd">/completion-review</span></td>
+          <td><b style="color:var(--skill)">Reversible</b><br><small style="color:var(--soft)">기본값</small></td>
+          <td class="paths">그 외 전부 — 테스트 코드 포함</td>
+          <td>바로 진행. 마무리는 <span class="pill p-skill">/completion-review</span></td>
         </tr>
       </tbody>
     </table>
   </div>
-
   <div class="note"><b>왜 이렇게 하나</b> — 되돌릴 수 있는 실수는 싸고, 되돌릴 수 없는 실수는 비쌉니다. 검증 비용을 후자에 몰아주려는 것입니다. <b>모든 변경에 리뷰를 붙이면 아무도 그 리뷰를 안 읽게 됩니다.</b></div>
 </section>
 
-<!-- ══════════════ 스킬 ══════════════ -->
-<section id="skills">
-  <p class="eyebrow">스킬 26개 전수</p>
-  <h2>어떤 경우에 무엇이 불리나</h2>
-  <p class="say">대부분 <strong>Claude가 상황을 보고 알아서 부릅니다.</strong> <span class="badge b-man">수동</span> 표시가 붙은 6개만 <span class="m">/이름</span>으로 직접 불러야 합니다 — 자동 발동을 꺼두었기 때문입니다.</p>
-
-  <div class="filterbar">
-    <input id="q" type="search" placeholder="상황이나 이름으로 찾기 — 예: PRD, 보안, 리뷰, 디자인" aria-label="스킬 검색">
-    <span class="count" id="cnt">26개 전부 표시 중</span>
-  </div>
-
-  <div id="skilllist">
-
-  <div class="grp">
-    <h3>기획 · 설계 — 무엇을 만들지 정하는 단계</h3>
-    <div class="tbl-wrap"><table>
-      <thead><tr><th style="width:170px">스킬</th><th style="width:270px">언제 발동하나</th><th>무엇을 하나</th></tr></thead>
-      <tbody>
-        <tr><td class="cmd">/brainstorming</td><td>무엇을 만들지 <b>아직 안 정해짐</b></td><td>대화로 막연한 아이디어를 구체적 설계로 만듭니다. 만들 것이 정해졌고 맥락만 없으면 <span class="cmd">/prompt-enhancer</span>로 넘깁니다. 버그 수정·설정 변경엔 불필요합니다.</td></tr>
-        <tr><td class="cmd">/prompt-enhancer</td><td>만들 것은 정해졌는데 <b>프로젝트 맥락이 빠짐</b></td><td>코드 구조·의존성·기존 관례를 조사해 짧은 요청을 실행 가능한 요청으로 보강합니다.</td></tr>
-        <tr><td class="cmd">/research</td><td>외부 사실 확인이 필요함</td><td>웹 검색 기반 리서치 → <span class="m">dev/docs/research/</span>에 구조화된 문서. 경쟁사·시장·기술 조사.</td></tr>
-        <tr><td class="cmd">/business-planner</td><td>수익 모델·시장 진입 판단이 필요함</td><td>사업적 관점에서 검증하고 사업 기획서를 만듭니다 → <span class="m">dev/docs/business/</span></td></tr>
-        <tr><td class="cmd">/service-planner</td><td><b>화면·사용자 플로우가 미확정</b></td><td>서비스 구조를 설계하고 기능 요구사항을 도출합니다 → <span class="m">dev/docs/service/</span>. <b>여기서 확정한 화면 목록이 디자인 단계의 입력</b>이 됩니다.</td></tr>
-        <tr><td class="cmd">/council-review</td><td><b>되돌리기 어려운 기획 결정</b> (사업 방향·아키텍처 선택)</td><td>기술 / 비즈니스 / UX 3개 관점을 병렬 분석해 통합 권고안을 냅니다.</td></tr>
-        <tr><td class="cmd">/prd-generator</td><td><span class="m">dev/docs/prd/</span>에 해당 PRD가 없음</td><td>규모에 따라 단일 PRD 또는 모듈형(overload + Phase Sub PRD + Shared)을 선택해 생성합니다.</td></tr>
-        <tr><td class="cmd">/prd-reviewer</td><td><b>PRD를 고친 직후</b> — doc-dependency 카드가 트리거</td><td>구현 정합성·요구사항 명확성·내부 일관성·설계 원칙을 검증하고 <b>반영 위치를 명시한</b> 보고서를 만듭니다.</td></tr>
-        <tr><td class="cmd">/dev-docs-generator</td><td>작업이 <b>세션을 넘어감</b> (다중 태스크)</td><td><span class="m">dev/active/</span>에 plan · context · tasks 세 문서를 만듭니다. 한 세션에 끝나면 만들지 않습니다.</td></tr>
-      </tbody>
-    </table></div>
-  </div>
-
-  <div class="grp">
-    <h3>구현 · 디자인 — 실제로 만드는 단계</h3>
-    <div class="tbl-wrap"><table>
-      <thead><tr><th style="width:170px">스킬</th><th style="width:270px">언제 발동하나</th><th>무엇을 하나</th></tr></thead>
-      <tbody>
-        <tr><td class="cmd">/ui-ux-design</td><td>디자인 시스템 · 화면 설계 · 새 페이지 제작</td><td>스타일·팔레트·폰트를 데이터에서 골라 <span class="m">MASTER.md</span> 생성 → <b>방향 심사</b>(내 기본값인가?) → 캔버스 시안 → 되쓰기·대조 → <b>렌더 증명</b>(콘솔 error 0 · 상태 3종).</td></tr>
-        <tr><td class="cmd">/test-driven-development</td><td>테스트 러너가 있고 <b>동작을 바꿈</b></td><td>실패하는 테스트 먼저 → 최소 구현. 테스트를 어디(seam)에 두는지, 무엇이 통과해도 쓸모없는 테스트인지 다룹니다. 프로토타입·설정·생성 코드엔 적용 안 합니다.</td></tr>
-        <tr><td class="cmd">/fix-issue<span class="badge b-man">수동</span></td><td>"이슈 수정" · <span class="m">fix #123</span></td><td><span class="m">gh</span>(GitHub) · <span class="m">glab</span>(GitLab) CLI로 이슈 컨텍스트를 자동 수집해 주입합니다.</td></tr>
-        <tr><td class="cmd">/stack-guide-generator</td><td>스택을 고르거나 바꿈 · 프리셋에 없는 조합</td><td>프로젝트 <span class="m">.claude/skills/</span>에 <span class="m">frontend-guide</span> · <span class="m">backend-guide</span>를 생성합니다. 조합(32)이 아니라 <b>축</b>(프론트 4 · 백엔드 8)을 조립하는 방식이라 새 조합도 즉시 나옵니다.</td></tr>
-        <tr><td class="cmd">/codebase-survey</td><td>하네스를 <b>나중에</b> 설치했거나 코드가 자라 카드가 낡음</td><td>스택·구조·아키텍처를 <b>실측</b>해 project-structure · code-conventions 카드를 갱신하고 드리프트를 보고합니다. (CLAUDE.md 최초 생성은 내장 <span class="m">/init</span>, 스택 선택은 <span class="cmd">/epcc-init</span>)</td></tr>
-      </tbody>
-    </table></div>
-  </div>
-
-  <div class="grp">
-    <h3>검증 · 마무리 — 내보내기 전 단계</h3>
-    <div class="tbl-wrap"><table>
-      <thead><tr><th style="width:170px">스킬</th><th style="width:270px">언제 발동하나</th><th>무엇을 하나</th></tr></thead>
-      <tbody>
-        <tr><td class="cmd">/completion-review</td><td>구현이 끝남 · <b>Reversible</b>의 마무리 담당</td><td>context 갱신 · tasks 체크 · 아키텍처/API 문서 최신화 · 완료 작업 아카이브. Costly 이상은 <span class="m">epcc-reviewer</span>가 맡습니다.</td></tr>
-        <tr><td class="cmd">/security-review</td><td>배포 전 · <b>전체</b> 보안 감사</td><td>코드베이스 전수 취약점 · 의존성 CVE · 시크릿 전수 조사 · 결제/민감데이터. <b>브랜치 diff의 신규 취약점만</b> 보려면 내장 <span class="m">/security-review</span>를 쓰세요 — 영역이 다릅니다.</td></tr>
-        <tr><td class="cmd">/receiving-code-review</td><td>리뷰 피드백을 <b>받았을 때</b> (내장·에이전트·외부 AI·사람)</td><td>맹목 수용하지 않습니다. <b>실제 코드로 사실 확인한 뒤</b> 채택하고, 틀린 지적은 근거와 함께 반박합니다.</td></tr>
-        <tr><td class="cmd">/codex-claude-loop</td><td>외부 AI 교차검증이 필요함</td><td>OpenAI Codex로 독립 검증. <b>소스가 외부 모델로 전송되므로 사전 동의 없이 실행하지 않습니다.</b></td></tr>
-        <tr><td class="cmd">/pr-prep</td><td>"PR 준비" · "PR 올려줘"</td><td>diff 수집 → 되돌림 클래스 판정 → 검증 명령 실행 → <b>클래스가 요구하는 섹션</b>(롤백 절차·호출처·개입 근거)을 갖춘 본문 생성.</td></tr>
-        <tr><td class="cmd">/shortcut-ledger</td><td>릴리스 전 부채 점검 · 규모가 커진 뒤</td><td>코드에 남긴 <span class="m">EPCC-SHORTCUT:</span> 마커를 수확해 "그 축약의 천장이 아직 유효한가"를 재평가하고 회수 대상을 판정합니다. (이미 쓴 코드를 줄이는 것은 내장 <span class="m">/simplify</span>)</td></tr>
-      </tbody>
-    </table></div>
-  </div>
-
-  <div class="grp">
-    <h3>하네스 자체 — 장비를 다루는 단계</h3>
-    <div class="tbl-wrap"><table>
-      <thead><tr><th style="width:170px">스킬</th><th style="width:270px">언제 발동하나</th><th>무엇을 하나</th></tr></thead>
-      <tbody>
-        <tr><td class="cmd">/epcc-init<span class="badge b-man">수동</span></td><td>새 프로젝트에서 처음 설정</td><td><span class="m">epcc.config.json</span> · <span class="m">CLAUDE.md</span> 생성. 스택(프론트·백엔드·DB·인증)을 고르면 맞춤 가이드를 생성합니다.</td></tr>
-        <tr><td class="cmd">/epcc-migrate<span class="badge b-man">수동</span></td><td>v2 하네스가 깔린 프로젝트를 v3로</td><td>죽은 훅 제거 · 규칙 3계층 재배치 · 에이전트 개명.</td></tr>
-        <tr><td class="cmd">/health-check<span class="badge b-man">수동</span></td><td>"상태 점검" · "빌드 확인"</td><td>빌드 · 린트 · 타입체크 · 테스트를 일괄 실행합니다.</td></tr>
-        <tr><td class="cmd">/execution-dashboard<span class="badge b-man">수동</span></td><td>"뭐 참고했어?" · "어떤 스킬 썼어?"</td><td>이번 세션에서 참조된 스킬·규칙·훅을 <b>타임라인과 카테고리별 요약</b>으로 보여줍니다.</td></tr>
-        <tr><td class="cmd">/harness-evaluation<span class="badge b-man">수동</span></td><td>"하네스 평가" · "전수 검사"</td><td>그래프 엔진을 <b>경로 단위 8축</b>으로 전수 평가해 심각도별 결함 목록·불확실성 지도를 냅니다. 사실 측정은 doctor가 하고 이 스킬은 <b>판단만</b> 합니다. Critical은 격리 재현으로만 확정합니다.</td></tr>
-        <tr><td class="cmd">/skill-enhancer</td><td>스킬을 만든 직후 · 평가가 결함을 검출</td><td>먼저 <b>존치·분할·수동 전환·합병·삭제</b>를 판정하고, 존치 대상에만 경계 선언·행동 계약·실패 경로·기계 검증을 주입합니다. (생성과 A/B 평가는 내장 <span class="m">skill-creator</span>)</td></tr>
-      </tbody>
-    </table></div>
-  </div>
-
-  <p class="empty" id="noresult">해당하는 스킬이 없습니다. 다른 말로 찾아보세요.</p>
-  </div>
-
-  <h3>서브에이전트 2종 — 스킬이 아니라 별도 세션</h3>
-  <div class="tbl-wrap">
-    <table>
-      <thead><tr><th style="width:170px">에이전트</th><th style="width:200px">도구</th><th>왜 그 도구만 주었나</th></tr></thead>
-      <tbody>
-        <tr><td class="cmd">epcc-planner</td><td class="m">Read · Grep · Glob<br>WebSearch · WebFetch</td><td><b>Write가 없습니다</b> — 불필요한 문서를 양산하는 것이 구조적으로 불가능합니다. 계획을 돌려주면 메인 세션이 기록합니다.</td></tr>
-        <tr><td class="cmd">epcc-reviewer</td><td class="m">Read · Grep · Glob · Bash</td><td><b>읽기 전용</b>입니다 — 리뷰어가 고치기 시작하면 리뷰가 아니라 구현이 됩니다. 결함을 보고만 하고 파일을 옮기지도 않습니다.</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="note"><b>내장 도구와 겹치지 않습니다.</b> <span class="m">/code-review</span> · <span class="m">/simplify</span> · <span class="m">/init</span> · <span class="m">/run</span> · <span class="m">/loop</span> · <span class="m">skill-creator</span>는 Claude Code가 제공합니다. 하네스는 이들과 <b>경쟁하는 자산을 만들지 않는다</b>를 규칙으로 갖고 있습니다.</div>
-</section>
-
-<!-- ══════════════ 규칙 카드 ══════════════ -->
-<section id="rules">
-  <p class="eyebrow">규칙 카드 9장</p>
-  <h2>편집하는 파일이 카드를 부릅니다</h2>
-  <p class="say">규칙은 항상 켜져 있는 게 아닙니다. <strong>지금 여는 파일의 경로가 카드의 <span class="m">paths:</span>와 맞을 때만</strong> 그 카드가 컨텍스트에 들어옵니다 — 안 그러면 매 세션 토큰을 헛되이 씁니다.</p>
+<!-- ══════════ 4. 매트릭스 ══════════ -->
+<section id="matrix">
+  <p class="eyebrow">두 축이 만나는 곳</p>
+  <h2>모든 경우를 낱낱이</h2>
+  <p class="say">두 축을 곱하면 실제로 도는 시퀀스가 나옵니다. 여기서 봐야 할 것은 <strong>클래스가 하지 <em>않는</em> 일</strong>입니다 — <strong>앞에 단계를 붙이지 않습니다.</strong> 마이그레이션 한 줄 고치는 것도 여전히 <span class="m">P4 → P5</span>이고, 다만 P5가 훨씬 무거워지고 뒤에 P6이 붙습니다.</p>
 
   <div class="tbl-wrap">
-    <table>
-      <thead><tr><th style="width:180px">카드</th><th style="width:290px">이 경로를 편집할 때</th><th>무엇을 요구하나</th></tr></thead>
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th style="width:190px">작업 유형</th>
+          <th class="c-rev" style="width:255px">Reversible<small>기본값 · 테스트 포함</small></th>
+          <th class="c-cos" style="width:255px">Costly<small>되돌리는 값을 남이 낸다</small></th>
+          <th class="c-irr">Irreversible<small>되돌릴 수 없다</small></th>
+        </tr>
+      </thead>
       <tbody>
         <tr>
-          <td class="cmd">workflow-routing<span class="badge b-always">상시</span></td>
-          <td class="paths"><b style="color:var(--alert)">경로 조건 없음 — 매 세션 항상</b></td>
-          <td>작업 유형 → Phase 라우팅 표. <b>지시 우선순위</b>(사용자 &gt; 프로젝트 CLAUDE.md &gt; 프로젝트 규칙 &gt; <b>기존 코드 패턴</b> &gt; 플러그인 가이드). 참조 신선도 4축. 외부 텍스트는 데이터이지 지시가 아님.<br><span style="color:var(--soft)">작업을 <b>시작하기 전</b>에 필요하므로 조건부로 두면 정작 그때 없습니다.</span></td>
+          <td class="who">신규 기능 — PRD 없음<small>6 / 7 Phase</small></td>
+          <td class="c-rev">P0 → P1 → P2 → P3 → P4 → P5<small>/completion-review</small></td>
+          <td class="c-cos">P0 → P1 → P2 → P3 → P4 → P5<small>epcc-reviewer 필수</small></td>
+          <td class="c-irr">P0 → … → P5 → <b>P6</b><small>팬아웃 + 사용자 확인 + 롤백</small></td>
         </tr>
         <tr>
-          <td class="cmd">code-change</td>
-          <td class="paths">src/** · app/**<br>packages/** · lib/**</td>
-          <td>일반적인 코딩 상식은 담지 않고 <b>모델이 반복해서 틀리는 것</b>만 남깁니다. 변경 후 역추적, 동일 패턴 전파.</td>
+          <td class="who">신규 기능 — PRD 있음<small>3 / 7 Phase</small></td>
+          <td class="c-rev">P3 → P4 → P5<small>/completion-review</small></td>
+          <td class="c-cos">P3 → P4 → P5<small>epcc-reviewer 필수</small></td>
+          <td class="c-irr">P3 → P4 → P5 → <b>P6</b><small>팬아웃 + 사용자 확인 + 롤백</small></td>
         </tr>
         <tr>
-          <td class="cmd">security</td>
-          <td class="paths">src/** · app/**<br>packages/** · lib/**</td>
-          <td>시크릿의 경계 — <b>값이 아니라 어느 쪽에 있는가</b>. 클라이언트에 절대 못 가는 것과 가도 되는 것의 구분.</td>
+          <td class="who">기존 기능 수정·삭제<small>2 / 7 Phase</small></td>
+          <td class="c-rev">P4 → P5<small>/completion-review</small></td>
+          <td class="c-cos">P4 → P5<small>epcc-reviewer 필수</small></td>
+          <td class="c-irr">P4 → P5 → <b>P6</b><small>팬아웃 + 사용자 확인 + 롤백</small></td>
         </tr>
         <tr>
-          <td class="cmd">reversibility</td>
-          <td class="paths">src/** · app/** · packages/**<br>supabase/** · **/migrations/**<br>dev/active/**</td>
-          <td>되돌림 클래스 판정과 5단계. <b>규모(S/M/L)로 분류하지 않습니다</b> — 규모는 사람 판단을 요구해 드리프트하고, 틀린 변수를 봅니다.</td>
+          <td class="who">버그 수정<small>2 / 7 Phase</small></td>
+          <td class="c-rev">P4 → P5<small>/completion-review</small></td>
+          <td class="c-cos">P4 → P5<small>epcc-reviewer 필수</small></td>
+          <td class="c-irr">P4 → P5 → <b>P6</b><small>auth 가드 한 줄도 여기</small></td>
         </tr>
         <tr>
-          <td class="cmd">data-modeling</td>
-          <td class="paths">supabase/** · **/migrations/**<br>db/** · prisma/** · drizzle/**<br>dev/docs/database/**</td>
-          <td>새 테이블·마이그레이션·스키마 변경 설계. 프로젝트에 정본 스키마 문서가 있으면 그것과 일관성을 유지합니다.</td>
+          <td class="who">리팩토링<small>3 / 7 Phase</small></td>
+          <td class="c-rev">P3 → P4 → P5<small>400줄이어도 여기</small></td>
+          <td class="c-cos">P3 → P4 → P5<small>epcc-reviewer 필수</small></td>
+          <td class="c-irr">P3 → P4 → P5 → <b>P6</b><small>팬아웃 + 사용자 확인 + 롤백</small></td>
         </tr>
         <tr>
-          <td class="cmd">ui-design</td>
-          <td class="paths">**/components/**<br>**/*.{css,scss}<br>**/app/**/page.{tsx,jsx}<br>**/app/**/layout.{tsx,jsx}</td>
-          <td>디자인 상식은 담지 않고 <b>「고른 것이 이 브리프 전용인가」를 묻는 단계</b>만 남깁니다. 그 단계가 없으면 검색 1등이 그대로 결과가 됩니다. + 렌더 증명 규범.<br><span style="color:var(--soft)"><span class="m">.tsx</span> 전체를 걸면 프론트엔드 거의 모든 파일이라 <b>일부러 좁혔습니다.</b></span></td>
-        </tr>
-        <tr>
-          <td class="cmd">doc-dependency</td>
-          <td class="paths">dev/docs/prd/**<br>dev/docs/database/**<br>dev/docs/design/**<br>dev/docs/architecture/**<br>dev/docs/api/**</td>
-          <td>문서 하나를 고치면 <b>그 문서에 의존하는 문서가 조용히 어긋납니다.</b> 코드의 「동일 패턴 전파」와 같은 실패입니다. PRD를 고치면 <span class="cmd">/prd-reviewer</span>를 부르는 것이 여기서 나옵니다.</td>
-        </tr>
-        <tr>
-          <td class="cmd">lessons</td>
-          <td class="paths">src/** · app/** · packages/** · lib/**<br>.claude/** · scripts/** · dev/docs/**<br>docs/lessons.md</td>
-          <td>교훈 기록 <b>형식</b>. paths가 넓은 이유 — "교훈 파일을 편집할 때"가 아니라 <b>"지적이 나올 만한 작업을 할 때"</b> 걸려야 합니다. lessons.md만 걸면 이미 기록하러 간 뒤에 로드됩니다.</td>
-        </tr>
-        <tr>
-          <td class="cmd">harness-change</td>
-          <td class="paths">.claude/** · scripts/**<br>hooks/** · dev/docs/harness-evaluation/**</td>
-          <td>훅·규칙·스킬·에이전트·스크립트를 건드릴 때. 추가 전 3-질문, 해결 수단 우선순위, 도달 경로 검증, 차단 증명.</td>
+          <td class="who">문서 · 도구 · 탐색<small>해당 없음</small></td>
+          <td class="c-rev" colspan="3" style="font-family:var(--body);font-size:13.5px">절차를 적용하지 않습니다. 단 <span class="m">dev/docs/prd/</span>를 고치면 <span class="pill p-skill">/prd-reviewer</span>가 붙습니다 — <span class="pill p-rule">doc-dependency</span> 카드가 트리거합니다.</td>
         </tr>
       </tbody>
     </table>
   </div>
 
-  <div class="note"><b>충돌하면 누가 이기나</b> — 층이 둘이고 방향이 반대입니다. <b>안전 바닥</b>(되돌림 분류·검증 의무·시크릿 경계)은 프로젝트가 <b>올릴 수만</b> 있고 내리려면 명시 요청이 필요합니다. <b>절차·양식</b>(스택 관행·네이밍·문서 형식)은 <b>프로젝트가 이깁니다</b> — 특히 <b>저장소의 기존 코드 패턴이 플러그인 가이드를 이깁니다.</b></div>
+  <div class="note"><b>모든 칸 밑에 깔린 바닥</b> — 클래스가 무엇이든 <b>소스를 고쳤으면 빌드/테스트까지가 한 동작</b>이고, <span class="pill p-hook">build-gate</span>가 그것을 강제합니다. 그리고 사용자가 지적하면 <b>경로와 무관하게</b> 즉시 <span class="m">docs/lessons.md</span>에 기록됩니다.</div>
 </section>
 
-<!-- ══════════════ 훅 ══════════════ -->
-<section id="hooks">
-  <p class="eyebrow">훅 5개</p>
-  <h2>언제 걸리고, 왜 그렇게 만들었나</h2>
+<!-- ══════════ 5. 사례 ══════════ -->
+<section id="cases">
+  <p class="eyebrow">낱낱이</p>
+  <h2>실제로 이렇게 흘러갑니다</h2>
+
+  <div class="cases">
+    <div class="case">
+      <h4>auth 가드의 버그 한 줄</h4>
+      <p class="path">버그 수정 × Irreversible — 2 Phase + P6</p>
+      <ol>
+        <li>진입 조건 4상태 판정 → 의도 명확·반경 파악됨 → <b>준비 단계 건너뜀</b></li>
+        <li><b>P4</b> 구현 시작. 편집 경로가 <span class="m">src/</span>라 <span class="pill p-rule">code-change</span> · <span class="pill p-rule">security</span> · <span class="pill p-rule">reversibility</span> 카드가 로드됨</li>
+        <li>파일을 쓰려는 순간 <span class="pill p-hook">security-check</span>가 시크릿 패턴 검사 — 통과</li>
+        <li>클래스 판정: <b>auth 경로 → Irreversible</b></li>
+        <li><b>P5·P6</b> <span class="pill p-agent">epcc-reviewer</span>가 correctness·security·reversibility 세 관점으로 팬아웃</li>
+        <li><b>사용자 확인 요청</b> + 롤백 절차 작성</li>
+        <li>끝내려 하면 <span class="pill p-hook">build-gate</span>가 빌드/테스트 실행 여부를 확인</li>
+      </ol>
+      <p class="verdict" style="color:var(--alert)">한 줄인데 가장 무겁습니다 — 줄 수가 아니라 경로가 정하니까요.</p>
+    </div>
+
+    <div class="case">
+      <h4>400줄짜리 컴포넌트 리팩토링</h4>
+      <p class="path">리팩토링 × Reversible — 3 Phase</p>
+      <ol>
+        <li><b>P3</b> 범위를 못 박기 위해 개발 문서 — 세션을 넘어갈 때만</li>
+        <li><b>P4</b> 구현. <span class="m">components/</span>를 건드리므로 <span class="pill p-rule">ui-design</span> 카드도 함께 로드됨</li>
+        <li>클래스 판정: <b>공유 계약을 안 건드리면 Reversible</b></li>
+        <li><b>P5</b> <span class="pill p-skill">/completion-review</span>로 문서 최신화 — <b>리뷰 에이전트는 붙지 않습니다</b></li>
+        <li>화면이 바뀌었으면 렌더 증명 — 콘솔 error 0 · 빈/로딩/에러 상태</li>
+      </ol>
+      <p class="verdict" style="color:var(--skill)">400줄인데 가볍습니다. 다만 <span class="m">actions.ts</span>나 <span class="m">middleware.ts</span>를 하나라도 건드리는 순간 Costly로 올라갑니다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 6. 에이전트 ══════════ -->
+<section id="agents">
+  <p class="eyebrow">P3와 P5·P6</p>
+  <h2>서브에이전트 둘이 하는 일</h2>
+  <p class="say">스킬이 아니라 <strong>별도 세션</strong>입니다. 메인 대화의 컨텍스트를 먹지 않고, <strong>가진 도구가 곧 할 수 있는 일의 한계</strong>입니다.</p>
 
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th style="width:150px">훅</th><th style="width:210px">언제 (이벤트 · 대상)</th><th>무엇을 · 왜</th></tr></thead>
+      <thead><tr><th style="width:170px">에이전트</th><th style="width:190px">가진 도구</th><th>무엇을 하고, 왜 그 도구만 주었나</th></tr></thead>
       <tbody>
         <tr>
-          <td class="cmd">session-brief</td>
-          <td class="m">SessionStart<br><span style="color:var(--soft);font-family:var(--body)">세션이 열릴 때마다</span></td>
-          <td>운영 규칙(T0) + 브랜치·미커밋 수·훅 생존 현황을 주입합니다.<br><b>왜</b> — 규칙이 세션 컨텍스트에 없으면 없는 것과 같습니다. 파일로만 존재하는 규칙은 아무도 읽지 않습니다.</td>
+          <td><span class="pill p-agent">epcc-planner</span></td>
+          <td class="m">Read · Grep · Glob<br>WebSearch · WebFetch</td>
+          <td>진입 조건 4상태 중 <b>미충족 항목을 진단</b>하고 구체적 구현 계획을 돌려줍니다. 코드베이스를 탐색해 모호함을 해소합니다.<br><b>Write가 없습니다</b> — 불필요한 문서를 양산하는 것이 <b>구조적으로 불가능</b>합니다. 계획을 받아 기록하는 것은 메인 세션의 몫입니다.</td>
         </tr>
         <tr>
-          <td class="cmd" style="color:var(--alert)">security-check</td>
-          <td class="m">PreToolUse<br>Edit｜Write｜MultiEdit｜Bash<br><span style="color:var(--soft);font-family:var(--body)">쓰거나 실행하기 <b>직전</b></span></td>
-          <td><b>23종을 검사해 걸리면 exit 2로 차단</b>합니다(아래 목록). 신규 UI 파일 생성 시 ui-design 카드를 소환하기도 합니다.<br><b>왜</b> — 쓴 다음에 잡으면 이미 늦습니다. 시크릿은 커밋 전에 파일에 닿는 순간부터 사고입니다.</td>
+          <td><span class="pill p-agent">epcc-reviewer</span></td>
+          <td class="m">Read · Grep · Glob · Bash</td>
+          <td>구현자의 <b>보고와 무관하게 실제 diff를 독립 검토</b>합니다. Irreversible이면 세 관점(correctness · security · reversibility)으로 팬아웃해 과반으로 판정합니다.<br><b>읽기 전용입니다</b> — 리뷰어가 고치기 시작하면 그건 리뷰가 아니라 구현입니다. 파일을 옮기지도 않습니다.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══════════ 7. 런타임 ══════════ -->
+<section id="runtime">
+  <p class="eyebrow">런타임</p>
+  <h2>구현하는 동안 실제로 발화하는 것</h2>
+  <p class="say">둘로 나뉩니다. <strong>훅은 결정적</strong>입니다 — 모델이 기억하든 말든 스크립트가 돌고, 토큰을 쓰지 않고, 둘은 아예 거부합니다. <strong>규칙 카드는 의미적</strong>입니다 — 경로가 맞으면 컨텍스트에 들어와 모델의 판단을 바꿉니다.</p>
+
+  <h3>훅 5개 · 이벤트 등록 6개</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th style="width:150px">스크립트</th><th style="width:180px">언제</th><th style="width:290px">무엇을 하나</th><th>왜 이 모양인가</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="pill p-hook">session-brief</span><br><span class="m" style="font-size:11px;color:var(--faint)">338줄</span></td>
+          <td class="m">SessionStart<br><span style="font-family:var(--body);color:var(--soft)">세션이 열릴 때마다</span></td>
+          <td>운영 규칙(T0) 주입 · 브랜치·미커밋 수 · <b>훅 생존 현황</b> · 인계 메모 복원</td>
+          <td>규칙이 세션 컨텍스트에 없으면 <b>없는 것과 같습니다.</b> 파일로만 존재하는 규칙은 아무도 읽지 않습니다.</td>
         </tr>
         <tr>
-          <td class="cmd" style="color:var(--alert)">build-gate</td>
-          <td class="m">Stop<br><span style="color:var(--soft);font-family:var(--body)">대화를 끝내려 할 때</span></td>
-          <td>소스를 고쳤는데 빌드/테스트를 안 돌렸으면 <b>대화를 중단시킵니다.</b><br><b>왜 이 모양인가</b> — v2의 같은 장치는 <b>한 번도 차단하지 못했습니다.</b> ⓐ <span class="m">{"decision":"block"}</span>을 출력했는데 <b>Stop 이벤트는 그 필드를 지원하지 않습니다</b>(지원: additionalContext·continue·systemMessage) ⓑ <span class="m">grep "test"</span>로 판정해서 대화 어디든 "test"라는 단어가 있으면 통과했습니다.</td>
+          <td><span class="pill p-hook">security-check</span> <span class="badge b-always">차단</span><br><span class="m" style="font-size:11px;color:var(--faint)">500줄</span></td>
+          <td class="m">PreToolUse<br>Edit｜Write｜MultiEdit｜Bash<br><span style="font-family:var(--body);color:var(--soft)">쓰거나 실행하기 <b>직전</b></span></td>
+          <td><b>23종을 검사해 걸리면 exit 2</b> — 도구 호출 자체가 거부됩니다. 신규 UI 파일 생성 시 <span class="pill p-rule">ui-design</span> 카드를 소환하기도 합니다.</td>
+          <td>쓴 다음에 잡으면 늦습니다. <b>내용 검사는 이식 가능하지만 경로 검사는 그렇지 않아서</b>, 이 훅은 경로를 몰라도 됩니다. 배치 실수(<span class="m">NEXT_PUBLIC_</span> 뒤의 서버 키)는 정규식으로 원리상 못 잡으므로 <span class="pill p-rule">security</span> 카드가 맡습니다.</td>
         </tr>
         <tr>
-          <td class="cmd">handoff</td>
-          <td class="m">PreCompact · SessionEnd<br><span style="color:var(--soft);font-family:var(--body)">압축·종료 직전</span></td>
-          <td>다음 세션용 인계 메모를 남깁니다.<br><b>왜</b> — 압축은 1차 출처를 요약본으로 바꾸고 <b>그 손실은 되돌릴 수 없습니다.</b> 최소한 무엇을 하던 중이었는지는 남겨야 합니다.</td>
+          <td><span class="pill p-hook">build-gate</span> <span class="badge b-always">차단</span><br><span class="m" style="font-size:11px;color:var(--faint)">139줄</span></td>
+          <td class="m">Stop<br><span style="font-family:var(--body);color:var(--soft)">대화를 끝내려 할 때</span></td>
+          <td>소스가 바뀌었는데 빌드·테스트가 안 돌았으면 <b>대화를 끝내지 못하게 합니다.</b> git 상태를 읽고 트랜스크립트에서 <b>실제 Bash 호출</b>을 파싱합니다.</td>
+          <td>v2의 같은 장치는 <b>한 번도 차단하지 못했습니다.</b> ⓐ <span class="m">{"decision":"block"}</span>을 냈는데 <b>Stop은 그 필드를 지원하지 않습니다</b> ⓑ <span class="m">grep "test"</span>로 판정해 대화 어디든 "test"가 있으면 통과했습니다.</td>
         </tr>
         <tr>
-          <td class="cmd">track-skill</td>
-          <td class="m">PostToolUse · Skill<br><span style="color:var(--soft);font-family:var(--body)">스킬을 부른 뒤</span></td>
-          <td>사용 기록만 남깁니다. 막지 않습니다.<br><b>왜</b> — 계측이 없으면 <b>아무도 안 쓰는 죽은 자산을 찾을 방법이 없습니다.</b> <span class="cmd">/execution-dashboard</span>와 <span class="m">doctor --usage</span>가 이 기록을 읽습니다.</td>
+          <td><span class="pill p-hook">handoff</span><br><span class="m" style="font-size:11px;color:var(--faint)">90줄 · 2개 등록</span></td>
+          <td class="m">PreCompact · SessionEnd<br><span style="font-family:var(--body);color:var(--soft)">압축·종료 직전</span></td>
+          <td>다음 세션이 읽을 인계 메모를 남깁니다. <span class="pill p-hook">session-brief</span>가 그것을 되읽습니다.</td>
+          <td>압축은 <b>1차 출처를 요약본으로 바꾸고 그 손실은 되돌릴 수 없습니다.</b> 최소한 무엇을 하던 중이었는지는 남겨야 합니다.</td>
+        </tr>
+        <tr>
+          <td><span class="pill p-hook">track-skill</span><br><span class="m" style="font-size:11px;color:var(--faint)">42줄</span></td>
+          <td class="m">PostToolUse · Skill<br><span style="font-family:var(--body);color:var(--soft)">스킬을 부른 뒤</span></td>
+          <td>사용 기록만 남깁니다. <b>막지 않습니다.</b></td>
+          <td>계측이 없으면 <b>아무도 안 쓰는 죽은 자산을 찾을 방법이 없습니다.</b> <span class="pill p-skill">/execution-dashboard</span>와 <span class="m">doctor --usage</span>가 이 기록을 읽습니다.</td>
         </tr>
       </tbody>
     </table>
@@ -554,7 +570,7 @@
   <h3>security-check가 막는 것 — 23종 전부</h3>
   <div class="blocks">
     <div>
-      <h4 style="color:var(--alert)">시크릿 하드코딩 15종</h4>
+      <h4 style="color:var(--hook)">시크릿 하드코딩 15종</h4>
       <ul>
         <li>AWS Access Key — <span class="m">AKIA</span>+16자</li>
         <li>GitHub PAT — <span class="m">ghp_</span>+36자</li>
@@ -574,47 +590,122 @@
       </ul>
     </div>
     <div>
-      <h4 style="color:var(--alert)">파괴적 명령 8종</h4>
+      <h4 style="color:var(--hook)">파괴적 명령 8종</h4>
       <ul>
-        <li><span class="m">DROP</span> — 테이블·DB·스키마 삭제</li>
-        <li><span class="m">TRUNCATE</span> — 테이블 전체 비우기</li>
+        <li><span class="m">DROP</span> — 테이블·DB·스키마</li>
+        <li><span class="m">TRUNCATE</span></li>
         <li><span class="m">WHERE</span> 없는 <span class="m">DELETE FROM</span></li>
         <li><span class="m">supabase db reset</span></li>
         <li>prisma 스키마 초기화</li>
         <li>마이그레이션 전량 되돌리기</li>
         <li>git 히스토리 재작성 · 미러 푸시</li>
-        <li>공유 브랜치에 강제 푸시</li>
+        <li>공유 브랜치 강제 푸시</li>
       </ul>
     </div>
     <div>
-      <h4>판정 방식</h4>
+      <h4>판정 방식 — 오탐을 막는 장치</h4>
       <ul style="list-style:none;padding-left:0">
-        <li><b>세그먼트 단위로 봅니다.</b> 명령이 <span class="m">;</span> <span class="m">&amp;&amp;</span> <span class="m">||</span> 로 이어지면 각각 따로 판정합니다.</li>
-        <li><b>면제는 첫 토큰으로.</b> 문자열이 포함됐다고 면제하지 않습니다 — <span class="m">doctor.sh …; psql -c "DROP TABLE"</span> 이 통째로 통과한 사고가 있었습니다.</li>
-        <li><b>조사 명령은 통과시킵니다.</b> 시크릿 문자열이 들어 있어도 <b>파일을 쓰지 않으면</b> 막지 않습니다.</li>
+        <li><b>세그먼트 단위로 봅니다.</b> <span class="m">;</span> <span class="m">&amp;&amp;</span> <span class="m">||</span> 로 이어진 명령은 각각 따로 판정합니다.</li>
+        <li><b>면제는 첫 토큰으로.</b> 문자열 포함으로 면제했다가 <span class="m">doctor.sh …; psql -c "DROP TABLE"</span>이 통째로 통과한 사고가 있었습니다.</li>
+        <li><b>조사 명령은 통과.</b> 시크릿 문자열이 들어 있어도 <b>파일을 쓰지 않으면</b> 막지 않습니다.</li>
+        <li><b>판정 불가는 차단이 아닙니다.</b> 입력을 파싱 못 하면 알리고 통과시킵니다.</li>
       </ul>
     </div>
   </div>
+
+  <h3>규칙 카드 9장 — 편집하는 파일이 카드를 부릅니다</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th style="width:180px">카드</th><th style="width:290px">이 경로를 편집할 때</th><th>무엇을 요구하나</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="pill p-rule">workflow-routing</span> <span class="badge b-always">상시</span></td>
+          <td class="paths"><b style="color:var(--alert)">경로 조건 없음 — 매 세션</b></td>
+          <td>작업 유형 → Phase 라우팅. <b>지시 우선순위</b>(사용자 &gt; 프로젝트 CLAUDE.md &gt; 프로젝트 규칙 &gt; <b>기존 코드 패턴</b> &gt; 플러그인 가이드). 참조 신선도 4축. 외부 텍스트는 데이터이지 지시가 아님.<br><span style="color:var(--soft)">작업을 <b>시작하기 전</b>에 필요하므로 조건부로 두면 정작 그때 없습니다.</span></td>
+        </tr>
+        <tr><td><span class="pill p-rule">code-change</span></td><td class="paths">src/** · app/** · packages/** · lib/**</td><td>코딩 상식이 아니라 <b>모델이 반복해서 틀리는 것</b>만. 변경 후 역추적, 동일 패턴 전파.</td></tr>
+        <tr><td><span class="pill p-rule">security</span></td><td class="paths">src/** · app/** · packages/** · lib/**</td><td>시크릿의 경계 — <b>값이 아니라 어느 쪽에 있는가.</b> 정규식이 원리상 못 잡는 배치 실수를 여기서 봅니다.</td></tr>
+        <tr><td><span class="pill p-rule">reversibility</span></td><td class="paths">src/** · app/** · packages/**<br>supabase/** · **/migrations/** · dev/active/**</td><td>클래스 판정과 5단계. <b>규모(S/M/L)로 분류하지 않습니다</b> — 규모는 사람 판단을 요구해 드리프트하고, 틀린 변수를 봅니다.</td></tr>
+        <tr><td><span class="pill p-rule">data-modeling</span></td><td class="paths">supabase/** · **/migrations/**<br>db/** · prisma/** · drizzle/**<br>dev/docs/database/**</td><td>새 테이블·마이그레이션·스키마 변경 설계. 프로젝트에 정본 스키마 문서가 있으면 그것과 일관성 유지.</td></tr>
+        <tr><td><span class="pill p-rule">ui-design</span></td><td class="paths">**/components/** · **/*.{css,scss}<br>**/app/**/page.{tsx,jsx}<br>**/app/**/layout.{tsx,jsx}</td><td>디자인 상식이 아니라 <b>「고른 것이 이 브리프 전용인가」를 묻는 단계</b>만. + 렌더 증명 규범.<br><span style="color:var(--soft)"><span class="m">.tsx</span> 전체를 걸면 프론트엔드 거의 모든 파일이라 <b>일부러 좁혔습니다.</b></span></td></tr>
+        <tr><td><span class="pill p-rule">doc-dependency</span></td><td class="paths">dev/docs/{prd,database,design,<br>architecture,api}/**</td><td>문서 하나를 고치면 <b>의존하는 문서가 조용히 어긋납니다.</b> PRD를 고치면 <span class="pill p-skill">/prd-reviewer</span>가 붙는 것이 여기서 나옵니다.</td></tr>
+        <tr><td><span class="pill p-rule">lessons</span></td><td class="paths">src/** · app/** · packages/** · lib/**<br>.claude/** · scripts/** · dev/docs/**</td><td>교훈 기록 <b>형식</b>. paths가 넓은 이유 — "교훈 파일을 편집할 때"가 아니라 <b>"지적이 나올 만한 작업을 할 때"</b> 걸려야 합니다.</td></tr>
+        <tr><td><span class="pill p-rule">harness-change</span></td><td class="paths">.claude/** · scripts/** · hooks/**<br>dev/docs/harness-evaluation/**</td><td>훅·규칙·스킬·에이전트를 건드릴 때. 추가 전 3-질문, 해결 수단 우선순위, 도달 경로 검증, 차단 증명.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note"><b>충돌하면 누가 이기나</b> — 층이 둘이고 방향이 반대입니다. <b>안전 바닥</b>(되돌림 분류·검증 의무·시크릿 경계)은 프로젝트가 <b>올릴 수만</b> 있습니다. <b>절차·양식</b>(스택 관행·네이밍·문서 형식)은 <b>프로젝트가 이깁니다</b> — 특히 <b>저장소의 기존 코드 패턴이 플러그인 가이드를 이깁니다.</b></div>
 </section>
 
-<!-- ══════════════ 막혔을 때 ══════════════ -->
+<!-- ══════════ 8. 스킬 ══════════ -->
+<section id="skills">
+  <p class="eyebrow">스킬 26개 전수</p>
+  <h2>모두 그래프의 어느 단계에 매여 있습니다</h2>
+  <p class="say">스킬은 <strong>불릴 때만 로드되므로 그 전까지는 비용이 0</strong>입니다. 20개는 상황이 맞으면 <b>스스로 발동</b>하고, 6개는 <span class="badge b-cmd">/명령</span>을 기다립니다. 모두 그래프의 단계에 배선돼 있고, 그래서 <span class="m">doctor --usage</span>가 <strong>"이 스킬이 한 번이라도 실제로 쓰였나"</strong>를 답할 수 있습니다 — 이 저장소의 규칙은 <strong>그 측정 없이는 아무것도 걷어내지 않는다</strong>입니다.</p>
+
+  <div class="filterbar">
+    <input id="q" type="search" placeholder="상황이나 이름으로 찾기 — 예: PRD, 보안, 리뷰, 디자인" aria-label="스킬 검색">
+    <span class="count" id="cnt">26개 전부 표시 중</span>
+  </div>
+
+  <div class="tbl-wrap">
+    <table id="skilltable">
+      <thead><tr><th style="width:200px">스킬</th><th style="width:110px">호출</th><th>무엇을 하나</th></tr></thead>
+      <tbody>
+        <tr class="grouphead"><td colspan="3">understand <span class="cnt">· 2</span> — <span class="why">무엇을 요청받았는지 알아내는 단계</span></td></tr>
+        <tr><td><span class="pill p-skill">/prompt-enhancer</span></td><td><span class="badge b-auto">자동</span></td><td>만들 것은 정해졌는데 맥락이 빠진 요청에 <b>코드 구조·의존성·기존 관례</b>를 붙여 실행 가능하게 만듭니다.</td></tr>
+        <tr><td><span class="pill p-skill">/codebase-survey</span></td><td><span class="badge b-auto">자동</span></td><td>하네스를 나중에 깔았거나 코드가 자라 카드가 낡았을 때, <b>스택·구조를 실측</b>해 project-structure·code-conventions 카드를 갱신하고 드리프트를 보고합니다.</td></tr>
+
+        <tr class="grouphead"><td colspan="3">plan <span class="cnt">· 7</span> — <span class="why">진입 조건이 2개 이상 미충족일 때만 닿는 단계</span></td></tr>
+        <tr><td><span class="pill p-skill">/brainstorming</span></td><td><span class="badge b-auto">자동</span></td><td>막연한 아이디어를 <b>대화로</b> 구체적 설계로 만듭니다. 버그 수정·설정 변경·이미 명확한 요구엔 쓰지 않습니다.</td></tr>
+        <tr><td><span class="pill p-skill">/research</span></td><td><span class="badge b-auto">자동</span></td><td>웹 검색 리서치를 <span class="m">dev/docs/research/</span>에 구조화된 문서로 씁니다.</td></tr>
+        <tr><td><span class="pill p-skill">/service-planner</span></td><td><span class="badge b-auto">자동</span></td><td>서비스 구조와 구체적 기능 요구사항 — <b>화면·플로우·기능 목록.</b> 여기서 확정한 화면 목록이 디자인 단계의 입력이 됩니다.</td></tr>
+        <tr><td><span class="pill p-skill">/business-planner</span></td><td><span class="badge b-auto">자동</span></td><td>사업성 검증과 기획서 — 수익 모델·시장 진입·타당성.</td></tr>
+        <tr><td><span class="pill p-skill">/council-review</span></td><td><span class="badge b-auto">자동</span></td><td>기술·비즈니스·UX 세 관점을 <b>병렬로</b> 분석한 뒤 하나의 권고안으로 합칩니다. 되돌리기 어려운 <b>기획</b> 결정용.</td></tr>
+        <tr><td><span class="pill p-skill">/prd-generator</span></td><td><span class="badge b-auto">자동</span></td><td>해당 PRD가 없을 때 씁니다. 규모에 따라 단일형·모듈형을 고릅니다.</td></tr>
+        <tr><td><span class="pill p-skill">/dev-docs-generator</span></td><td><span class="badge b-auto">자동</span></td><td><span class="m">dev/active/</span>에 plan·context·tasks. <b>작업이 세션을 넘어갈 때만</b> 만듭니다.</td></tr>
+
+        <tr class="grouphead"><td colspan="3">build <span class="cnt">· 7</span> — <span class="why">가장 큰 무리 — 실제로 만드는 단계</span></td></tr>
+        <tr><td><span class="pill p-skill">/ui-ux-design</span></td><td><span class="badge b-auto">자동</span></td><td>스타일·팔레트·폰트를 데이터에서 골라 디자인 시스템 생성 → <b>방향 심사</b>(내 기본값인가?) → 캔버스 시안 → 되쓰기·대조 → <b>렌더 증명</b>(콘솔 error 0 · 빈/로딩/에러 3상태).</td></tr>
+        <tr><td><span class="pill p-skill">/test-driven-development</span></td><td><span class="badge b-auto">자동</span></td><td>구현보다 테스트를 먼저. 테스트를 어디(seam)에 두는지, 무엇이 <b>통과해도 쓸모없는 테스트</b>인지 다룹니다.</td></tr>
+        <tr><td><span class="pill p-skill">/prd-reviewer</span></td><td><span class="badge b-auto">자동</span></td><td>PRD의 구현 정합성·요구 명확성·내부 일관성을 감사하고 <b>반영 위치를 명시한</b> 보고서를 냅니다. <b>PRD를 고쳤으면 필수</b>입니다.</td></tr>
+        <tr><td><span class="pill p-skill">/security-review</span></td><td><span class="badge b-auto">자동</span></td><td>전수 감사 — 의존성 CVE · 시크릿 전수 조사 · 결제 경로. 내장 도구의 <b>diff 전용 검사보다 넓습니다.</b></td></tr>
+        <tr><td><span class="pill p-skill">/completion-review</span></td><td><span class="badge b-auto">자동</span></td><td>문서 동기화 · tasks 체크 · 아카이브. <b>Reversible 변경의 마무리 동작</b>입니다.</td></tr>
+        <tr><td><span class="pill p-skill">/pr-prep</span></td><td><span class="badge b-auto">자동</span></td><td>diff 수집 → 클래스 판정 → 검증 명령 실행 → <b>클래스가 요구하는 섹션</b>(롤백 절차·호출처·개입 근거)을 갖춘 본문 생성.</td></tr>
+        <tr><td><span class="pill p-skill">/shortcut-ledger</span></td><td><span class="badge b-auto">자동</span></td><td>코드의 <span class="m">EPCC-SHORTCUT:</span> 마커를 수확해 <b>그 축약의 천장이 아직 유효한지</b> 재평가하고 회수 대상을 판정합니다.</td></tr>
+
+        <tr class="grouphead"><td colspan="3">verify · cross-check <span class="cnt">· 2</span> — <span class="why">강도는 되돌림 클래스가 정한다</span></td></tr>
+        <tr><td><span class="pill p-skill">/receiving-code-review</span></td><td><span class="badge b-auto">자동</span></td><td>들어온 리뷰 피드백을 <b>실제 코드로 검증</b>한 뒤 채택하고, 틀린 지적은 <b>근거를 들어 반박</b>합니다. 맹목 수용하지 않습니다.</td></tr>
+        <tr><td><span class="pill p-skill">/codex-claude-loop</span></td><td><span class="badge b-auto">자동</span></td><td>OpenAI Codex의 독립 검증. <b>소스가 기계 밖으로 나가므로 동의 없이는 절대 실행되지 않습니다.</b></td></tr>
+
+        <tr class="grouphead"><td colspan="3">설치 · 가이드 <span class="cnt">· 3</span> — <span class="why">프로젝트에 하네스를 앉히는 단계</span></td></tr>
+        <tr><td><span class="pill p-skill">/epcc-init</span></td><td><span class="badge b-cmd">/명령</span></td><td>첫 설정 — <span class="m">epcc.config.json</span>·<span class="m">CLAUDE.md</span> 생성. 스택을 고르면 맞춤 가이드를 생성합니다.</td></tr>
+        <tr><td><span class="pill p-skill">/stack-guide-generator</span></td><td><span class="badge b-auto">자동</span></td><td>프로젝트 <span class="m">.claude/skills/</span>에 frontend-guide·backend-guide를 조립합니다. <b>조합(32)이 아니라 축</b>(프론트 4·백엔드 8)을 조립하므로 프리셋에 없는 스택도 즉시 나옵니다.</td></tr>
+        <tr><td><span class="pill p-skill">/epcc-migrate</span></td><td><span class="badge b-cmd">/명령</span></td><td>v2 하네스를 v3로 — 죽은 훅 제거 · 규칙 3계층 재배치 · 에이전트 개명.</td></tr>
+
+        <tr class="grouphead"><td colspan="3">하네스 자체 <span class="cnt">· 5</span> — <span class="why">장비를 재고 고치는 단계</span></td></tr>
+        <tr><td><span class="pill p-skill">/health-check</span></td><td><span class="badge b-cmd">/명령</span></td><td>빌드·린트·타입체크·테스트를 한 번에.</td></tr>
+        <tr><td><span class="pill p-skill">/execution-dashboard</span></td><td><span class="badge b-cmd">/명령</span></td><td>이번 세션이 실제로 건드린 스킬·규칙·훅의 <b>타임라인</b>.</td></tr>
+        <tr><td><span class="pill p-skill">/harness-evaluation</span></td><td><span class="badge b-cmd">/명령</span></td><td>경로 단위 <b>8축</b>으로 점수를 매기고 심각도순 결함 목록을 냅니다. <b>판단만 합니다</b> — 사실은 <span class="m">doctor</span>가 공급하고, Critical은 격리 재현으로만 확정합니다.</td></tr>
+        <tr><td><span class="pill p-skill">/skill-enhancer</span></td><td><span class="badge b-auto">자동</span></td><td>먼저 <b>존치·분할·수동 전환·합병·삭제</b>를 판정하고, 존치 대상에만 경계 선언·행동 계약·실패 경로·기계 검증을 주입합니다. 내장 <span class="m">skill-creator</span>와 짝입니다.</td></tr>
+        <tr><td><span class="pill p-skill">/fix-issue</span></td><td><span class="badge b-cmd">/명령</span></td><td><span class="m">gh</span>·<span class="m">glab</span>로 이슈 컨텍스트를 끌어와 그 맥락을 쥔 채 버그를 고칩니다.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p id="noresult" style="display:none;font-size:14px;color:var(--faint)">해당하는 스킬이 없습니다. 다른 말로 찾아보세요.</p>
+
+  <div class="note"><b>내장 도구와 경쟁하지 않습니다.</b> <span class="m">/code-review</span> · <span class="m">/simplify</span> · <span class="m">/init</span> · <span class="m">/run</span> · <span class="m">/loop</span> · <span class="m">skill-creator</span>는 Claude Code가 제공합니다. 하네스의 규칙은 <b>「빌트인과 겹치면 만들지 않는다 — 대체하거나, 유지하거나, 얇게 감싼다」</b> 셋 중 하나를 고르는 것입니다.</div>
+</section>
+
+<!-- ══════════ 9. 막혔을 때 ══════════ -->
 <section id="stuck">
   <p class="eyebrow">막혔을 때</p>
-  <h2>세 가지 경우가 있습니다</h2>
+  <h2>세 경우가 있고, 대응이 다릅니다</h2>
 
   <div class="stack">
-    <div class="row">
-      <span class="tag t-bad">진짜 위험</span>
-      <p><b>대부분 이 경우입니다.</b> 메시지가 어떤 패턴에 걸렸는지 말합니다 — 시크릿은 환경변수로 빼고, 파괴적 SQL은 범위를 좁히세요.</p>
-    </div>
-    <div class="row">
-      <span class="tag t-warn">오탐</span>
-      <p>시크릿 <b>문자열이 들어 있지만 파일을 쓰지 않는</b> 조사 명령이 막히는 식입니다. 명령을 파일로 써서 실행하거나 세그먼트를 나누세요. 그리고 <b>Claude에게 오탐이라고 말해주세요</b> — <span class="m">docs/lessons.md</span>에 기록되고, 같은 장치에서 2건 이상 쌓이면 <b>규칙을 추가하는 게 아니라 조건을 좁히는</b> 후보가 됩니다.</p>
-    </div>
-    <div class="row">
-      <span class="tag t-ok">판정 불가</span>
-      <p><b>이건 차단이 아닙니다.</b> 도구가 없거나(jq·playwright) 오프라인이라 판단할 수 없다는 뜻이고, <b>통과시킵니다.</b> 다만 "확인함"으로 세지 않습니다 — 없음으로도 있음으로도 단정하지 않습니다.</p>
-    </div>
+    <div class="row"><span class="tag" style="color:var(--alert)">진짜 위험</span><p><b>대부분 이 경우입니다.</b> 메시지가 어떤 패턴에 걸렸는지 말합니다 — 시크릿은 환경변수로 빼고, 파괴적 SQL은 범위를 좁히세요.</p></div>
+    <div class="row"><span class="tag" style="color:var(--webbing)">오탐</span><p>시크릿 <b>문자열이 들어 있지만 파일을 쓰지 않는</b> 조사 명령이 막히는 식입니다. 명령을 파일로 써서 실행하거나 세그먼트를 나누세요. 그리고 <b>Claude에게 오탐이라고 말해주세요</b> — 같은 장치에서 2건 이상 쌓이면 <b>규칙을 추가하는 게 아니라 조건을 좁히는</b> 후보가 됩니다.</p></div>
+    <div class="row"><span class="tag" style="color:var(--skill)">판정 불가</span><p><b>차단이 아닙니다.</b> 도구가 없거나(jq·playwright) 오프라인이라 판단할 수 없다는 뜻이고 <b>통과시킵니다.</b> 다만 "확인함"으로 세지 않습니다 — 없음으로도 있음으로도 단정하지 않습니다.</p></div>
   </div>
 
   <p class="pull">훅을 끄지 마세요.<br>꺼진 훅의 차단력은 0입니다.</p>
@@ -622,7 +713,7 @@
   <h3>세션이 길어졌을 때 — 위에서부터 첫 「예」가 답</h3>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th style="width:40px">#</th><th style="width:420px">질문</th><th>예라면</th></tr></thead>
+      <thead><tr><th style="width:40px">#</th><th style="width:440px">질문</th><th>예라면</th></tr></thead>
       <tbody>
         <tr><td class="m">①</td><td>다음 국면이 <b>이 대화를 1차 출처로</b> 쓰나? 창에 여유가 있나?</td><td><b>계속한다</b></td></tr>
         <tr><td class="m">②</td><td>지금 맥락이 다음 국면과 무관한가?</td><td><span class="m">/clear</span></td></tr>
@@ -633,19 +724,10 @@
     </table>
   </div>
   <div class="note"><b>①을 가장 먼저 배제합니다</b> — 나머지 넷은 전부 1차 출처를 요약본으로 바꾸고, 그 손실은 되돌릴 수 없습니다. 그리고 이 판단은 <b>국면이 끝날 때</b> 합니다. 국면 중간에는 자르지 않습니다.</div>
-
-  <h3>이러면 하네스가 무력해집니다</h3>
-  <ul class="dont">
-    <li><b>오탐이 났다고 훅을 끄기</b><span>차단력이 0이 됩니다. 오탐은 말해서 좁히는 것입니다.</span></li>
-    <li><b>Irreversible 확인을 형식으로 넘기기</b><span>되돌리기 가장 싼 마지막 지점을 버리는 겁니다.</span></li>
-    <li><b>"빌드 통과했으니 됐다"</b><span>빈 화면도, 콘솔이 터지는 화면도 빌드는 통과합니다.</span></li>
-    <li><b>국면 중간에 <span class="m">/compact</span></b><span>1차 출처가 요약본으로 바뀌고, 되돌릴 수 없습니다.</span></li>
-    <li><b>지적한 것을 말만 하고 넘어가기</b><span>기록돼야 장치가 개선됩니다.</span></li>
-  </ul>
 </section>
 
 <footer>
-  <p>글로 된 전체 문서는 저장소에 있습니다 — <code>docs/user-manual.md</code> · <code>docs/getting-started.md</code>(설치) · <code>docs/configuration.md</code>(옵션) · <code>docs/harness-anatomy.md</code>(왜 이렇게 생겼나).</p>
+  <p>글로 된 전체 문서는 저장소에 있습니다 — <code>docs/user-manual.md</code> · <code>docs/getting-started.md</code>(설치) · <code>docs/configuration.md</code>(옵션) · <code>docs/harness-anatomy.md</code>(왜 이렇게 생겼나) · <code>docs/presets.md</code>(축과 가이드).</p>
   <p style="color:var(--faint)">하네스를 <em>고치는</em> 사람이라면 <code>docs/operations-manual.md</code>로 가세요. <b>이 페이지와 저장소가 다르면 저장소가 맞습니다.</b></p>
 </footer>
 
@@ -653,34 +735,26 @@
 
 <script>
 (function(){
-  var q = document.getElementById('q');
-  var cnt = document.getElementById('cnt');
-  var none = document.getElementById('noresult');
-  if(!q) return;
-  var groups = Array.prototype.slice.call(document.querySelectorAll('#skilllist .grp'));
-  var rows = [];
-  groups.forEach(function(g){
-    Array.prototype.slice.call(g.querySelectorAll('tbody tr')).forEach(function(tr){
-      rows.push({el:tr, grp:g, text:(tr.textContent||'').toLowerCase()});
-    });
-  });
-  var total = rows.length;
+  var q=document.getElementById('q'), cnt=document.getElementById('cnt'), none=document.getElementById('noresult');
+  var tbl=document.getElementById('skilltable');
+  if(!q||!tbl) return;
+  var all=Array.prototype.slice.call(tbl.querySelectorAll('tbody tr'));
+  var heads=all.filter(function(r){return r.classList.contains('grouphead');});
+  var rows=all.filter(function(r){return !r.classList.contains('grouphead');});
+  var total=rows.length;
+  rows.forEach(function(r){ r._t=(r.textContent||'').toLowerCase(); });
   function apply(){
-    var v = (q.value||'').trim().toLowerCase();
-    var shown = 0;
-    rows.forEach(function(r){
-      var hit = !v || r.text.indexOf(v) !== -1;
-      r.el.hidden = !hit;
-      if(hit) shown++;
+    var v=(q.value||'').trim().toLowerCase(), shown=0;
+    rows.forEach(function(r){ var hit=!v||r._t.indexOf(v)!==-1; r.hidden=!hit; if(hit) shown++; });
+    heads.forEach(function(h){
+      var any=false, n=h.nextElementSibling;
+      while(n && !n.classList.contains('grouphead')){ if(!n.hidden){any=true;break;} n=n.nextElementSibling; }
+      h.hidden=!any;
     });
-    groups.forEach(function(g){
-      var any = rows.some(function(r){ return r.grp === g && !r.el.hidden; });
-      g.hidden = !any;
-    });
-    none.style.display = shown ? 'none' : 'block';
-    cnt.textContent = v ? (shown + '개 일치') : (total + '개 전부 표시 중');
+    none.style.display=shown?'none':'block';
+    cnt.textContent=v?(shown+'개 일치'):(total+'개 전부 표시 중');
   }
-  q.addEventListener('input', apply);
+  q.addEventListener('input',apply);
 })();
 </script>
 
