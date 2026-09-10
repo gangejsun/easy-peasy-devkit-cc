@@ -401,7 +401,19 @@
       "id": "ui-ux-design",
       "kind": "skill",
       "path": "skills/ui-ux-design/SKILL.md",
-      "when": "UI 파일 변경 후 build에서 렌더 증명(Step 6)으로 들어오거나, 디자인 시스템·화면 설계 요청에 description으로 발동한다"
+      "when": "UI 파일 변경 후 build에서 렌더 증명(Step 6)으로 들어오거나, 디자인 시스템·화면 설계 요청에 description으로 발동한다",
+      "produces": "디자인 시스템 (dev/docs/design/<project>/MASTER.md)"
+    },
+    {
+      "id": "design-canvas",
+      "kind": "tool",
+      "note": "네이티브 /design — 이 저장소에 파일이 없어 path가 없다. Step 2.5를 통과한 토큰 계획을 아트보드로 옮겨 코드 이전에 방향을 확정한다. 캔버스는 화면별 구성(배치·계층·카피·상태 3종)의 정본이라 build가 다시 읽는다. 부재 시 건너뛴다 — 판정 불가는 차단이 아니다"
+    },
+    {
+      "id": "design-system",
+      "kind": "store",
+      "path": "rules/ui-design.md",
+      "note": "디자인 토큰·시그니처·방향 심사. 실제 파일은 소비자의 dev/docs/design/<project>/MASTER.md이고 판정 규범의 정본은 rules/ui-design.md §3·§5다. 캔버스와 관할이 갈리며 겹치는 셋(색·폰트·시그니처)의 불일치는 design-sync.sh가 검출한다"
     },
     {
       "id": "codebase-survey",
@@ -814,6 +826,36 @@
       "from": "eval-report",
       "to": "lessons",
       "cond": "평가가 오탐을 철회했거나 평가 자신의 판정 오류를 발견했을 때 — 결함 목록과 교훈은 별개 저장소라 이 엣지 없이는 모델의 기억에만 의존한다"
+    },
+    {
+      "from": "service-planner",
+      "to": "ui-ux-design",
+      "cond": "화면·플로우 확정 후 디자인 시스템 생성"
+    },
+    {
+      "from": "ui-ux-design",
+      "to": "design-system",
+      "cond": "Step 2 --persist 산출 + Step 2.5 심사 결과 기록"
+    },
+    {
+      "from": "ui-ux-design",
+      "to": "design-canvas",
+      "cond": "Step 2.5 통과 + 신규·재설계 화면 1개 이상 — 종료 술어: 사용자 캔버스 확정"
+    },
+    {
+      "from": "design-canvas",
+      "to": "design-system",
+      "cond": "되쓰기(Step 2.7) — 종료 술어: design-sync.sh exit 0"
+    },
+    {
+      "from": "design-system",
+      "to": "build",
+      "cond": "구현이 토큰·시그니처를 읽는다 (진입점)"
+    },
+    {
+      "from": "design-canvas",
+      "to": "build",
+      "cond": "구현이 화면별 구성(배치·계층·카피·상태 3종)을 읽는다"
     }
   ]
 }

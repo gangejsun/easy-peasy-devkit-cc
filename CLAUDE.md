@@ -43,9 +43,9 @@
 ```bash
 npm test                            # doctor --default · --self-test · 렌더 증명(playwright 없으면 미검증)
 bash scripts/doctor.sh --consumer   # 훅·설치기를 건드렸으면 — 소비자 레이아웃 실증
-# 가이드 하네스를 건드렸으면. 버전 올릴 때는 --self-test 대신 --regress (출하 자산 회귀)
-bash skills/stack-guide-generator/scripts/guide-gate.sh --self-test
+bash skills/stack-guide-generator/scripts/guide-gate.sh --self-test   # 가이드 하네스 — 버전 인상 시 --regress(출하 자산 회귀)
 bash skills/stack-guide-generator/scripts/pack-smoke.sh --self-test
+bash skills/ui-ux-design/scripts/design-sync.sh --self-test           # 토큰 대조를 건드렸으면
 ```
 
 ## 커밋

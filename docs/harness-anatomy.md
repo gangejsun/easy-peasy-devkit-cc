@@ -11,7 +11,7 @@
 > 이 문서는 사본이 아니라 **읽기 표면**이며, 값이 갈리면 정본이 옳다.
 > 사본은 드리프트의 원천이라는 것이 이 저장소의 일관된 입장이고, 이 문서도 예외가 아니다.
 
-**실물 대조** — 훅 5 · T1 규칙 카드 9 · 스킬 26 · 그래프 노드 46 · 엣지 79
+**실물 대조** — 훅 5 · T1 규칙 카드 9 · 스킬 26 · 그래프 노드 48 · 엣지 85
 (`doctor --fast`가 이 줄을 실물과 대조한다. 손으로 적은 수는 반드시 낡기 때문이다.)
 
 | 절 | 무엇을 다루는가 |
@@ -673,7 +673,7 @@ v2는 「✅ 승격됨」을 **22건 선언하고 규칙은 0건 바뀌었다.**
 
 ## 04 — 그래프 엔지니어링 — 체크리스트가 답할 수 없는 것
 
-**정본**: `workflow.graph.json` (노드 46 · 엣지 79) · `dev/docs/port-to-origin/phase-5-graph.md`
+**정본**: `workflow.graph.json` (노드 48 · 엣지 85) · `dev/docs/port-to-origin/phase-5-graph.md`
 
 ### 왜 그래프인가
 
@@ -703,8 +703,8 @@ v2에서도 이 구조는 존재했다. 다만 **마크다운 표와 산문에 �
 | `stage` | 6 | `understand` · `plan` · `build` · `verify` · `cross-check` · `rule-promotion` — **모델의 행동**이라 코드가 방출할 수 없다 |
 | `hook` | 5 | 코드가 실행하는 유일한 부류 |
 | `agent` | 2 | `epcc-planner` · `epcc-reviewer` |
-| `store` | 3 | `lessons`(실수) · `decisions`(선택) · `eval-report`(결함) |
-| `tool` | 2 | `doctor` · `skill-creator`(네이티브 — 이 저장소에 파일이 없어 path 없음) |
+| `store` | 4 | `lessons`(실수) · `decisions`(선택) · `eval-report`(결함) · `design-system`(토큰·방향 — 캔버스와 관할이 갈린다) |
+| `tool` | 3 | `doctor` · `skill-creator` · `design-canvas`(뒤 둘은 네이티브 — 이 저장소에 파일이 없어 path 없음) |
 | `terminal` | 1 | `user-report` — 루프가 사람에게서 끝나는 자리 |
 
 **엣지**는 전이이고 `cond`(조건)와 `instrumented`를 갖는다.
