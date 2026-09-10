@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="EPCC 하네스 전체 지도 — 경우의 수를 고르면 그 경로가 나오는 탐색기, 플러그인 3개와 이중 루트, 가이드 축 조립, 스킬 26개.">
+<meta name="description" content="EPCC 하네스 전체 지도 — Phase를 세로 사다리로 읽는 경로 탐색기, 유형별 사용 점 매트릭스, 플러그인 3개와 이중 루트, 가이드 축 조립.">
 <meta property="og:title" content="EPCC 하네스 지도">
-<meta property="og:description" content="EPCC 하네스 전체 지도 — 경우의 수를 고르면 그 경로가 나오는 탐색기, 플러그인 3개와 이중 루트, 가이드 축 조립, 스킬 26개.">
+<meta property="og:description" content="EPCC 하네스 전체 지도 — Phase를 세로 사다리로 읽는 경로 탐색기, 유형별 사용 점 매트릭스, 플러그인 3개와 이중 루트, 가이드 축 조립.">
 <meta property="og:type" content="article">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧭</text></svg>">
 <style>:root{color-scheme:light dark}body{margin:0;padding:0}img{max-width:100%}</style>
@@ -151,6 +151,40 @@
   footer p{margin:0 0 10px;font-size:14px;color:var(--soft)}
   footer code{font-family:var(--mono);font-size:13px;background:var(--sunk);padding:2px 6px}
 
+
+  /* ── Phase 사다리 (화살표 없이 세로로) ─────────────────── */
+  .ladder{margin:0 0 22px;background:var(--line);display:grid;gap:1px}
+  .lrow{background:var(--surface);display:grid;grid-template-columns:52px 88px 132px 1fr;gap:14px;padding:9px 14px;align-items:baseline;font-size:13.5px}
+  .lrow .lp{font-family:var(--mono);font-size:13px;font-weight:600}
+  .lrow .ln{font-weight:600}
+  .lrow .la{font-family:var(--mono);font-size:11.5px;color:var(--soft)}
+  .lrow .ld{color:var(--soft);font-size:13px}
+  .lrow.on{background:var(--surface)}
+  .lrow.on .lp{color:var(--ink)}
+  .lrow.hot{background:var(--ink)}
+  .lrow.hot .lp,.lrow.hot .ln{color:var(--surface)}
+  .lrow.hot .la,.lrow.hot .ld{color:var(--surface);opacity:.78}
+  .lrow.irr{background:var(--alert-soft)}
+  .lrow.irr .lp,.lrow.irr .ln{color:var(--alert)}
+  .lrow.off{background:var(--sunk)}
+  .lrow.off .lp,.lrow.off .ln{color:var(--faint)}
+  .lrow.off .la{display:none}
+  .lrow.off .ld{color:var(--faint);font-size:12.5px;grid-column:3 / -1}
+  .lgate{background:var(--webbing-soft);padding:9px 14px;font-size:12.5px;color:var(--ink);border-left:4px solid var(--webbing)}
+  .lgate b{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--webbing);margin-right:8px}
+  @media (max-width:720px){.lrow{grid-template-columns:44px 1fr}.lrow .la,.lrow .ld{grid-column:1 / -1}}
+
+  /* ── 유형별 사용 점 매트릭스 ───────────────────────────── */
+  .use{font-family:var(--mono);font-size:13px;text-align:center;padding:10px 4px !important;white-space:nowrap}
+  .use.y{color:var(--ink);font-weight:600}
+  .use.c{color:var(--webbing)}
+  .use.n{color:var(--faint);opacity:.45}
+  th.usehead{text-align:center;padding:10px 4px !important;font-size:10.5px;letter-spacing:.06em}
+  tr.gate td{background:var(--webbing-soft);font-size:12.5px;color:var(--ink);padding:10px 13px}
+  tr.gate b{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--webbing);margin-right:8px}
+  .matrix td{color:var(--soft)}
+  .matrix td.who{color:var(--ink)}
+
   /* ── 경로 탐색기 ───────────────────────────────────────── */
   .explorer{margin-top:28px;background:var(--line);display:grid;gap:2px}
   .ctrls{background:var(--surface);padding:22px 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:24px}
@@ -166,11 +200,6 @@
   .res .cls{font-family:var(--mono);font-size:12.5px;font-weight:600;padding:4px 10px;border:2px solid currentColor}
   .res .meta{font-size:13.5px;color:var(--soft)}
   .res .meta b{color:var(--ink)}
-  .spine{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 22px}
-  .spine .ph{font-family:var(--mono);font-size:12.5px;font-weight:600;padding:6px 12px;background:var(--sunk);color:var(--ink)}
-  .spine .ph.hot{background:var(--ink);color:var(--surface)}
-  .spine .ph.irr{background:var(--alert-soft);color:var(--alert);border:1.5px solid var(--alert)}
-  .spine .sep{color:var(--faint);font-family:var(--mono);font-size:12px}
   .lane{display:grid;grid-template-columns:96px 1fr;gap:16px;padding:11px 0;border-top:1px solid var(--line);align-items:start}
   .lane .lname{font-family:var(--mono);font-size:11.5px;color:var(--faint);padding-top:4px}
   .lane .items{display:flex;flex-wrap:wrap;gap:7px}
@@ -459,17 +488,67 @@
 
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th style="width:210px">작업 유형</th><th style="width:280px">밟는 Phase</th><th>왜 그만큼인가</th></tr></thead>
+      <thead>
+        <tr>
+          <th style="width:132px">Phase</th>
+          <th style="width:150px">실행자</th>
+          <th>언제 발동하고, 그 실행자가 실제로 무엇을 하나</th>
+          <th class="usehead" colspan="6">유형별 사용</th>
+        </tr>
+        <tr>
+          <th></th><th></th><th></th>
+          <th class="usehead">신규</th><th class="usehead">PRD</th><th class="usehead">수정</th>
+          <th class="usehead">버그</th><th class="usehead">리팩</th><th class="usehead">문서</th>
+        </tr>
+      </thead>
       <tbody>
-        <tr><td><b>신규 기능 — PRD 없음</b></td><td class="m">P0 → P1 → P2 → P3 → P4 → P5 <span style="color:var(--faint)">(6/7)</span></td><td>무엇을 만들지부터 정해야 합니다. 기획·PRD·개발문서가 전부 붙습니다.</td></tr>
-        <tr><td><b>신규 기능 — PRD 있음</b></td><td class="m">P3 → P4 → P5 <span style="color:var(--faint)">(3/7)</span></td><td>무엇을 만들지는 정해졌습니다. 세션을 넘어갈 때만 개발문서를 만듭니다.</td></tr>
-        <tr><td><b>기존 기능 수정·확장·삭제</b></td><td class="m">P4 → P5 <span style="color:var(--faint)">(2/7)</span></td><td><b>준비 단계 없음.</b> 진입 조건이 이미 충족돼 있습니다.</td></tr>
-        <tr><td><b>버그 수정</b></td><td class="m">P4 → P5 <span style="color:var(--faint)">(2/7)</span></td><td>〃 — 재현이 먼저 필요하면 <span class="pill p-skill">/fix-issue</span></td></tr>
-        <tr><td><b>리팩토링</b></td><td class="m">P3 → P4 → P5 <span style="color:var(--faint)">(3/7)</span></td><td>동작은 그대로 두지만 <b>범위를 미리 못 박아야</b> 합니다.</td></tr>
-        <tr><td><b>문서 · 도구/환경 · 탐색</b></td><td class="m">해당 없음</td><td>절차를 적용하지 않습니다. 단 <span class="m">dev/docs/prd/</span>를 고치면 <span class="pill p-skill">/prd-reviewer</span>가 붙습니다.</td></tr>
+        <tr class="gate"><td colspan="9"><b>지름길</b>진입 조건 4상태가 모두 충족되면 <b style="color:var(--ink);font-family:var(--body);text-transform:none;letter-spacing:0">P0~P3 전부를 건너뜁니다</b> — 의도 명확 · 컨텍스트 최신 · 영향 반경 파악 · 검증 경로 존재. <b style="color:var(--ink);font-family:var(--body);text-transform:none;letter-spacing:0">건너뛰는 것이 기본이고 예외가 밟는 것입니다.</b></td></tr>
+        <tr>
+          <td><span class="m" style="font-weight:600">P0</span> 틀 잡기<br><small style="color:var(--faint)">조건부</small></td>
+          <td>메인 세션</td>
+          <td><b>아이디어·시장·요구사항이 아직 비었을 때.</b> 탐색 스킬 5종 중 필요한 것을 돌립니다 — 위임하지 않습니다.<br><span class="pill p-skill" style="font-size:11px">/brainstorming</span> <span class="pill p-skill" style="font-size:11px">/research</span> <span class="pill p-skill" style="font-size:11px">/service-planner</span> <span class="pill p-skill" style="font-size:11px">/business-planner</span> <span class="pill p-skill" style="font-size:11px">/council-review</span></td>
+          <td class="use y">●</td><td class="use n">—</td><td class="use n">—</td><td class="use n">—</td><td class="use n">—</td><td class="use n">—</td>
+        </tr>
+        <tr>
+          <td><span class="m" style="font-weight:600">P1</span> 벼리기<br><small style="color:var(--faint)">조건부</small></td>
+          <td>메인 세션</td>
+          <td><b>만들 것은 정해졌는데 프로젝트 맥락이 빠졌을 때.</b> 코드 구조·의존성·기존 관례를 조사해 요청을 실행 가능하게 만듭니다.<br><span class="pill p-skill" style="font-size:11px">/prompt-enhancer</span></td>
+          <td class="use c">◐</td><td class="use n">—</td><td class="use n">—</td><td class="use n">—</td><td class="use n">—</td><td class="use n">—</td>
+        </tr>
+        <tr>
+          <td><span class="m" style="font-weight:600">P2</span> 명세<br><small style="color:var(--faint)">조건부</small></td>
+          <td>메인 세션</td>
+          <td><b><span class="m">dev/docs/prd/</span>에 해당 PRD가 없을 때.</b> 규모에 따라 단일형·모듈형을 고릅니다. 고친 뒤엔 <span class="pill p-skill" style="font-size:11px">/prd-reviewer</span>가 의무입니다.<br><span class="pill p-skill" style="font-size:11px">/prd-generator</span></td>
+          <td class="use y">●</td><td class="use n">—</td><td class="use n">—</td><td class="use n">—</td><td class="use n">—</td><td class="use c">◐</td>
+        </tr>
+        <tr>
+          <td><span class="m" style="font-weight:600">P3</span> 계획<br><small style="color:var(--faint)">조건부</small></td>
+          <td>메인 세션<br><span class="pill p-agent" style="font-size:11px">epcc-planner</span></td>
+          <td><b>작업이 세션을 넘어갈 때.</b> <span class="m">dev/active/</span>에 plan·context·tasks를 만듭니다. <b>진입 조건 2개 이상 미충족이면</b> planner 서브에이전트가 영향 반경을 진단합니다 — <b>Write가 없어 문서 양산이 구조적으로 불가</b>합니다.<br><span class="pill p-skill" style="font-size:11px">/dev-docs-generator</span></td>
+          <td class="use y">●</td><td class="use y">●</td><td class="use n">—</td><td class="use n">—</td><td class="use y">●</td><td class="use n">—</td>
+        </tr>
+        <tr>
+          <td><span class="m" style="font-weight:600;color:var(--ink)">P4</span> <b>구현</b><br><small style="color:var(--alert)">항상</small></td>
+          <td>메인 세션</td>
+          <td><b>언제나 돕니다.</b> 편집 경로가 규칙 카드를 부르고, 쓰기·실행 직전마다 <span class="pill p-hook" style="font-size:11px">security-check</span>가 23종을 검사합니다. 테스트 러너가 있고 동작이 바뀌면 테스트가 먼저입니다.<br><span class="pill p-skill" style="font-size:11px">/test-driven-development</span> <span class="pill p-skill" style="font-size:11px">/ui-ux-design</span> <span class="pill p-skill" style="font-size:11px">frontend·backend-guide</span></td>
+          <td class="use y">●</td><td class="use y">●</td><td class="use y">●</td><td class="use y">●</td><td class="use y">●</td><td class="use n">—</td>
+        </tr>
+        <tr>
+          <td><span class="m" style="font-weight:600">P5</span> 검증<br><small style="color:var(--faint)">클래스가 강도</small></td>
+          <td>메인 세션<br><span class="pill p-agent" style="font-size:11px">epcc-reviewer</span></td>
+          <td><b>되돌림 클래스가 실행자를 바꿉니다.</b> Reversible이면 메인 세션이 문서를 최신화하고, <b>Costly 이상이면 reviewer가 실제 diff를 독립 검토</b>합니다 — 자기 리뷰로 대체하지 않습니다.<br><span class="pill p-skill" style="font-size:11px">/completion-review</span> <span class="pill p-skill" style="font-size:11px">/pr-prep</span></td>
+          <td class="use y">●</td><td class="use y">●</td><td class="use y">●</td><td class="use y">●</td><td class="use y">●</td><td class="use n">—</td>
+        </tr>
+        <tr>
+          <td><span class="m" style="font-weight:600;color:var(--alert)">P6</span> 교차검증<br><small style="color:var(--alert)">Irreversible만</small></td>
+          <td><span class="pill p-agent" style="font-size:11px">epcc-reviewer ×3</span><br><span class="pill p-skill" style="font-size:11px">codex</span> <small style="color:var(--faint)">선택 · 동의 필수</small></td>
+          <td><b>되돌릴 수 없는 변경일 때만.</b> correctness·security·reversibility 세 관점으로 팬아웃해 과반으로 판정하고, <b>사용자 확인과 롤백 절차</b>가 붙습니다. 외부 모델 교차검증은 <b>소스가 기계 밖으로 나가므로 동의 없이 실행되지 않습니다.</b></td>
+          <td class="use c">◐</td><td class="use c">◐</td><td class="use c">◐</td><td class="use c">◐</td><td class="use c">◐</td><td class="use n">—</td>
+        </tr>
       </tbody>
     </table>
   </div>
+  <p class="say" style="margin-top:16px;font-size:14px">● 항상 밟는다 · <span style="color:var(--webbing)">◐</span> 조건이 맞을 때만 · — 밟지 않는다. <strong>P6의 조건은 되돌림 클래스</strong>이고, 나머지 <span style="color:var(--webbing)">◐</span>는 진입 조건이 정합니다.</p>
 
   <h3>그 전에 — 진입 조건 4상태</h3>
   <p class="say">넷이 모두 충족되면 <strong>P0~P3을 통째로 건너뜁니다.</strong></p>
@@ -1197,6 +1276,15 @@
     'costly':{label:'api/ · actions.ts · middleware.ts · 공유 패키지', cls:'cos'},
     'plain': {label:'그 외 — 컴포넌트 · 유틸 · 테스트', cls:'rev'}
   };
+  var PH = [
+    {id:'P0', name:'틀 잡기',  actor:'메인 세션',            d:'요구사항이 아직 비었을 때 — 탐색 스킬 5종'},
+    {id:'P1', name:'벼리기',   actor:'메인 세션',            d:'만들 것은 정해졌는데 프로젝트 맥락이 빠졌을 때'},
+    {id:'P2', name:'명세',     actor:'메인 세션',            d:'해당 PRD가 없을 때 — 규모에 따라 단일형·모듈형'},
+    {id:'P3', name:'계획',     actor:'메인 세션 · planner',  d:'작업이 세션을 넘어갈 때 — dev/active/ 3종'},
+    {id:'P4', name:'구현',     actor:'메인 세션',            d:'항상 돈다 — 이 동안 카드가 로드되고 훅이 지킨다'},
+    {id:'P5', name:'검증',     actor:'클래스가 정한다',       d:''},
+    {id:'P6', name:'교차검증', actor:'reviewer ×3',          d:'되돌릴 수 없는 변경일 때만 — 팬아웃 + 확인 + 롤백'}
+  ];
   var CLS = {
     irr:{name:'Irreversible', color:'var(--alert)', verify:'다관점 팬아웃 + 사용자 확인 + 롤백 절차'},
     cos:{name:'Costly',       color:'var(--webbing)', verify:'epcc-reviewer 독립 리뷰 — 필수'},
@@ -1291,12 +1379,32 @@
     if(T.code && cls!=='rev') gates.push('리뷰 결과를 <b>받은 뒤</b> /receiving-code-review 로 검증한다');
     if(!T.code) gates.push('빌드 게이트도 리뷰도 붙지 않는다 — 그러나 <b>카드가 스킬을 의무화</b>한다');
 
-    var spine = phases.length
-      ? phases.map(function(x){
-          var k = x==='P4' ? ' hot' : (x==='P6' ? ' irr' : '');
-          return '<span class="ph'+k+'">'+x+'</span>';
-        }).join('<span class="sep">→</span>')
-      : '<span class="ph">Phase 미적용</span>';
+    var used = {}; phases.forEach(function(x){ used[x]=1; });
+    var ladder = '';
+    if(!T.code){
+      ladder = '<div class="lgate"><b>Phase 미적용</b>절차를 적용하지 않습니다 — 그런데 <b style="font-family:var(--body);text-transform:none;letter-spacing:0;color:var(--ink)">규칙 카드는 경로가 부르므로 여전히 발동</b>하고, 그 카드가 스킬을 의무화합니다.</div>';
+    } else {
+      ladder = PH.map(function(P){
+        var on = !!used[P.id];
+        var cn = on ? (P.id==='P4' ? 'lrow hot' : (P.id==='P6' ? 'lrow irr' : 'lrow on')) : 'lrow off';
+        var actor = P.actor, d = P.d;
+        if(P.id==='P5'){
+          actor = (cls==='rev') ? '메인 세션' : 'epcc-reviewer';
+          d = (cls==='rev') ? '문서 최신화 · tasks 체크 · 아카이브'
+                            : (cls==='cos' ? '실제 diff 를 독립 검토 — 자기 리뷰로 대체 불가'
+                                           : '세 관점 팬아웃의 앞단');
+        }
+        if(P.id==='P3' && t==='new-noprd') d = d + ' · 진입 조건 2개↑ 미충족이면 planner 가 진단';
+        var body = on
+          ? '<span class="la">'+actor+'</span><span class="ld">'+d+'</span>'
+          : '<span class="la"></span><span class="ld">건너뜁니다 — 이 유형·클래스는 밟지 않습니다</span>';
+        return '<div class="'+cn+'"><span class="lp">'+P.id+'</span><span class="ln">'+P.name+'</span>'+body+'</div>';
+      }).join('');
+      if(phases[0] !== 'P0'){
+        ladder = '<div class="lgate"><b>지름길</b>진입 조건 4상태가 이미 충족돼 준비 단계를 건너뜁니다.</div>' + ladder;
+      }
+    }
+    var spine = ladder;
 
     var html =
       '<div class="verdict">'+
@@ -1304,7 +1412,7 @@
         '<span class="meta"><b>'+T.label+'</b> · '+P.label+'</span>'+
         '<span class="meta">검증: '+C.verify+'</span>'+
       '</div>'+
-      '<div class="spine">'+spine+'</div>'+
+      '<div class="ladder">'+spine+'</div>'+
       lane('스킬', skills)+
       lane('규칙 카드', rules)+
       lane('에이전트', agents)+
