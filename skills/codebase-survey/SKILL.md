@@ -1,6 +1,6 @@
 ---
 name: codebase-survey
-description: 기존 저장소의 스택·구조·아키텍처를 실측해 프로젝트 소유 규칙 카드(project-structure·code-conventions)를 갱신하고 드리프트를 보고합니다. 하네스를 기존 프로젝트에 나중에 설치했을 때, 코드가 자라 카드가 낡았을 때, 아키텍처 파악이 필요할 때 사용합니다.
+description: 기존 저장소의 스택·구조·아키텍처를 실측해 프로젝트 소유 규칙 카드(project-structure·code-conventions)를 갱신하고 드리프트를 보고합니다. 하네스를 기존 프로젝트에 나중에 설치했을 때, 코드가 자라 카드가 낡았을 때 사용합니다. CLAUDE.md를 처음 만드는 것은 내장 /init이고, 스택을 고르는 것은 /epcc-init입니다 — 이 스킬은 이미 있는 카드를 실물에 맞춰 갱신합니다.
 ---
 
 # Codebase Survey
@@ -24,7 +24,7 @@ description: 기존 저장소의 스택·구조·아키텍처를 실측해 프�
 ```bash
 ls -a
 ls AGENTS.md CODEX.md CLAUDE.md README.md CONTRIBUTING.md 2>/dev/null
-ls -d .github docs .harness .agents .cursor 2>/dev/null
+ls -d .github .gitlab .gitlab-ci.yml docs .harness .agents .cursor 2>/dev/null
 ls .claude/rules/ 2>/dev/null
 ```
 

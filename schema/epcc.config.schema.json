@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/gyeong/epcc-devkit/main/plugin/schema/epcc.config.schema.json",
+  "$id": "https://raw.githubusercontent.com/gangejsun/easy-peasy-devkit-cc/main/schema/epcc.config.schema.json",
   "title": "EPCC Devkit Configuration",
   "description": "Configuration schema for EasyPeasy Claude Code Devkit",
   "type": "object",
@@ -33,11 +33,11 @@
             "zh"
           ],
           "default": "en",
-          "description": "Response language (BCP-47 tag). Not an enum \u2014 /epcc-init offers ko/en/id/vi plus free entry, so any valid tag is accepted. Internal reasoning stays English; output is localized for meaning, and industry-standard technical terms stay in English."
+          "description": "Response language (BCP-47 tag). Not an enum — /epcc-init offers ko/en/id/vi plus free entry, so any valid tag is accepted. Internal reasoning stays English; output is localized for meaning, and industry-standard technical terms stay in English."
         },
         "languageLabel": {
           "type": "string",
-          "description": "Endonym shown in the T0 language directive, e.g. \ud55c\uad6d\uc5b4, Bahasa Indonesia, Ti\u1ebfng Vi\u1ec7t. Written by /epcc-init for languages outside the known set; session-brief.sh falls back to `language` when absent."
+          "description": "Endonym shown in the T0 language directive, e.g. 한국어, Bahasa Indonesia, Tiếng Việt. Written by /epcc-init for languages outside the known set; session-brief.sh falls back to `language` when absent."
         },
         "experienceLevel": {
           "type": "string",
@@ -88,6 +88,14 @@
         "nativeStack": {
           "type": "string",
           "description": "deliveryModel이 'native'일 때 실제 사용 기술(React Native·Flutter·Swift·Kotlin 등). 대응 축 팩이 없으므로 프론트엔드 가이드는 이 값을 입력으로 생성된다"
+        },
+        "vcsPlatform": {
+          "type": "string",
+          "enum": [
+            "github",
+            "gitlab"
+          ],
+          "description": "코드 호스팅 플랫폼. 축이 아니라 차원이다 — 어느 가이드 팩을 설치할지 바꾸지 않고 이슈·변경 요청 명령만 가른다(gh ↔ glab/push 옵션, PR ↔ MR, 참조 기호 #N ↔ !N). 값이 없으면 기본값으로 넘어가지 않는다: 'git remote get-url origin'으로 판정하고 그래도 불명이면 사용자에게 묻는다"
         },
         "framework": {
           "type": "string",
@@ -319,13 +327,6 @@
           "description": "Repository topology chosen at epcc-init (drives the generated project-structure rule card)"
         }
       }
-    },
-    "customResources": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "string"
-      },
-      "description": "Custom resource directories that skills can reference"
     }
   },
   "required": [

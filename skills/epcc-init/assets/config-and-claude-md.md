@@ -27,6 +27,7 @@
     "clientKind": "<browser | app>",            // 파생: web이면 browser, 나머지는 app
     "pwa": false,                                // web일 때만 의미. 서비스워커·설치 슬롯을 켠다
     "nativeStack": "",                           // native일 때만. React Native·Flutter 등
+    "vcsPlatform": "<github | gitlab>",          // Step 0 remote 판정값. 이슈·변경 요청 명령을 가른다
 
     // 프로젝트 대표값 — build-gate·health-check가 읽는다. 반드시 채운다
     "framework": "<대표 프레임워크>",
@@ -62,10 +63,7 @@
     "sharedPackage": "<입력값>",
     "importAlias": "<입력값>",
     "repoTopology": "<monorepo | single | msa — Step 4.7 선택값>"
-  },
-
-
-  "customResources": {}
+  }
 }
 ```
 

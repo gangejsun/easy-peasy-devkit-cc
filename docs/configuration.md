@@ -21,6 +21,7 @@ The configuration file lives at the project root. All fields are optional except
 | `presets` | object | (required) | Two-axis selection: `{frontend, backend}`. See `docs/presets.md` |
 | `preset` | string | | Legacy/compat notation `<frontend>+<backend>` |
 | `frontend` | object | | Frontend axis: framework, language, packageManager, commands, sourceDir, additionalStack |
+| `vcsPlatform` | string | | Code hosting: `github`, `gitlab`. Absent → detected from `git remote`, then asked. Splits issue/PR-MR commands only — not a guide-pack axis |
 | `framework` | string | | Primary framework |
 | `language` | string | | Primary language |
 | `packageManager` | string | `"npm"` | Package manager: `npm`, `pnpm`, `yarn`, `bun`, `uv`, `pip` |
@@ -48,35 +49,14 @@ Writing a secret into a `.env*` file that `git check-ignore` confirms is ignored
 **allowed** — that is where secrets belong. A `.env` file that is *not* ignored (e.g.
 `.env.example`) is still blocked. See `docs/harness-anatomy.md` § `security-check`.
 
-### workflow
+### Fields that do not exist
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `p0.enabled` | boolean | `true` | Enable 기획 (Ideation/Research) phase |
-| `p6.enabled` | boolean | `true` | Enable cross-check (TDD/Gemini Loop) phase |
-
-### customResources
-
-Key-value pairs mapping resource names to directory paths. Skills reference these paths to load project-specific resources.
-
-```json
-{
-  "customResources": {
-    "design-principles": ".claude/resources/design-principles",
-    "coding-standards": ".claude/resources/coding-standards"
-  }
-}
-```
-
-### disabledSkills
-
-Array of skill names to disable. Disabled skills are excluded from SessionStart routing.
-
-```json
-{
-  "disabledSkills": ["codex-claude-loop", "business-planner"]
-}
-```
+`workflow.p0.enabled` / `workflow.p6.enabled`, `customResources`, and `disabledSkills` were
+documented in earlier versions but **no script, skill, or rule card ever read them** — setting
+them changed nothing. They were removed from this reference, the schema, and the `epcc-init`
+template (evaluation v6 · E-30). Phase routing is decided by `.claude/rules/workflow-routing.md`;
+to disable a skill, override it in `.claude/skills/` (see `docs/getting-started.md`).
+`doctor --fast` now fails when this file documents a top-level field that nothing reads.
 
 ## Example Configuration
 

@@ -1,6 +1,6 @@
 {
   "name": "easy-peasy-devkit-cc",
-  "version": "3.27.0",
+  "version": "3.28.0",
   "description": "EasyPeasy Claude Code Devkit — AI Native Dev Harness Runtime Plugin",
   "author": "gyeong",
   "license": "MIT",
@@ -38,6 +38,10 @@
   "scripts": {
     "doctor": "bash scripts/doctor.sh",
     "doctor:all": "bash scripts/doctor.sh --all",
-    "test": "bash scripts/doctor.sh --default && bash scripts/doctor.sh --self-test"
+    "test": "bash scripts/doctor.sh --default && bash scripts/doctor.sh --self-test && bash skills/ui-ux-design/scripts/ui-probe.sh --self-test",
+    "test:render": "bash skills/ui-ux-design/scripts/ui-probe.sh --self-test"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
   }
 }

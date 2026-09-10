@@ -2,7 +2,7 @@
 
 AI Native Dev Harness for Claude Code — 되돌림 가능성 축 워크플로우, 자기검증 훅, 그래프 계측.
 
-![version](https://img.shields.io/badge/version-3.27.0-blue)
+![version](https://img.shields.io/badge/version-3.28.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 ## 무엇인가
@@ -104,7 +104,7 @@ Phase 번호는 순서 표시일 뿐 의무가 아닙니다 — 진입 조건 4�
 | 계층 | 수 | 내용 |
 |------|-----|------|
 | **훅** | 5 스크립트 / 6 등록 | SessionStart · PreToolUse · Stop · PreCompact · SessionEnd · PostToolUse |
-| **규칙** | T0 41줄 + T1 9개 1,080줄 | T0는 훅이 상시 주입(플러그인 소유). T1은 `workflow-routing`이 **매 세션 상시**, 나머지는 경로 매칭 시 조건부 로드 |
+| **규칙** | T0 41줄 + T1 9개 1,055줄 | T0는 훅이 상시 주입(플러그인 소유). T1은 `workflow-routing`이 **매 세션 상시**, 나머지는 경로 매칭 시 조건부 로드 |
 | **에이전트** | 2 | `epcc-planner`(쓰기 없음) · `epcc-reviewer`(읽기 전용) |
 | **스킬** | 26 | 측량·기획·구현·검증·보안·PR 워크플로우 + 스택 가이드 생성기 + 스킬 강화기 (마케팅 5종은 `epcc-marketing` 플러그인으로 분리) |
 | **프리셋** | 2축 5+9 | 프론트엔드: nextjs·react-vite·vue·vanilla·none / 백엔드: supabase·firebase·aws-serverless·aws-container·gcp-serverless·fastapi·node-api·node-nest·none |
@@ -114,7 +114,7 @@ Phase 번호는 순서 표시일 뿐 의무가 아닙니다 — 진입 조건 4�
 | 훅 | 이벤트 | 역할 |
 |----|--------|------|
 | `session-brief` | SessionStart | 운영 규칙 주입 + **T1 카드 누락분 자동 설치** + HEAD·미커밋·열린 작업 + **훅 생존 현황** |
-| `security-check` | PreToolUse | 시크릿 하드코딩 차단 (exit 2) |
+| `security-check` | PreToolUse | 시크릿 하드코딩·파괴적 명령 차단 (exit 2) — Edit·Write·Bash 경로 전부 |
 | `build-gate` | Stop | 소스 수정 후 빌드/테스트 미실행 시 차단 |
 | `handoff` | PreCompact · SessionEnd | 컴팩트·종료 시 작업 상태 보존 |
 | `track-skill` | PostToolUse | 스킬 호출 계측 — 측정 없이 컬링하지 않기 위해 |
@@ -143,10 +143,23 @@ code-conventions)을 생성합니다 — 레포 토폴로지(싱글/모노레포
 
 | 에이전트 | 도구 | 구조적으로 불가능해지는 것 |
 |----------|------|---------------------------|
-| `epcc-planner` | Read, Grep, Glob, WebSearch | 불필요한 문서 양산 (Write 없음) |
+| `epcc-planner` | Read, Grep, Glob, WebSearch, WebFetch | 불필요한 문서 양산 (Write 없음) |
 | `epcc-reviewer` | Read, Grep, Glob, Bash | 파일 무단 이동·수정 (읽기 전용) |
 
 권한이 없으면 위반이 불가능합니다. 지시보다 권한 제거를 우선합니다.
+
+### 스킬 26개 — 무엇이 부르는가
+
+호출 조건의 정본은 `.claude/rules/workflow-routing.md`의 Phase 표입니다. 아래는 그 인용이며,
+`doctor --fast`가 이 표에 스킬 이름이 빠지면 실패시킵니다.
+
+| 부르는 것 | 스킬 |
+| --- | --- |
+| **Phase 표** (P0~P6) | `brainstorming` · `research` · `business-planner` · `service-planner` · `council-review` · `prompt-enhancer` · `prd-generator` · `dev-docs-generator` · `test-driven-development` · `completion-review` · `codex-claude-loop` |
+| **문서 의존성** (`dev/docs/prd/` 수정 시) | `prd-reviewer` |
+| **description** (조건 충족 시 모델이 발동) | `receiving-code-review` · `security-review` · `shortcut-ledger` · `pr-prep` · `codebase-survey` · `ui-ux-design` · `skill-enhancer` |
+| **다른 스킬·훅** | `stack-guide-generator` (← `epcc-init` · 세션 브리핑) |
+| **사용자만** (`disable-model-invocation` — description 비상주) | `epcc-init` · `epcc-migrate` · `health-check` · `fix-issue` · `execution-dashboard` · `harness-evaluation` |
 
 ## 자기검증 — `doctor`
 
@@ -175,7 +188,7 @@ bash scripts/doctor.sh --all        # 전체
 ## 그래프 선언
 
 `workflow.graph.json`이 노드(에이전트·스킬·훅)와 엣지(전이 조건), **에러 엣지**를
-기계 판독 가능한 형태로 선언합니다. 현재 노드 45 · 엣지 76.
+기계 판독 가능한 형태로 선언합니다. 현재 노드 46 · 엣지 79.
 
 `doctor --graph`가 검증합니다:
 - 모든 엣지의 타깃이 실재하는가
@@ -260,11 +273,11 @@ mkdir -p .claude/skills/my-brainstorming
 | 항목 | v2 | v3 |
 |------|-----|-----|
 | 훅 | 11개 (Stop의 `decision`/`reason` 등 출력 규격 위반으로 다수가 무효) | **5개, 전부 자기검증** |
-| 규칙 | generator가 `.claude/rules/`에 복사 (무조건 로드 3장 + 조건부 11장) | **T0 41줄 + T1 1,080줄, `install-rules.sh`로 설치 실증. 상시/조건부 구분 유지** |
+| 규칙 | generator가 `.claude/rules/`에 복사 (무조건 로드 3장 + 조건부 11장) | **T0 41줄 + T1 1,055줄, `install-rules.sh`로 설치 실증. 상시/조건부 구분 유지** |
 | 검증 강도 | S/M/L 규모 판단 | **되돌림 가능성 축 (경로 판정)** |
 | Phase | P0~P6 (`.claude/rules/task-workflow.md` 상시 로드) | **P0~P6 유지** — `workflow-routing.md`로 이관, 상시 로드 성질 보존 |
 | 에이전트 | frontmatter 없음, 전체 도구 접근 | **계약 완비 + 최소 권한** |
-| 스킬 | 37개 | **30개** (네이티브가 더 나은 것만 제거, 가이드 생성기·강화기·축약 원장 추가) |
+| 스킬 | 37개 | **26개** (네이티브가 더 나은 것만 제거, 가이드 생성기·강화기·축약 원장 추가) |
 | 검증 | 없음 | **`doctor` 5개 모드** |
 | 그래프 | 산문으로 흩어짐 | **`workflow.graph.json` + 계측** |
 

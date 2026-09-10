@@ -1,5 +1,5 @@
 #!/bin/bash
-# scripts/security-check.sh — PreToolUse (Edit|Write)
+# scripts/security-check.sh — PreToolUse (Edit|Write|MultiEdit|Bash)
 #
 # 명백한 시크릿 하드코딩을 차단하는 최후 방어선.
 #
@@ -106,8 +106,64 @@ _readonly_cmd() {
     *) return 1 ;;
   esac
   # 읽기 명령이 파괴적 실행기로 흘러들어가는가 — 그때는 읽기가 아니다
-  printf '%s' "$1" | grep -Eqi '[|;&][[:space:]]*(sudo[[:space:]]+)?(npx[[:space:]]+)?(psql|mysql|mariadb|sqlite3|mongosh?|supabase|prisma|drizzle-kit|alembic|sqlcmd)([[:space:]]|$)' && return 1
+  _pipes_to_db_client "$1" && return 1
   return 0
+}
+
+# DB 클라이언트가 **명령 위치**에 오는가. 경로에 들어있는 이름(`supabase/migrations/`)은
+# 세지 않으므로 파이프·구분자·**명령 치환** 뒤만 본다. 세 곳(_readonly_cmd · _feeds_db_client ·
+# _message_cmd)이 쓴다 — 사본을 두면 한쪽만 고쳐지고, 그 어긋남이 이 파일에서 이미 한 번 결함이 됐다.
+#
+# **명령 치환(`$(…)`·백틱)이 명령 위치다.** 이것이 없어서 E-22의 커밋 메시지 오탐 수리가
+# 실행 경로까지 면제했다 — 실측(이번 회차): `git commit -m "$(psql -d app -c "DROP TABLE users")"`와
+# `gh pr create --body "$(psql …)"`가 exit 0으로 통과했고, 같은 입력을 직전 버전으로 돌리면
+# exit 2였다. 즉 오탐 수리가 만든 **회귀**였다. `$(`는 셸이 반드시 실행하는 자리이므로
+# 서술과 혼동될 여지가 없다 — 반면 맨 `(`는 넣지 않는다: `git commit -m "docs: (psql) 설명"`
+# 같은 산문 괄호를 실행으로 오인해 새 오탐이 된다. 면제의 구멍은 좁히되 오탐은 늘리지 않는다.
+_pipes_to_db_client() {
+  printf '%s' "$1" \
+    | grep -Eqi '(\$\(|`|[|;&])[[:space:]]*(sudo[[:space:]]+)?(npx[[:space:]]+)?(psql|mysql|mariadb|sqlite3|mongosh?|supabase|prisma|drizzle-kit|alembic|sqlcmd)([[:space:]]|$)'
+}
+
+# 힙독이 DB 클라이언트로 들어가는가 — 그때 본문은 데이터가 아니라 **실행될 SQL**이다.
+_feeds_db_client() {
+  case "$(_first_tok "$1")" in
+    psql|mysql|mariadb|sqlite3|mongo|mongosh|supabase|prisma|drizzle-kit|alembic|sqlcmd) return 0 ;;
+  esac
+  _pipes_to_db_client "$1"
+}
+
+# 힙독 본문은 **명령이 아니라 데이터다** — 파일이나 인터프리터로 흘러드는 페이로드다.
+# 그래서 파괴 판정 **전에** 걷어낸다. 걷어내는 것은 본문뿐이고, 힙독 밖의 명령
+# (`... PY && psql -c '...'`)은 그대로 판정받는다.
+#
+# 왜 생겼나 (실측 2026-09-08): 문서에 파괴적 DDL 이름을 예시로 적는
+# `python3 - <<'PY' ... PY`가 막혔다. `_authoring_cmd`가 "쓰는 명령은 실행이 아니다"라는
+# **옳은 판단을 이미 갖고 있었는데** 그 판정이 `cat|tee|printf|echo`로만 좁혀져 있었다.
+# 원인은 두 겹이다 — ⓐ **집필 도구를 열거하는 방식은 반드시 뒤처진다**(python·node·perl·
+# ruby·sed -i·jq > file …) ⓑ 더 깊게는, 게이트가 **명령이 아니라 페이로드를 읽고 있었다.**
+# ⓑ가 진짜 원인이므로 여기서 그것을 고친다. 도구 목록을 늘리는 것은 ⓐ만 미루는 일이다.
+#
+# **DB 클라이언트에 넘기는 힙독은 걷어내지 않는다** — `psql <<'SQL'`은 힙독이지만 실행이다.
+# 그 판정은 **힙독을 여는 줄**로만 한다 (아래 awk의 `feeds_db`는 그래서 _pipes_to_db_client의
+# 사본이 아니다 — 「힙독을 무엇이 받는가」라는 다른 질문이고, 명령 치환 확장을 받지 않는다:
+# `$(psql <<'SQL')`은 힙독을 여는 줄이 아니다). 명령 전체에서 `; psql`을 찾으면 파일에 쓰는 힙독
+# 본문 안의 문자열(테스트 매트릭스·문서의 예시)이 실행으로 오인된다 — 실측(평가 v6 · E-44):
+# `cat > matrix.sh <<'EOF' … 'x; psql -c "DROP TABLE t"' … EOF`가 exit 2로 막혔다.
+_strip_heredoc_bodies() {
+  printf '%s' "$1" | awk '
+    function feeds_db(line) {
+      return (line ~ /^[ \t]*([A-Za-z_][A-Za-z0-9_]*=[^ \t]*[ \t]+)*(sudo[ \t]+)?(npx[ \t]+)?(psql|mysql|mariadb|sqlite3|mongo|mongosh|supabase|prisma|drizzle-kit|alembic|sqlcmd)([ \t]|$)/ \
+           || line ~ /[|;&][ \t]*(sudo[ \t]+)?(npx[ \t]+)?(psql|mysql|mariadb|sqlite3|mongo|mongosh|supabase|prisma|drizzle-kit|alembic|sqlcmd)([ \t]|$)/)
+    }
+    { if (inhd) { l=$0; if (dash) sub(/^[ \t]+/,"",l); if (l==delim) inhd=0; else if (keep) print; next }
+      if (match($0, /<<-?[ \t]*[\047"]?[A-Za-z_][A-Za-z0-9_]*[\047"]?/)) {
+        # `<<<` 히어스트링은 힙독이 아니다 — 앞 글자가 `<`면 건너뛴다
+        if (RSTART==1 || substr($0,RSTART-1,1) != "<") {
+          t=substr($0,RSTART,RLENGTH); dash=(substr(t,1,3)=="<<-")
+          sub(/^<<-?[ \t]*/,"",t); gsub(/[\047"]/,"",t); delim=t; inhd=1
+          keep=feeds_db($0) } }
+      print }'
 }
 
 # 파일에 텍스트를 **쓰는** 명령은 파괴의 실행이 아니다.
@@ -123,13 +179,71 @@ _authoring_cmd() {
   return 1
 }
 
-destructive_gate() {
-  local DCMD="$1" target=""
-  dhas() { printf '%s' "$DCMD" | grep -Eqi -e "$1"; }
+# 커밋 메시지·PR 제목·태그 주석은 SQL을 **실행하지 않는다** — 인자에 든 DDL 어휘는 서술이다.
+# 실측(평가 v6 · E-22): `git commit -m "fix: drop table legacy_users"`와
+# `gh pr create --title "…drop table…"`이 exit 2로 막혔다. 커밋을 막는 오탐은 사용자가
+# 훅을 꺼버리게 만드는 가장 빠른 길이다. 면제는 **첫 토큰**으로 판정하고(문자열 포함이 아니다),
+# 파이프 뒤에 DB 클라이언트가 오면 면제하지 않는다.
+_message_cmd() {
+  case "$(_first_tok "$1")" in
+    git) printf '%s' "$1" | grep -Eq '^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git[[:space:]]+(commit|tag|notes|merge|revert|stash)([^a-zA-Z-]|$)' || return 1 ;;
+    gh|glab) ;;
+    *) return 1 ;;
+  esac
+  _pipes_to_db_client "$1" && return 1
+  return 0
+}
 
-  # ── 데이터 파괴 (SQL·마이그레이션 도구) ────────────────────────────
-  # 조사 명령도 작성 명령도 아닌 것 = 실행하려는 것
-  if ! _readonly_cmd "$DCMD" && ! _authoring_cmd "$DCMD"; then
+# 명령을 **세그먼트**(`;` `&&` `||` 개행)로 나눈다. `git commit -m "…drop table…" && psql -c
+# "DROP TABLE t"`에서 앞은 서술이고 뒤는 실행이다 — 한 문자열로 보면 둘을 가를 수 없어서
+# 면제하면 뒤가 새고, 면제하지 않으면 앞이 오탐이다. 세그먼트별로 판정하면 둘이 갈린다.
+# 파이프(`|`)는 나누지 않는다 — `cat x.sql | psql`은 한 세그먼트여야 _pipes_to_db_client가 본다.
+_segments() { printf '%s\n' "$1" | awk '{ gsub(/;|&&|\|\|/, "\n"); print }'; }
+
+# 이 훅·doctor를 **실행하는 단일 명령**인가. 시크릿 스캔의 자기참조 면제에만 쓴다.
+# 예전에는 `*doctor.sh*` 문자열 포함으로 면제해 파괴 게이트까지 통째로 건너뛰었다 —
+# `bash scripts/doctor.sh --help; psql -c "DROP TABLE users"`가 exit 0이었다(평가 v6 · E-21).
+# 면제는 첫 토큰으로 판정하고, 다른 명령이 이어지면(`;` `&&` `||` `&`) 면제하지 않는다.
+_self_ref_cmd() {
+  printf '%s' "$1" | grep -Eq '(;|&&|\|\||&[[:space:]]|&$)' && return 1
+  local t1 t2
+  t1=$(_first_tok "$1")
+  t2=$(printf '%s' "$1" | sed -E 's/^[[:space:]]*//; s/^([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*//' | awk '{print $2; exit}')
+  case "$t1" in
+    */doctor.sh|*/security-check.sh|doctor.sh|security-check.sh) return 0 ;;
+    bash|sh) case "$t2" in */doctor.sh|*/security-check.sh|doctor.sh|security-check.sh) return 0 ;; esac ;;
+  esac
+  return 1
+}
+
+# **파일에 쓰는** 명령인가 — 시크릿 스캔은 이것에만 들어간다.
+# 모든 `>`를 쓰기로 보면 `rg 'AKIA…' . 2>/dev/null`(읽기 전용 조사)이 스캔에 들어가
+# 막힌다(평가 v6 · E-23). stderr/stdout 폐기·복제(`2>/dev/null` `>&2` `&>/dev/null`),
+# 화살표(`->`), 비교(`>=`)는 쓰기가 아니다.
+_writes_file() {
+  local c
+  c=$(printf '%s' "$1" | sed -E 's/[0-9]*>{1,2}[[:space:]]*\/dev\/null//g; s/&>[[:space:]]*\/dev\/null//g; s/[0-9]*>&[0-9]+//g')
+  printf '%s' "$c" | grep -Eq '(^|[^0-9A-Za-z_])(tee|dd)([^0-9A-Za-z_]|$)' && return 0
+  printf '%s' "$c" | grep -Eq '(^|[^-<>=])>{1,2}[[:space:]]*[^=&[:space:]]' && return 0
+  return 1
+}
+
+destructive_gate() {
+  # 힙독 본문(=데이터)을 걷어낸 뒤 판정한다. 시크릿 검사는 **걷어내지 않는다** —
+  # 축이 반대다: 시크릿은 쓰는 행위 자체가 노출이므로 본문이 곧 판정 대상이다.
+  local DCMD; DCMD=$(_strip_heredoc_bodies "$1")
+  local target="" _D
+  dhas() { printf '%s' "$_D" | grep -Eqi -e "$1"; }
+
+  # ── 데이터 파괴 (SQL·마이그레이션 도구) — 세그먼트별 판정 ─────────
+  # 조사 명령도 작성 명령도 메시지 전달 명령도 아닌 세그먼트 = 실행하려는 것
+  local seg
+  while IFS= read -r seg; do
+    [ -z "$(printf '%s' "$seg" | tr -d '[:space:]')" ] && continue
+    _readonly_cmd "$seg" && continue
+    _authoring_cmd "$seg" && continue
+    _message_cmd "$seg" && continue
+    _D="$seg"
 
     dhas '(^|[^a-z_])drop[[:space:]]+(table|database|schema)([^a-z_]|$)' \
       && dblock "DDL로 테이블/데이터베이스/스키마 삭제" \
@@ -167,7 +281,10 @@ destructive_gate() {
     dhas '(^|[^a-z_])update[[:space:]]+["a-z_][a-z0-9_."]*[[:space:]]+set[^;]*(;|$)' \
       && ! dhas '(^|[^a-z_])where([^a-z_]|$)' \
       && dwarn "WHERE 없는 UPDATE — 테이블 전 행이 바뀝니다" "WHERE 절로 범위를 좁혔는지 확인하세요"
-  fi
+  done < <(_segments "$DCMD")
+
+  # 아래는 명령 전체를 본다 — git 명령은 세그먼트 안에서 완결되고 서술 인자에 이 어휘가 올 일이 없다
+  _D="$DCMD"
 
   # ── git 히스토리 파괴 ──────────────────────────────────────────────
   dhas 'git[[:space:]]+filter-branch|git[[:space:]]+filter-repo|git[[:space:]]+push[^|;&]*--mirror' \
@@ -227,15 +344,17 @@ case "$TOOL_NAME" in
     ;;
   Bash)
     CMD=$(epcc_field "$INPUT" '.tool_input.command')
-    # 자기 참조 회피 — 이 훅과 doctor는 패턴 문자열 자체를 본문에 갖고 있다
-    case "$CMD" in *security-check.sh*|*doctor.sh*) exit 0 ;; esac
-
-    # 파괴적 명령은 **파일을 쓰지 않아도** 되돌릴 수 없다. 아래 쓰기 필터보다 먼저 본다.
+    # 파괴적 명령은 **파일을 쓰지 않아도** 되돌릴 수 없다. 아래 쓰기 필터보다 먼저 보고,
+    # **어떤 명령도 면제하지 않는다** — 자기참조 면제가 여기까지 걸쳐 있던 동안
+    # `…doctor.sh…; psql -c "DROP TABLE"`이 통째로 통과했다(평가 v6 · E-21).
     destructive_gate "$CMD"
+    # 자기 참조 회피는 **시크릿 스캔에만**, 그리고 이 훅·doctor를 실행하는 **단일 명령**에만 —
+    # 둘은 패턴 문자열 자체를 본문에 갖고 있어 자기 검사 명령이 자기에게 막힌다.
+    _self_ref_cmd "$CMD" && exit 0
     # **파일을 쓰는 명령만** 본다. 읽기 명령까지 스캔하면 조사·검사 명령
     # (`grep 'AKIA[0-9A-Z]{16}' ...`)이 오탐으로 막히고, 오탐은 사용자가 훅을
     # 꺼버리게 만들며 꺼진 훅의 차단력은 0이다.
-    printf '%s' "$CMD" | grep -Eq '(^|[^0-9A-Za-z_])(tee|dd)([^0-9A-Za-z_]|$)|>' || exit 0
+    _writes_file "$CMD" || exit 0
     TEXT="$CMD"
     ;;
   *) exit 0 ;;

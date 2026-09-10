@@ -13,9 +13,8 @@
 claude plugin install epcc-devkit
 ```
 
-> **Note — the published marketplace build is still v2.0.0.** The command above installs from
-> `origin/main`, so the v3 harness is only available once a release tag has been pushed and merged
-> (`claude plugin tag --push` → merge to main). Until then, install from this repository directly:
+> The marketplace reads `origin/main`, where the latest tagged release is merged (the current version is the README badge). To install from a
+> local clone instead — for development, or to try an unreleased change:
 >
 > ```bash
 > claude plugin marketplace add <path to this repo>
@@ -49,6 +48,31 @@ The plugin automatically:
 - Blocks hardcoded secrets before they are written
 - Blocks stopping when source changed but build/test never ran
 - Routes work by reversibility class (Reversible / Costly / Irreversible)
+
+**Three things block; everything else only tells you.** The blocks are hardcoded secrets,
+irreversible commands (destructive DDL, force-push to a shared branch), and stopping without a
+build. Each message names the next action — read it before looking for a workaround. Anything
+phrased as *"cannot determine…"* is a notice, not a block: the harness never folds *undecidable*
+into *blocked*, because a false block teaches you to switch the hook off.
+
+## Proving the Screen Renders
+
+`tsc` passes an empty page, and a page whose console is on fire. So after a UI change the harness
+says so once per session — it does not block — and the proof itself lives in the `ui-ux-design`
+skill:
+
+```bash
+npm i -D playwright && npx playwright install chromium   # once, only if the project has a UI
+```
+
+Start the app with the built-in `/run`, then point the probe at that URL. It reports console
+errors, uncaught exceptions and failed requests (these fail it, exit 1), plus contrast, touch
+targets, body size and reduced-motion as warnings that never fail. Screenshots land in
+`.claude/.epcc/ui-probe/`. Missing browser means exit 2 — *undecidable*, not *passed*.
+
+The plugin does not install Playwright for you: a ~94 MB browser has no business in an API-only
+project. See `rules/ui-design.md` §6 for the waiting discipline (visibility-based selectors beat
+fixed sleeps; `networkidle` is a last resort).
 
 ## Zero-Config Mode
 
@@ -87,15 +111,19 @@ See `docs/presets.md`.
 
 ## Project Override
 
-To customize any plugin skill, copy it to your project's `.claude/skills/`:
+Plugin skills live in the `epcc-devkit:` namespace and project skills in `.claude/skills/`
+**coexist** with them — a same-name copy does not shadow the plugin skill. To take precedence,
+give your skill a different name and state the boundary in its `description`:
 
 ```bash
-# Example: override brainstorming skill
-mkdir -p .claude/skills/brainstorming
-# Create your custom SKILL.md there
+# Example: your own brainstorming flow
+mkdir -p .claude/skills/my-brainstorming
+# In its SKILL.md description: "브레인스토밍은 이 스킬을 우선 사용"
 ```
 
-Project files always take priority over plugin files.
+Rule cards in `.claude/rules/` are project-owned: edit them freely, `install-rules.sh` keeps a
+user-modified card and reports the drift instead of overwriting it. Never edit plugin files —
+updates overwrite them. The canonical statement of these rules is `README.md` 「커스터마이즈」.
 
 ## Next Steps
 

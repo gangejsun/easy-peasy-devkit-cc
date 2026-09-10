@@ -262,6 +262,14 @@ epcc_edge() {
   mkdir -p "$dir" 2>/dev/null || return 0
   printf '%s|%s|%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$from" "$to" \
     >> "$dir/graph.log" 2>/dev/null || true
+  # 회전 — 이 로그만 상한이 없었다(평가 v6 · E-28). 가장 많이 쓰는 기록자(security-check가 도구
+  # 호출마다 방출)인데 형제 로그 둘은 회전하고 이것만 무한 축적했다. append에는 상한이 따른다
+  # (code-change 「append하는 코드를 쓰면 로테이션/상한을 같이 넣는다」 — 하네스도 예외가 아니다).
+  local n; n=$(epcc_num "$(wc -l < "$dir/graph.log" 2>/dev/null)")
+  if [ "$n" -gt 5000 ]; then
+    tail -2500 "$dir/graph.log" > "$dir/graph.log.tmp" 2>/dev/null \
+      && mv "$dir/graph.log.tmp" "$dir/graph.log" 2>/dev/null || rm -f "$dir/graph.log.tmp"
+  fi
 }
 
 # ── 훅 초기화 ────────────────────────────────────────────────────────

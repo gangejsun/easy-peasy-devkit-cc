@@ -1,16 +1,21 @@
 ---
 name: pr-prep
-description: 변경을 PR로 낼 수 있게 준비합니다 — diff 수집, 되돌림 클래스 판정, 검증 명령 실행, 클래스가 요구하는 섹션(롤백 절차·호출처·개입 근거)을 갖춘 PR 본문 생성. 사용자가 "PR 준비", "PR 올려줘", "PR 본문"을 요청할 때 사용합니다.
+description: 변경을 PR/MR로 낼 수 있게 준비합니다 — diff 수집, 되돌림 클래스 판정, 검증 명령 실행, 클래스가 요구하는 섹션(롤백 절차·호출처·개입 근거)을 갖춘 본문 생성. 사용자가 "PR 준비", "MR 준비", "PR 올려줘", "PR 본문"을 요청할 때 사용합니다.
 ---
 
 # PR Prep
 
-**PR 본문은 요약이 아니라 리뷰어가 판단하는 데 필요한 것의 목록이다.**
+**본문은 요약이 아니라 리뷰어가 판단하는 데 필요한 것의 목록이다.**
 
 > **경계** — diff의 결함을 찾는 것은 내장 `/code-review`, 계약·명세 정합을 보는 것은
 > `epcc-reviewer`, 문서를 최신화하는 것은 `/completion-review`다. 이 스킬은 그 셋이
-> 만들지 않는 **PR 본문과 그 전제 조건**을 맡는다. 코드를 고치지 않는다 — 결함을
+> 만들지 않는 **변경 요청 본문과 그 전제 조건**을 맡는다. 코드를 고치지 않는다 — 결함을
 > 발견하면 보고하고 build로 되돌린다.
+
+**호스트 판정** — `epcc.config.json`의 `techStack.vcsPlatform`을 읽는다. 없으면
+`git remote get-url origin`에 `github.com`/`gitlab.com`이 있는지 본다. 그래도 불명이면
+**사용자에게 묻는다** — Step 6까지는 어느 쪽이든 같으므로, 물어야 할 시점은 Step 7이다.
+GitHub는 PR, GitLab은 MR이다.
 
 ## Step 1: 무엇이 바뀌었는가
 
@@ -35,7 +40,7 @@ git diff "$(git merge-base HEAD main 2>/dev/null || echo HEAD~1)"..HEAD --stat
 
 ## Step 3: 클래스가 본문 섹션을 정한다
 
-| 클래스 | PR 본문에 **의무** |
+| 클래스 | 본문에 **의무** |
 | --- | --- |
 | Reversible | Summary · Changes · Tests |
 | Costly | + **영향 반경** — 호출처 목록 (grep으로 실제 확인한 것만) |
@@ -49,8 +54,8 @@ git diff "$(git merge-base HEAD main 2>/dev/null || echo HEAD~1)"..HEAD --stat
 
 (a)를 못 쓰면 그것은 가설이지 패턴이 아니다. 그 사실을 본문에 적거나, 변경을 되돌린다.
 
-**의무 섹션을 채울 수 없으면 PR은 미완성이다.** 빈 제목만 남기고 넘어가지 않는다 —
-"롤백 절차: (없음)"인 Irreversible PR은 리뷰어가 판단할 근거가 없는 PR이다.
+**의무 섹션을 채울 수 없으면 미완성이다.** 빈 제목만 남기고 넘어가지 않는다 —
+"롤백 절차: (없음)"인 Irreversible 변경 요청은 리뷰어가 판단할 근거가 없다.
 그 상태를 보고하고 멈춘다.
 
 ## Step 4: 검증을 실제로 돌린다
@@ -61,7 +66,7 @@ git diff "$(git merge-base HEAD main 2>/dev/null || echo HEAD~1)"..HEAD --stat
 | 결과 | 본문 표기 |
 | --- | --- |
 | 통과 | 명령 + `✓` |
-| 실패 | 명령 + 실패 출력 요약. **PR을 만들지 않고 보고한다** |
+| 실패 | 명령 + 실패 출력 요약. **PR/MR을 만들지 않고 보고한다** |
 | 명령 없음 | 「검증 경로 없음」 + 수동 확인 절차. 통과로 적지 않는다 |
 
 세 번째를 통과로 적는 것이 가장 흔한 거짓말이다. 없는 것을 있다고 쓰지 않는다.
@@ -108,11 +113,32 @@ git diff "$(git merge-base HEAD main 2>/dev/null || echo HEAD~1)"..HEAD --stat
 ## Step 7: 제안까지만
 
 본문을 사용자에게 보여주고 **확인을 받은 뒤에** 명령을 실행한다.
-PR 생성은 저장소 밖으로 나가는 발신이다 — 되돌리려면 사람의 손이 필요하다.
+PR/MR 생성은 저장소 밖으로 나가는 발신이다 — 되돌리려면 사람의 손이 필요하다.
+
+**GitHub**
 
 ```bash
 gh pr create --base <기준> --title "<제목>" --body-file <파일>
 ```
+
+**GitLab** — 기본은 push 옵션이다. 별도 CLI 설치·인증이 필요 없다.
+
+```bash
+git push -o merge_request.create \
+         -o merge_request.target=<기준> \
+         -o merge_request.title="<제목>" origin HEAD
+```
+
+push 옵션은 제목과 대상 브랜치까지만 안정적으로 싣는다. **본문 파일은 어느 경로에서든
+그대로 만든다** — 그것이 이 스킬의 산출물이다. 생성된 MR에 사용자가 붙여넣도록 경로를
+알려주고, 사용자가 `glab`을 원하면 그때 쓴다:
+
+```bash
+glab mr create --target-branch <기준> --title "<제목>" --description-file <파일>
+```
+
+호스트가 끝내 판정되지 않으면 **본문 파일까지만 만들고 멈춘다.** 어느 쪽 명령도
+추측해서 실행하지 않는다.
 
 푸시가 필요하면 **강제 푸시를 쓰지 않는다.** 필요해 보이면 그 이유를 먼저 보고한다 —
 공유 브랜치 강제 푸시는 `security-check` 훅이 차단한다.

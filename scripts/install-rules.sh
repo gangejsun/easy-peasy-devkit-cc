@@ -37,7 +37,7 @@ for a in "$@"; do
     --force)        FORCE=1 ;;
     --missing-only) MISSING_ONLY=1 ;;
     --quiet)        QUIET=1 ;;
-    -h|--help) sed -n '2,26p' "$0" | sed 's/^# \?//'; exit 0 ;;
+    -h|--help) awk 'NR==1{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$0"; exit 0 ;;
   esac
 done
 say() { [ "$QUIET" -eq 1 ] || printf "$@"; }

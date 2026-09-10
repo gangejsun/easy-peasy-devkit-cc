@@ -1,6 +1,6 @@
 ---
 name: test-driven-development
-description: Use when implementing any feature or bugfix, before writing implementation code
+description: Use when adding or changing behavior in code that has a test runner — write the failing test first, then the minimal code. Not for throwaway prototypes, config, generated code, or docs. Running build/test after a source edit is already enforced by the T0 verification rule and the build-gate hook; this skill covers the red-green-refactor loop, where tests go (seams), and what makes a passing test worthless.
 ---
 
 # Test-Driven Development (TDD)
@@ -11,7 +11,6 @@ Write the test first. Watch it fail. Write minimal code to pass.
 
 **Core principle:** If you didn't watch the test fail, you don't know if it tests the right thing.
 
-**Violating the letter of the rules is violating the spirit of the rules.**
 
 ## When to Use
 
@@ -36,7 +35,9 @@ Mock only at **system boundaries** (see [Seams](#seams--where-tests-go)).
 
 ### Verify RED - Watch It Fail
 
-**MANDATORY. Never skip.** Confirm test fails because feature missing.
+Confirm the test fails, and that it fails *because the feature is missing* — not because of a
+typo or a bad import. A test you never saw fail is a test you cannot trust; skipping this step
+is what makes the whole loop decorative.
 
 ### GREEN - Minimal Code
 
@@ -44,7 +45,8 @@ Write simplest code to pass the test. Don't add features, refactor other code, o
 
 ### Verify GREEN - Watch It Pass
 
-**MANDATORY.** Confirm test passes and other tests still pass.
+Confirm the new test passes **and the rest of the suite still does** — the second half is the
+point. Passing in isolation while breaking a neighbour is a regression you shipped yourself.
 
 ### REFACTOR - Clean Up
 
@@ -110,6 +112,8 @@ incomplete mocks, over-complex mocks) are catalogued with gate functions in
 그것도 없으면 **테스트 인프라 셋업을 먼저 제안한다** — 검증 경로 없는 TDD는 성립하지 않는다.
 
 하네스 강제 장치: `build-gate` 훅(Stop)이 소스 변경 후 빌드/테스트 미실행을 차단한다.
+**"고쳤으면 돌린다"는 그 훅과 T0 「검증」 규범이 이미 강제한다** — 이 스킬은 거기에
+"돌리기 **전에** 실패하는 테스트가 있었는가"를 더한다. 같은 것을 세 번 말하지 않는다.
 
 ### 테스트 우선순위 (확충 시)
 
@@ -122,11 +126,3 @@ incomplete mocks, over-complex mocks) are catalogued with gate functions in
 
 구체적 경로는 프로젝트의 frontend/backend-guide 스킬(스택 맞춤 생성본)을 따른다.
 
-## Final Rule
-
-```
-Production code → test exists and failed first
-Otherwise → not TDD
-```
-
-No exceptions without your human partner's permission.

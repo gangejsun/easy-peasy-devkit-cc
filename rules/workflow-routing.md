@@ -1,4 +1,4 @@
-<!-- epcc-rule-version: 3.27.0 -->
+<!-- epcc-rule-version: 3.28.0 -->
 <!-- **paths: 프론트매터를 넣지 마세요.** 넣는 순간 조건부 로딩으로 바뀌어
      세션 시작 시 뜨지 않습니다. 이 카드는 "작업을 시작하기 전"에 필요하므로
      어떤 파일도 아직 열지 않은 시점에 이미 로드되어 있어야 합니다.
@@ -56,7 +56,7 @@
 | P1 | 요청이 한 문장이고 의도가 모호함 | `/prompt-enhancer` |
 | P2 | `dev/docs/prd/`에 해당 PRD가 없음 | `/prd-generator` |
 | P3 | 작업이 세션을 넘어감 (다중 태스크) | `/dev-docs-generator` |
-| P4 | 항상 | 메인 세션이 직접 구현 |
+| P4 | 항상 | 메인 세션이 직접 구현 — 테스트 러너가 있는 저장소의 행동 변경은 `/test-driven-development` |
 | P5 | **되돌림 클래스가 강도를 정함** | Reversible → `/completion-review` · Costly 이상 → `epcc-reviewer` |
 | P6 | **Irreversible** | `epcc-reviewer` 다관점 팬아웃 (+선택 `/codex-claude-loop`) |
 

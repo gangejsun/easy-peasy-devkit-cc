@@ -211,7 +211,7 @@
       "id": "harness-evaluation",
       "kind": "skill",
       "path": "skills/harness-evaluation/SKILL.md",
-      "note": "경로 단위 5축 평가(라우팅·발동·종료·되먹임·비용). doctor가 측정한 사실을 입력으로 받아 판단만 하고, 산출물은 점수가 아니라 결함 목록이다",
+      "note": "경로 단위 8축 평가(라우팅·발동·종료·되먹임·비용·절제·경계·소비자 여정). doctor(--all + --inventory)가 측정한 사실을 입력으로 받아 판단만 하고, Critical은 격리 재현으로만 확정한다. 산출물은 점수가 아니라 결함 목록·영역별 요약·불확실성 지도",
       "on_error": [
         "user-report"
       ]
@@ -242,6 +242,12 @@
       "on_error": [
         "user-report"
       ]
+    },
+    {
+      "id": "skill-creator",
+      "kind": "tool",
+      "entry": true,
+      "note": "네이티브 스킬 — 이 저장소에 파일이 없어 path가 없다. 스킬 생성·A/B 평가 루프·description optimizer를 담당한다. 강화는 skill-enhancer가 이어받는다 (rules/harness-change.md 「스킬을 만드는 방법」)"
     },
     {
       "id": "skill-enhancer",
@@ -343,7 +349,10 @@
       "id": "test-driven-development",
       "kind": "skill",
       "path": "skills/test-driven-development/SKILL.md",
-      "when": "P4 구현 — 기능·버그픽스 구현 전 테스트 작성"
+      "when": "P4 구현 — 기능·버그픽스 구현 전 테스트 작성",
+      "phase": [
+        "P4"
+      ]
     },
     {
       "id": "codex-claude-loop",
@@ -392,8 +401,7 @@
       "id": "ui-ux-design",
       "kind": "skill",
       "path": "skills/ui-ux-design/SKILL.md",
-      "when": "사용자 수동 호출 전용. 렌더 증명(Step 6)은 UI 변경 후 build 에서 들어온다",
-      "manual": true
+      "when": "UI 파일 변경 후 build에서 렌더 증명(Step 6)으로 들어오거나, 디자인 시스템·화면 설계 요청에 description으로 발동한다"
     },
     {
       "id": "codebase-survey",
@@ -633,9 +641,19 @@
       "cond": "epcc-init Step 9.5 또는 스택 변경 시 (config 미설정 넛지 경유)"
     },
     {
+      "from": "skill-creator",
+      "to": "skill-enhancer",
+      "cond": "생성·개선 직후 — 존치 판정 후 6패턴 강화"
+    },
+    {
       "from": "eval-report",
       "to": "skill-enhancer",
       "cond": "평가가 스킬 결함을 검출했을 때"
+    },
+    {
+      "from": "skill-enhancer",
+      "to": "skill-creator",
+      "cond": "P2·P3 강화 후 전/후 A/B 실측이 필요할 때"
     },
     {
       "from": "skill-enhancer",
@@ -791,6 +809,11 @@
       "to": "build",
       "cond": "콘솔 error·미포착 예외·실패 요청 검출 — 종료 술어: 런타임 결함 0건",
       "conditionalEmit": true
+    },
+    {
+      "from": "eval-report",
+      "to": "lessons",
+      "cond": "평가가 오탐을 철회했거나 평가 자신의 판정 오류를 발견했을 때 — 결함 목록과 교훈은 별개 저장소라 이 엣지 없이는 모델의 기억에만 의존한다"
     }
   ]
 }

@@ -1,6 +1,6 @@
 ---
 name: brainstorming
-description: Use when the user wants to explore an idea, compare approaches, or design a feature before implementation. Helps turn vague ideas into concrete designs through collaborative dialogue. Not needed for bug fixes, simple config changes, or tasks with already-clear requirements.
+description: Use when the user wants to explore an idea, compare approaches, or design a feature before implementation — when what to build is still undecided. Helps turn vague ideas into concrete designs through collaborative dialogue. If what to build is settled and only the project context is missing, use /prompt-enhancer instead; this skill runs first and hands off to it. Not needed for bug fixes, simple config changes, or tasks with already-clear requirements.
 ---
 
 # Brainstorming Ideas Into Designs

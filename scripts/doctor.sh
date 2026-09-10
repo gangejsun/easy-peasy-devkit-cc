@@ -8,8 +8,10 @@
 #   doctor.sh --self-test  훅에 이벤트별 실제 stdin 픽스처 주입 → 효과 대조
 #   doctor.sh --graph      workflow.graph.json 검증 (도달 불가 노드/엣지)
 #   doctor.sh --usage      훅 하트비트 · 스킬 호출 · 엣지 traversal
-#   doctor.sh --lessons    lessons.md 카테고리 집계 + 승격 후보
+#   doctor.sh --lessons    lessons.md 카테고리 집계 + 승격 후보 · 오탐 수축 후보(장치별)
 #   doctor.sh --consumer   소비자 레이아웃 실증 (캐시 경로 + 빈/첫커밋전 프로젝트에서 훅 실행)
+#   doctor.sh --inventory  영역별 자산 인벤토리 (판정 없음 — /harness-evaluation의 입력)
+#   doctor.sh --all        위 전부 (fast · self-test · graph · consumer · usage · lessons · inventory)
 #   doctor.sh              = --fast --graph
 #
 #   --root <dir>           검사 대상 플러그인 루트 교체 (자기시험 전용)
@@ -51,6 +53,10 @@ sec()  { printf "\n${C_D}── %s ───────────────
 
 num() { local v; v=$(printf '%s' "${1:-}" | tr -d '[:space:]'); case "$v" in ''|*[!0-9]*) printf '0';; *) printf '%s' "$v";; esac; }
 
+# T0 예산은 **여기 한 곳**이 정본이다. 검사가 42로 오른 뒤 카드 본문이 "40줄"을 인용한 채 남았다 —
+# 문서가 인용하는 수는 「선언↔실물」이 이 상수와 대조한다 (평가 v6 · E-25).
+T0_BUDGET=42
+
 # 스킬 루트가 둘이다 — dev 하네스(skills/)와 마케팅 플러그인(marketing/skills/).
 # **위생 검사는 둘 다** 본다: 분리가 검사 사각지대를 만들면 그 분리는 개선이 아니다.
 # 반대로 description 예산 · 그래프 선언 · 「선언↔실물」의 스킬 수는 **skills/만** 센다 —
@@ -89,8 +95,9 @@ _fx_static_tree() {
   printf -- '---\nname: sample\ndescription: x\n---\nbash ${CLAUDE_SKILL_DIR}/scripts/x.sh\n' \
     > "$T/skills/sample/SKILL.md"
 
-  # 카드 표는 rules/ 실물 수(2)와 맞춘다
-  printf -- '---\nname: epcc-init\ndescription: x\n---\ninstall-rules\n\n| 파일 | 로드 조건 |\n| --- | --- |\n| `workflow-routing.md` | 상시 |\n| `code-change.md` | src |\n\n프리셋: alpha · beta · none\n' \
+  # 카드 표는 rules/ 실물 수(2)와 맞춘다. epcc-init은 그래프에서 manual이므로 frontmatter도
+  # disable-model-invocation을 갖는다 (G8이 둘을 대조한다).
+  printf -- '---\nname: epcc-init\ndescription: x\ndisable-model-invocation: true\n---\ninstall-rules\n\n| 파일 | 로드 조건 |\n| --- | --- |\n| `workflow-routing.md` | 상시 |\n| `code-change.md` | src |\n\n프리셋: alpha · beta · none\n' \
     > "$T/skills/epcc-init/SKILL.md"
 
   # 이름 목록 대조용 최소 자산. 프리셋 2축 + 사전 제작 이음매 1쌍이 문서에 다 실린 상태가
@@ -102,7 +109,8 @@ _fx_static_tree() {
   printf -- '{"axis":"frontend","name":"none"}\n'  > "$T/presets/frontend/none.json"
   printf -- '{"axis":"backend","name":"beta"}\n'   > "$T/presets/backend/beta.json"
   printf -- '{"axis":"backend","name":"none"}\n'   > "$T/presets/backend/none.json"
-  printf -- '# fx\n\n프리셋: alpha · beta · none\n\n사전 제작본: `alpha` × `beta`\n' \
+  # README는 스킬 이름 전수 대조 대상이다 — 픽스처 스킬 3개를 다 적어 기준선을 맞춘다
+  printf -- '# fx\n\n프리셋: alpha · beta · none\n\n사전 제작본: `alpha` × `beta`\n\n스킬: sample · epcc-init · stack-guide-generator\n' \
     > "$T/README.md"
   printf -- '# 프리셋\n\nalpha · beta · none\n' > "$T/docs/presets.md"
   printf -- '# Getting Started\n\nalpha / beta / none\n\nShips `alpha` × `beta`.\n' \
@@ -120,21 +128,22 @@ _fx_static_tree() {
   printf -- '#!/bin/bash\nexit 0\n' > "$T/scripts/x.sh"
   printf -- '{"plugins":[{"name":"fx","description":"자기검증 훅 1종. 3개 스킬 + 축 가이드 팩(프론트 0 · 백엔드 0), 2축 프리셋(프론트 2 · 백엔드 2)."}]}\n' \
     > "$T/.claude-plugin/marketplace.json"
-  printf -- '# 해부\n\n실물 대조 — 훅 1 · T1 규칙 카드 2 · 스킬 3 · 그래프 노드 3 · 엣지 0\n' \
+  printf -- '# 해부\n\n실물 대조 — 훅 1 · T1 규칙 카드 2 · 스킬 3 · 그래프 노드 3 · 엣지 1\n' \
     > "$T/docs/harness-anatomy.md"
 
-  # 그래프: 스킬 2개 + 훅 1개를 노드로 선언 (manual/entry로 인바운드 면제).
-  # 훅 노드는 hooks.json이 등록한 x.sh에 대응한다 — 「미선언 훅」 검사가 생긴 뒤로
-  # 등록만 하고 선언하지 않은 트리는 **결함 없는 기준선이 아니다**.
+  # 그래프: 스킬 2개 + 훅 1개를 노드로 선언. epcc-init은 manual(+frontmatter dmi), sample은
+  # 인바운드 엣지로 도달한다 — sample을 manual로 두면 「수동 전용 선언 ↔ 상주 플래그」 픽스처가
+  # dmi를 요구해 서로 부딪힌다. 훅 노드는 hooks.json이 등록한 x.sh에 대응한다 — 「미선언 훅」
+  # 검사가 생긴 뒤로 등록만 하고 선언하지 않은 트리는 **결함 없는 기준선이 아니다**.
   cat > "$T/workflow.graph.json" <<'FXG'
 {
   "version": "0.0.1",
   "nodes": [
-    { "id": "sample", "kind": "skill", "path": "skills/sample/SKILL.md", "manual": true },
+    { "id": "sample", "kind": "skill", "path": "skills/sample/SKILL.md" },
     { "id": "epcc-init", "kind": "skill", "path": "skills/epcc-init/SKILL.md", "manual": true },
     { "id": "x", "kind": "hook", "path": "scripts/x.sh", "event": "SessionStart", "entry": true }
   ],
-  "edges": []
+  "edges": [ { "from": "epcc-init", "to": "sample", "cond": "fx" } ]
 }
 FXG
   return 0
@@ -298,14 +307,6 @@ run_fast() {
       fi
     done
 
-    # UserPromptSubmit은 hookSpecificOutput 미지원
-    local ups_scripts
-    ups_scripts=$(command -v jq >/dev/null 2>&1 && jq -r '.hooks.UserPromptSubmit[]?.hooks[]?.command // empty' "$hooks_json" 2>/dev/null | grep -oE '[a-z-]+\.sh' || true)
-    for s in $ups_scripts; do
-      [ -f "scripts/$s" ] || continue
-      grep -q 'hookSpecificOutput' "scripts/$s" 2>/dev/null \
-        && bad "UserPromptSubmit 훅 '$s'가 hookSpecificOutput 사용" "이 이벤트는 해당 필드 미지원"
-    done
   fi
 
   # ── 3. 훅 등록 ↔ 파일 실재 ──
@@ -412,10 +413,10 @@ run_fast() {
   local t0="templates/operating-contract.md"
   if [ -f "$t0" ]; then
     local t0n; t0n=$(num "$(wc -l < "$t0")")
-    if [ "$t0n" -le 42 ]; then
-      ok "T0 운영 규칙 ${t0n}/42줄"
+    if [ "$t0n" -le "$T0_BUDGET" ]; then
+      ok "T0 운영 규칙 ${t0n}/${T0_BUDGET}줄"
     else
-      bad "T0 운영 규칙 ${t0n}줄 — 예산 42줄 초과" "$(printf '규범을 지우지 마세요. 아래 셋 중 하나를 고릅니다 — 잃는 것이 서로 다릅니다.\n      1) T1 카드로 내린다  — 도달은 유지, 상시성 상실 (그 경로를 만질 때만 뜬다)\n      2) 더 짧게 고쳐 쓴다  — 상시성 유지, 정보가 깎일 위험\n      3) 예산을 올린다      — 둘 다 유지, 매 세션 비용이 는다 (이 검사의 42를 함께 올린다)')"
+      bad "T0 운영 규칙 ${t0n}줄 — 예산 ${T0_BUDGET}줄 초과" "$(printf '규범을 지우지 마세요. 아래 셋 중 하나를 고릅니다 — 잃는 것이 서로 다릅니다.\n      1) T1 카드로 내린다  — 도달은 유지, 상시성 상실 (그 경로를 만질 때만 뜬다)\n      2) 더 짧게 고쳐 쓴다  — 상시성 유지, 정보가 깎일 위험\n      3) 예산을 올린다      — 둘 다 유지, 매 세션 비용이 는다 (이 검사의 %s를 함께 올린다)' "$T0_BUDGET")"
     fi
 
     # T0에서 규범 절이 사라지면 조용히 전파된다 — 줄 수만 보는 검사는 삭제를 오히려 통과시킨다.
@@ -671,6 +672,101 @@ run_fast() {
   done < <(_shared_copies | xargs -I{} basename {} | sort | uniq -d)
   [ "$drift" -eq 0 ] && ok "공유 사본 드리프트 없음"
 
+  # 빈 절 제목 — 제목만 있고 본문 없이 같거나 얕은 레벨 제목이 뒤따르는 절.
+  # description은 그 절이 있다고 약속하는데 본문은 비어 있으므로 **실행마다 구조가 달라진다**
+  # (실측: enhancement-ab-v1의 E1에서 빈 Step 하나가 4섹션 계약을 0/4로 만들었다).
+  # 이 결함은 스킬을 강화할 때만 사람이 봤고 기계는 아무도 보지 않아 살아남았다.
+  # 코드 펜스 안의 '## '는 예시이지 절이 아니다 — 세지 않는다(오탐은 검사를 꺼버린다).
+  local emptyh=0 eh
+  while IFS= read -r eh; do
+    [ -z "$eh" ] && continue
+    warn "빈 절 제목: $eh" "제목이 약속한 본문이 없다 — 채우거나 제목을 지운다"
+    emptyh=$((emptyh+1))
+  done < <(skill_mds | while IFS= read -r sm; do
+      awk -v F="$sm" '
+        /^```/ { fence = !fence; prev=""; next }
+        fence  { next }
+        /^#+ / { lvl = index($0, " ") - 1
+                 if (lvl >= 2 && prev != "" && lvl <= plvl) print F ": " prev
+                 prev = (lvl >= 2 ? $0 : "")
+                 plvl = lvl
+                 next }
+        NF     { prev = "" }
+      ' "$sm"
+    done)
+  [ "$emptyh" -eq 0 ] && ok "빈 절 제목 없음"
+
+  # 고아 리소스 — SKILL.md에서도, SKILL.md가 닿는 어떤 파일에서도, 저장소 어디에서도
+  # 참조되지 않는 번들 파일. 위 「스킬 내부 참조」는 **선언→실물** 방향만 본다.
+  # 반대 방향(실물→선언)이 사각이라 본문은 비어 있는데 참조만 떠 있는 배선 단절이 남았다.
+  #
+  # 판정은 **전이 폐포**다. ui-ux-design의 core.py는 SKILL.md가 아니라 search.py가
+  # import한다 — 직접 참조만 세면 살아있는 파일을 죽었다고 부른다. 저장소 전역(스킬
+  # 디렉토리 밖) 호출도 살아있음으로 친다: guide-gate.sh는 CLAUDE.md·npm test가 부른다.
+  #
+  # 대조는 **확장자를 뗀 이름**까지 본다. 참조는 파일명 그대로 오지 않는다 —
+  # `from design_system import`(파이썬 import) · `--stack nextjs`(인자로 조립되는 경로) ·
+  # `profiles/$lang.sh`(변수 치환). 확장자 있는 이름만 보면 이 셋이 전부 오탐이 된다.
+  # 대가는 `core`·`python` 같은 짧은 이름이 산문에 우연히 걸려 진짜 고아를 놓치는 것이다 —
+  # **미탐 쪽으로 기운 의도된 선택**이다. 오탐은 사람이 검사를 꺼버리게 만들지만
+  # 미탐은 다음 검사 강화가 주워간다.
+  local orphan=0 od
+  while IFS= read -r od; do
+    [ -f "$od/SKILL.md" ] || continue
+    local cand; cand=$(find "$od" -type f ! -name SKILL.md ! -path '*/.*' 2>/dev/null | sort)
+    [ -z "$cand" ] && continue
+    local reach="$od/SKILL.md" round c stem rf hit newreach outside
+    for round in 1 2 3; do
+      newreach="$reach"
+      while IFS= read -r c; do
+        [ -z "$c" ] && continue
+        case $'\n'"$newreach"$'\n' in *$'\n'"$c"$'\n'*) continue;; esac
+        stem=$(basename "$c"); base=${stem%.*}; hit=0
+        while IFS= read -r rf; do
+          [ -z "$rf" ] && continue
+          grep -qF "$stem" "$rf" 2>/dev/null && { hit=1; break; }
+          grep -qF "$base" "$rf" 2>/dev/null && { hit=1; break; }
+        done <<< "$reach"
+        [ "$hit" -eq 1 ] && newreach="$newreach
+$c"
+      done <<< "$cand"
+      [ "$newreach" = "$reach" ] && break
+      reach="$newreach"
+    done
+    while IFS= read -r c; do
+      [ -z "$c" ] && continue
+      case $'\n'"$reach"$'\n' in *$'\n'"$c"$'\n'*) continue;; esac
+      stem=$(basename "$c"); base=${stem%.*}
+      outside=$(grep -rlF "$base" . --exclude-dir=.git --exclude-dir=node_modules \
+                  --exclude-dir=.ua --exclude-dir=dev 2>/dev/null | grep -v "^\./${od}/" | head -1)
+      [ -n "$outside" ] && continue
+      warn "고아 리소스: $c" "SKILL.md에서 전이적으로도 저장소에서도 닿지 않는다 — 재연결하거나 뺀다"
+      orphan=$((orphan+1))
+    done <<< "$cand"
+  done < <(skill_dirs)
+  [ "$orphan" -eq 0 ] && ok "고아 리소스 없음"
+
+  # 코드블록 안의 플러그인 상대 경로 — 산문의 `rules/x.md`는 정본 위치를 말하는 인용이지만
+  # 코드블록의 `grep … rules/workflow-routing.md`는 **실행**된다. 소비자에서 그 경로는 없다
+  # (`.claude/rules/…`거나 플러그인 캐시 안이다) — `${CLAUDE_PLUGIN_ROOT}`로 써야 치환된다 (평가 v6 · E-34).
+  # 산문은 보지 않는다: 정본을 가리키는 인용을 전부 변수로 바꾸면 사람이 읽을 수 없다.
+  local bp_bad=0 bp_list="" bpf bph
+  while IFS= read -r bpf; do
+    [ -f "$bpf" ] || continue
+    grep -q 'epcc-doctor: allow-bare-paths' "$bpf" 2>/dev/null && continue
+    bph=$(awk '/^```/{f=!f; next} f' "$bpf" 2>/dev/null \
+      | grep -E '(^|[^A-Za-z0-9_/.$}-])(rules|scripts|skills|guides|templates|presets)/[A-Za-z0-9_.*/-]+' \
+      | grep -vE 'CLAUDE_PLUGIN_ROOT|CLAUDE_SKILL_DIR|\.claude/|^[[:space:]]*#' | head -1)
+    [ -z "$bph" ] && continue
+    bp_bad=$((bp_bad+1)); bp_list="$bp_list
+      · $bpf: $(printf '%s' "$bph" | cut -c1-80)"
+  done < <({ skill_mds; find skills -type f \( -path '*/references/*.md' -o -path '*/assets/*.md' \) 2>/dev/null; } | sort -u)
+  if [ "$bp_bad" -gt 0 ]; then
+    bad "코드블록의 플러그인 상대 경로 ${bp_bad}파일:$bp_list" "소비자에서 실행되면 '없는 파일'이다 — \${CLAUDE_PLUGIN_ROOT}/…로 쓴다 (인용 산문은 그대로)"
+  else
+    ok "코드블록 경로 표기 정상 (플러그인 상대 경로 없음)"
+  fi
+
   # ── 6.6 포트 잔재 ──
   #
   # 원본 저장소에서 옮겨 온 자산에는 **그때는 참이었으나 배포 맥락에서 거짓이 된 문장**이
@@ -758,6 +854,39 @@ run_fast() {
   if [ "$_leak" -eq 0 ]; then
     ok "배포 자산 자기이름 검사 통과"   # 실패 메시지를 부분 포함하지 않게 — 기준선 grep이 성공을 오탐으로 읽는다
   fi
+
+  # ③ 규칙 카드 본문의 **플러그인 맥락 경로** — ①②와 같은 사건의 세 번째 얼굴이다.
+  #    ①②는 이사한 **이름**을 보고, 이것은 이사한 **경로**를 본다.
+  #    T1 카드는 install-rules.sh가 소비자 `.claude/rules/`로 배송하므로 본문의 상대
+  #    경로는 **소비자 루트**에서 해석된다. 플러그인 저장소에서 참인 경로를 그대로
+  #    쓰면 모델이 없는 파일을 읽으러 간다 — 틀리게 쓴 것이 아니라 맞게 쓴 것이
+  #    이사하면서 틀려졌으므로 사람 눈에 안 띈다(harness-change 「변경 후 역추적」).
+  #    실측: harness-change.md 한 장에 6건(agents/·docs/×2·rules/·scripts/×2)이 있었고
+  #    소비자 레이아웃에서 전부 없는 파일이었다. 표기 규약은 `<플러그인-루트>/…`이다.
+  #
+  #    판정식은 **플러그인에 실재하는가**다. 그것이 "저자가 플러그인 맥락에서 썼다"의
+  #    유일한 기계 증거다. 존재하지 않는 경로는 이 검사의 대상이 아니다 —
+  #    소비자가 만들 파일을 미리 가리키는 정상 서술과 구별할 수 없기 때문이다.
+  local _pc_bad=0 _pc_n=0 _pcp _pcc
+  # 프로젝트가 소유하고 하네스가 **필요할 때 만드는** 산출물. 신규 소비자에 없는 것이
+  # 정상이라 면제한다. 이 목록을 늘리기 전에 "정말 프로젝트 소유인가"를 먼저 묻는다 —
+  # 면제는 검사를 무디게 하는 유일한 방향이다.
+  local _pc_owned=" docs/lessons.md docs/lessons-archive.md docs/decisions.md docs/decisions-archive.md dev/docs/ "
+  if [ -d rules ]; then
+    for _pcc in rules/*.md; do
+      [ -f "$_pcc" ] || continue
+      while IFS= read -r _pcp; do
+        [ -z "$_pcp" ] && continue
+        case "$_pc_owned" in *" $_pcp "*) continue ;; esac
+        [ -e "$_pcp" ] || continue
+        _pc_n=$((_pc_n+1))
+        bad "규칙 카드의 플러그인 맥락 경로: $_pcc → $_pcp" \
+            "소비자 .claude/rules/에서 이 상대 경로는 없는 파일입니다. \`<플러그인-루트>/$_pcp\`로 쓰세요"
+        _pc_bad=$((_pc_bad+1))
+      done < <(grep -ohE '`[a-z][a-zA-Z0-9._-]*/[a-zA-Z0-9./_-]+`' "$_pcc" 2>/dev/null | tr -d '`' | sort -u)
+    done
+  fi
+  [ "$_pc_bad" -eq 0 ] && ok "규칙 카드 경로 표기 정상 (소비자 루트 기준)"
 
   # ── 7. 매니페스트 정합 ──
   #
@@ -932,7 +1061,14 @@ run_fast() {
     # `grep -oE '[0-9]+'`로 훑으면 **라벨 안의 숫자**가 섞인다 — "T0"의 0이 값으로 잡혔다.
     # 「선언↔실물」이 자기 자신에게서 두 번째로 잡은 같은 실수다. 캡처 그룹으로 뽑는다.
     _claim "T0 줄 수" "$(grep -m1 -oE 'T0 [0-9]+줄' README.md | sed -E 's/T0 ([0-9]+)줄/\1/')" "$real_t0" "README.md"
-    _claim "T1 합계 줄 수" "$(grep -m1 -oE 'T1 [0-9]+개 [0-9,]+줄' README.md | grep -oE '[0-9,]+줄' | tr -d ',줄')" "$real_rl" "README.md"
+    # 「T1 M개 L줄」과 「T1 L줄」 **전부**를 본다. `-m1`로 첫 매치만 보던 동안 v2 비교표의
+    # 두 번째 값이 1,080에 멈춰 있었다 (평가 v6 · E-31).
+    local _t1v
+    for _t1v in $(grep -oE 'T1( [0-9]+개)? [0-9,]+줄' README.md | grep -oE '[0-9,]+줄' | tr -d ',줄' | sort -u); do
+      _claim "T1 합계 줄 수" "$_t1v" "$real_rl" "README.md"
+    done
+    # v2→v3 비교표의 스킬 수 — `| 스킬 | 37개 | **30개** |`의 굵은 값. 위 「| **스킬** |」 패턴은 이 행을 못 본다.
+    _claim "스킬 수(비교표)" "$(grep -oE '^\| 스킬 \| [0-9]+개 \| \*\*[0-9]+개' README.md | grep -oE '\*\*[0-9]+' | tr -d '*')" "$real_sk" "README.md"
     # 프리셋 축 개수. vue 축이 프리셋·팩·이음매·init 메뉴에 실재하는데 소비자 문서 3곳에
     # 한 번도 안 나왔고, README는 프론트를 4개라 주장했다. 검사가 같은 표의 옆 행에서
     # 멈춰 있었다 — 축을 늘리는 경로와 문서를 잇는 자리가 여기다 (평가 v5 · E-15).
@@ -1005,6 +1141,49 @@ run_fast() {
                    | sed -E "s|^([^:]*):|\\1:|"
                done)
   fi
+  # T0 예산 수치 — 문서가 인용하는 예산은 이 스크립트의 상수와 같아야 한다 (E-25).
+  # `예산 N줄`은 CLAUDE.md 예산(60)에도 쓰이므로 T0·운영 규칙을 말하는 줄만 본다.
+  local bf bv
+  for bf in README.md rules/harness-change.md docs/harness-anatomy.md templates/operating-contract.md; do
+    [ -f "$bf" ] || continue
+    for bv in $(grep -E 'T0|운영 규칙|operating-contract' "$bf" 2>/dev/null | grep -oE '예산[ :]*[0-9]+줄|[0-9]+줄 예산' | grep -oE '[0-9]+' | sort -u); do
+      _claim "T0 예산" "$bv" "$T0_BUDGET" "$bf"
+    done
+  done
+  # T0 **주입** 줄 수(주석 제거 후) — 해부 문서가 "실제 주입 N줄"로 적는다
+  local real_t0i
+  real_t0i=$(num "$(sed '/<!--/,/-->/d' templates/operating-contract.md 2>/dev/null | sed '/./,$!d' | wc -l | tr -d ' ')")
+  # `[0-9]+`로 훑으면 "T0"의 0이 값으로 잡힌다 — 이 파일이 세 번째로 자기에게서 잡은 같은 실수. 「N줄」만 뽑는다.
+  for bv in $(grep -oE '주입 [0-9]+줄|운영 규칙 [0-9]+줄이' docs/harness-anatomy.md 2>/dev/null | grep -oE '[0-9]+줄' | tr -d '줄' | sort -u); do
+    _claim "T0 주입 줄 수" "$bv" "$real_t0i" "docs/harness-anatomy.md"
+  done
+
+  # 그래프 kind 표 — 해부 문서 §04의 `| \`kind\` | N |` 행. tool이 1로 적힌 채 skill-creator가 들어왔다 (E-31).
+  if [ -n "$real_nd" ] && [ -f docs/harness-anatomy.md ]; then
+    local kk kn
+    while IFS=$'\t' read -r kk kn; do
+      [ -z "$kk" ] && continue
+      _claim "그래프 kind($kk)" "$kn" "$(num "$(jq -r --arg k "$kk" '[.nodes[] | select(.kind==$k)] | length' workflow.graph.json 2>/dev/null)")" "docs/harness-anatomy.md"
+    done < <(grep -oE '^\| `(skill|stage|hook|agent|store|tool|terminal)` \| [0-9]+ \|' docs/harness-anatomy.md \
+             | sed -E 's/^\| `([a-z]+)` \| ([0-9]+) \|/\1\t\2/')
+  fi
+
+  # 에이전트 도구 목록 — README·해부 문서의 표가 frontmatter `tools:`와 같은 집합인가.
+  # planner에 WebFetch가 들어간 뒤 두 문서가 넷만 적은 채 남았다 (E-31).
+  local af an at dt dl
+  for af in agents/*.md; do
+    [ -f "$af" ] || continue
+    an=$(basename "$af" .md)
+    at=$(grep -m1 -E '^tools:' "$af" | sed 's/^tools:[[:space:]]*//' | tr ',·' '\n\n' | tr -d ' ' | grep -v '^$' | sort | tr '\n' ' ')
+    [ -z "$at" ] && continue
+    for dl in README.md docs/harness-anatomy.md; do
+      [ -f "$dl" ] || continue
+      # 괄호 안(`disallowedTools`: …)은 도구 목록이 아니라 주석이다 — 떼고 비교한다
+      dt=$(grep -m1 -E "^\| \`$an\` \|" "$dl" | awk -F'|' '{print $3}' | sed -E 's/\([^)]*\)//g' | tr ',·' '\n\n' | tr -d ' ' | grep -v '^$' | sort | tr '\n' ' ')
+      [ -z "$dt" ] && continue
+      _claim "$an 도구 목록" "$dt" "$at" "$dl"
+    done
+  done
   [ "$wrong" -eq 0 ] && [ "$claims" -gt 0 ] && ok "문서 수치 주장 ${claims}건 실물과 일치"
 
   # ── 이름 목록 대조 ──
@@ -1057,10 +1236,84 @@ run_fast() {
   for doc in README.md docs/presets.md docs/getting-started.md skills/epcc-init/SKILL.md; do
     _names_in "$doc" "프리셋 이름" "$pnames"
   done
+  # 스킬 이름 — 소비자가 설치 전에 읽는 유일한 목록이 README다. 7개 스킬이 README·docs 어디에도
+  # 없었고 그중 하나(test-driven-development)는 그래프 밖 인바운드가 0이었다 (평가 v6 · E-32).
+  _names_in README.md "스킬 이름" "$(ls -1 skills 2>/dev/null | tr '\n' ' ')"
   for doc in README.md docs/getting-started.md skills/stack-guide-generator/assets/guide-skeleton.md; do
     _seams_in "$doc" "$snames"
   done
   [ "$nm_bad" -eq 0 ] && [ "$nm_chk" -gt 0 ] && ok "문서 이름 목록 ${nm_chk}건 실물과 일치 (프리셋·이음매)"
+
+  # ── 카드 `paths:` ↔ 문서의 로드 조건 표 ──
+  #
+  # 수치도 이름도 아닌 세 번째 부류다. 카드의 `paths:`가 **비용과 도달을 동시에** 정하는데
+  # (조건부 카드의 폭이 코딩 세션 상주량을 결정한다 — 평가 v6 E-35), 그것을 서술하는 표는
+  # 손으로 유지됐다. `skills/epcc-init/SKILL.md`는 표 아래에 "이 표는 rules/의 실제
+  # frontmatter를 반영해야 한다"고 **적어만** 두었고 대조하는 것이 없었다.
+  # 실측: 그 상태에서 4건이 낡아 있었다 — harness-change의 `rules/**`·`agents/**`·`skills/**`
+  # (실제로는 선언되지 않은 경로) · `dev/docs/**`(좁혀진 뒤에도 남음) · ui-design의
+  # `**/*.{tsx,jsx,...}`(좁혀진 뒤에도 남음, 2곳).
+  #
+  # 판정은 **부분집합**이다: 표에 적힌 글롭은 전부 선언에 있어야 하지만, 선언 전부를
+  # 표가 나열할 의무는 없다(문서는 요약할 권리가 있다). 그래서 "낡은 글롭"만 잡고
+  # "생략"은 통과시킨다 — 그 반대로 두면 표를 읽기 어렵게 만드는 압력이 된다.
+  local gl_bad=0 gl_chk=0
+
+  # 중괄호 확장. `dev/docs/{prd,database}/**`와 선언 5줄을 같은 형태로 만든다.
+  # eval을 쓰지만 **문자셋을 먼저 검증**한다 — 인용부호·$·백틱·;·공백이 없으므로
+  # 확장 외의 해석이 일어날 수 없다. 검증에 걸리면 확장하지 않고 원문을 낸다.
+  _glob_expand() {
+    case "$1" in
+      *'{'*)
+        if printf '%s' "$1" | grep -qE '^[A-Za-z0-9_.,*/{}-]+$'; then
+          eval "printf '%s\n' $1" 2>/dev/null && return 0
+        fi
+        printf '%s\n' "$1" ;;
+      *) printf '%s\n' "$1" ;;
+    esac
+  }
+
+  _paths_row() {  # $1 문서
+    local doc="$1" card decl row cell g miss
+    [ -f "$doc" ] || return 0
+    for card in rules/*.md; do
+      [ -f "$card" ] || continue
+      # 선언 — frontmatter의 paths 글롭을 확장해 모은다
+      decl=$({ awk '/^---$/{n++; next} n==1 && /^[[:space:]]*-[[:space:]]*"/{print}' "$card" 2>/dev/null \
+              | sed -E 's/.*"([^"]*)".*/\1/' || true; })
+      [ -n "$decl" ] || continue                     # 상시 카드는 대조할 표가 없다
+      local dexp=""
+      while IFS= read -r g; do
+        [ -z "$g" ] && continue
+        dexp="$dexp $(_glob_expand "$g" | tr '\n' ' ')"
+      done < <(printf '%s\n' "$decl")
+
+      # 문서의 표 행 — 첫 칸이 `<카드명>` 인 줄
+      row=$({ grep -m1 -F "| \`$(basename "$card")\`" "$doc" 2>/dev/null || true; })
+      [ -n "$row" ] || continue
+      # 두 번째 칸에서 백틱 글롭만 뽑는다. 글롭이 없으면 산문 요약이므로 대조 대상이 아니다.
+      cell=$(printf '%s' "$row" | awk -F'|' '{print $3}')
+      miss=""
+      while IFS= read -r g; do
+        [ -z "$g" ] && continue
+        local ge
+        while IFS= read -r ge; do
+          [ -z "$ge" ] && continue
+          case " $dexp " in *" $ge "*) ;; *) miss="$miss $g" ;; esac
+        done < <(_glob_expand "$g")
+      done < <(printf '%s' "$cell" | grep -oE '`[^`]*\*[^`]*`' | tr -d '`' | sort -u)
+      gl_chk=$((gl_chk+1))
+      if [ -n "$miss" ]; then
+        bad "$doc: $(basename "$card") 로드 조건 표가 선언에 없는 글롭을 주장 —$miss" \
+            "카드의 paths:를 좁히거나 넓힌 경로가 이 표를 지나지 않았다"
+        gl_bad=$((gl_bad+1))
+      fi
+    done
+    return 0
+  }
+  _paths_row docs/harness-anatomy.md
+  _paths_row skills/epcc-init/SKILL.md
+  [ "$gl_bad" -eq 0 ] && [ "$gl_chk" -gt 0 ] && ok "카드 paths ↔ 문서 로드 조건 표 ${gl_chk}건 일치"
 
   # 고아 자산 — templates/ 중 아무도 참조하지 않는 파일.
   # CLAUDE.md.hbs가 그 상태였다 (epcc-init이 인라인 사본을 쓰고 있어 아무도 안 읽었다).
@@ -1129,6 +1382,26 @@ run_fast() {
          "이를 읽어 스킬을 켜고 끄는 코드가 없음. 게이팅은 작동하지 않음"
   else
     ok "미구현 게이팅 필드 없음"
+  fi
+
+  # 설정 표면 ↔ 읽는 코드. 문서가 절(`### key`)로 약속한 최상위 필드를 아무 스크립트·스킬·카드도
+  # 읽지 않으면 선언≠실물이다 — `workflow.p0/p6.enabled`·`customResources`가 그 상태였다
+  # (평가 v6 · E-30). 답은 둘이다: 구현하거나 선언을 지우거나. 이 검사는 둘 중 하나가 일어나게만 한다.
+  # 스키마·init 템플릿은 **쓰는 쪽**이라 읽는 증거로 세지 않는다.
+  local cf="docs/configuration.md" ck cmiss="" cchk=0
+  if [ -f "$cf" ]; then
+    while IFS= read -r ck; do
+      [ -z "$ck" ] && continue
+      cchk=$((cchk+1))
+      # 읽는 형태는 셋이다: jq 경로(`.domains.`) · 따옴표 키(`"domains"`) · 템플릿 변수(`{{#if domains.x}}`)
+      grep -rqE "(^|[^A-Za-z0-9_-])${ck}[.\"'}[:space:]]" scripts rules templates agents skills/*/SKILL.md skills/*/scripts 2>/dev/null \
+        || cmiss="$cmiss $ck"
+    done < <(grep -oE '^### [a-zA-Z]+$' "$cf" 2>/dev/null | sed 's/^### //' | sort -u)
+    if [ -n "$cmiss" ]; then
+      bad "설정 필드 선언만 있고 읽는 코드 없음:$cmiss" "$cf 의 절이 약속한 필드를 아무 코드도 읽지 않는다 — 구현하거나 절을 지운다"
+    elif [ "$cchk" -gt 0 ]; then
+      ok "설정 필드 ${cchk}종 전부 읽는 코드 실재"
+    fi
   fi
 }
 
@@ -1263,14 +1536,65 @@ run_self_test() {
   # 잡았는지 안 보는 셈이었다. 사유는 `block`의 **1번 인자(제목)**만 쓴다:
   # 2번 인자(패턴 힌트)에는 리터럴 패턴이 들어 있어(security-check.sh의 "패턴: sk-proj-")
   # 여기 적으면 doctor.sh 자신이 그 훅에 막힌다.
-  for bfx in "PreToolUse-block.json:Write 시크릿 주입:AWS Access Key ID 하드코딩" \
-             "PreToolUse-bash-block.json:Bash 힙독 시크릿 주입:AWS Access Key ID 하드코딩" \
-             "PreToolUse-bash-destructive.json:Bash 파괴적 명령:테이블 전체 비우기"; do
+  # 목록은 배열이다 — 아래 「차단 사유 ↔ 픽스처」 검사가 이 배열을 다시 읽는다.
+  # 평가 v6: 차단 지점 22종 중 픽스처로 증명된 것이 4종뿐이었다(E-29). 우회 1종(E-21)은
+  # 픽스처 없는 자리에서 4개월간 살았다 — 사유마다 픽스처가 있어야 그 사유의 차단이 증명이다.
+  local POS_FX=(
+    "PreToolUse-block.json:Write 시크릿 주입:AWS Access Key ID 하드코딩"
+    "PreToolUse-bash-block.json:Bash 힙독 시크릿 주입:AWS Access Key ID 하드코딩"
+    "PreToolUse-bash-destructive.json:Bash 파괴적 명령:TRUNCATE — 테이블 전체 비우기"
+    "PreToolUse-bash-heredoc-sql.json:DB 클라이언트 힙독:DDL로 테이블/데이터베이스/스키마 삭제"
+    "PreToolUse-bash-selfref-destructive.json:자기참조 우회 시도(파괴):DDL로 테이블/데이터베이스/스키마 삭제"
+    "PreToolUse-bash-selfref-secret.json:자기참조 우회 시도(시크릿):AWS Access Key ID 하드코딩"
+    "PreToolUse-bash-commit-then-drop.json:커밋 메시지 뒤의 실행 세그먼트:DDL로 테이블/데이터베이스/스키마 삭제"
+    # 명령 치환 우회 — E-22 오탐 수리가 실행 경로까지 면제한 회귀를 고정한다.
+    # 면제(_message_cmd)는 차단 지점과 **같은 강도로** 증명되어야 한다는 규율의 실례다.
+    "PreToolUse-bash-commit-cmdsub.json:커밋 메시지 속 명령 치환:DDL로 테이블/데이터베이스/스키마 삭제"
+    "PreToolUse-bash-gh-body-cmdsub.json:PR 본문 속 명령 치환:DDL로 테이블/데이터베이스/스키마 삭제"
+    "PreToolUse-bash-stderr-null-write.json:stderr 폐기 + 파일 쓰기:AWS Access Key ID 하드코딩"
+    "PreToolUse-bash-delete-nowhere.json:WHERE 없는 DELETE:WHERE 없는 DELETE FROM"
+    "PreToolUse-bash-supabase-reset.json:supabase 초기화:supabase db reset — 로컬 DB 초기화"
+    "PreToolUse-bash-prisma-reset.json:prisma 초기화:prisma 스키마 초기화"
+    "PreToolUse-bash-alembic-base.json:마이그레이션 전량 되돌리기:마이그레이션 전량 되돌리기"
+    "PreToolUse-bash-filter-branch.json:git 히스토리 재작성:git 히스토리 재작성/미러 푸시"
+    "PreToolUse-bash-force-push-main.json:공유 브랜치 강제 푸시:공유 브랜치에 강제 푸시"
+    "PreToolUse-secret-github-pat.json:GitHub PAT:GitHub Personal Access Token 하드코딩"
+    "PreToolUse-secret-github-oauth.json:GitHub OAuth 토큰:GitHub 토큰 하드코딩"
+    "PreToolUse-secret-stripe.json:Stripe:Stripe Secret Key 하드코딩"
+    "PreToolUse-secret-toss.json:토스페이먼츠:토스페이먼츠 Secret Key 하드코딩"
+    "PreToolUse-secret-kakao.json:카카오페이:카카오페이 시크릿 하드코딩"
+    "PreToolUse-secret-openai.json:OpenAI:OpenAI API Key 하드코딩"
+    "PreToolUse-secret-anthropic.json:Anthropic:Anthropic API Key 하드코딩"
+    "PreToolUse-secret-google.json:Google:Google API Key 하드코딩"
+    "PreToolUse-secret-supabase-new.json:Supabase 신형 키:Supabase Secret Key 하드코딩"
+    "PreToolUse-secret-supabase-service-role.json:Supabase service_role JWT:Supabase Service Role Key 하드코딩"
+    "PreToolUse-secret-supabase-jwt.json:Supabase JWT(anon 표시 없음):Supabase JWT 키 하드코딩 의심"
+    "PreToolUse-secret-pem.json:PEM 개인키:Private Key 하드코딩"
+    "PreToolUse-secret-gcp-sa.json:GCP 서비스 계정 JSON:GCP Service Account JSON 하드코딩"
+    "PreToolUse-secret-package-json.json:package.json 시크릿:package.json에 시크릿 포함"
+  )
+  # 픽스처의 `@@FILL<n>@@`를 실행 시점에 n자로 채운다. 스캐너가 잡는 자격증명 형태
+  # (Stripe 등 체크섬 없이 패턴만 보는 검출기)를 **파일에 두지 않기 위해서다** — 저장소에
+  # 남으면 GitHub push protection이 푸시를 막고, 그것을 허용 처리하면 패턴이 이력에 영구히
+  # 남는다. 훅에 먹이는 것은 조립된 완전한 문자열이므로 차단 증명의 강도는 그대로다.
+  _fx_fill() {   # $1 픽스처 경로 → stdout
+    awk '{
+      while (match($0, /@@FILL[0-9]+@@/)) {
+        tok = substr($0, RSTART, RLENGTH)
+        n = substr(tok, 7, length(tok) - 8) + 0
+        s = ""; for (i = 0; i < n; i++) s = s "x"
+        $0 = substr($0, 1, RSTART - 1) s substr($0, RSTART + RLENGTH)
+      }
+      print
+    }' "$1"
+  }
+
+  for bfx in "${POS_FX[@]}"; do
     brest="${bfx#*:}"; bfx="$fx/${bfx%%:*}"
     blabel="${brest%%:*}"; bwant="${brest#*:}"
     if [ -f "$bfx" ] && [ -f scripts/security-check.sh ]; then
       bcode=0
-      bout=$(CLAUDE_PROJECT_DIR="$ROOT" bash scripts/security-check.sh < "$bfx" 2>&1) || bcode=$?
+      bout=$(_fx_fill "$bfx" | CLAUDE_PROJECT_DIR="$ROOT" bash scripts/security-check.sh 2>&1) || bcode=$?
       used="$used$(basename "$bfx")
 "
       if [ "$bcode" -ne 2 ]; then
@@ -1289,8 +1613,16 @@ run_self_test() {
   # 오탐 방어 — 시크릿 **문자열이 들어 있으나 파일을 쓰지 않는** 조사 명령은 통과해야 한다.
   # 오탐은 사용자가 훅을 꺼버리게 만들고, 꺼진 훅의 차단력은 0이다.
   local okfx oklabel
+  # 평가 v6에서 재현된 오탐 셋(E-22 커밋 메시지 · E-23 `2>/dev/null` · E-44 파일 힙독 안의
+  # `; psql` 문자열)과 자기참조 단일 명령의 통과를 함께 증명한다.
   for okfx in "PreToolUse-bash-ok.json:시크릿 문자열 조사 명령" \
-              "PreToolUse-bash-destructive-ok.json:파괴 구문 조사 명령"; do
+              "PreToolUse-bash-destructive-ok.json:파괴 구문 조사 명령" \
+              "PreToolUse-bash-heredoc-authoring-ok.json:인터프리터 힙독 집필 명령" \
+              "PreToolUse-bash-selfref-ok.json:doctor 실행 단일 명령" \
+              "PreToolUse-bash-commit-msg-ok.json:DDL 어휘가 든 커밋 메시지" \
+              "PreToolUse-bash-gh-title-ok.json:DDL 어휘가 든 PR 제목" \
+              "PreToolUse-bash-stderr-null-ok.json:stderr 폐기만 있는 조사 명령" \
+              "PreToolUse-bash-heredoc-file-dbstring-ok.json:파일 힙독 본문의 DB 클라이언트 문자열"; do
     oklabel="${okfx#*:}"; okfx="$fx/${okfx%%:*}"
     [ -f "$okfx" ] || { warn "오탐 픽스처 없음 ($okfx)" "그 경로의 오탐 방어가 증명되지 않은 상태"; continue; }
     used="$used$(basename "$okfx")
@@ -1303,6 +1635,44 @@ run_self_test() {
       bad "security-check: 무해한 $oklabel에 exit $bcode" "오탐 — 훅이 꺼지는 원인"
     fi
   done
+
+  # ── 강제 푸시 판정 불가 분기 (3상태) ──────────────────────────────
+  # 정적 픽스처로는 못 증명한다 — 판정 불가는 **커밋 0개 저장소**라는 git 상태에서만 나온다.
+  # 차단(exit 2)이 아니라 통과(exit 0) + 「판정 불가」 명시가 기대값이다. 접으면 오탐이다.
+  local ud udcode udout
+  ud=$(mktemp -d 2>/dev/null) || ud=""
+  if [ -n "$ud" ] && git -C "$ud" init -q 2>/dev/null; then
+    udcode=0
+    udout=$(jq -nc '{tool_name:"Bash",tool_input:{command:"git push -f"}}' \
+      | ( cd "$ud" && CLAUDE_PROJECT_DIR="$ud" bash "$ROOT/scripts/security-check.sh" 2>&1 >/dev/null )) || udcode=$?
+    if [ "$udcode" -eq 0 ] && printf '%s' "$udout" | grep -q '판정 불가'; then
+      ok "security-check: 강제 푸시 대상 판정 불가 → exit 0 + 명시 보고 (3상태)"
+    else
+      bad "security-check: 판정 불가 분기가 exit $udcode / 보고 $(printf '%s' "$udout" | grep -c '판정 불가')건" \
+          "판정 불가를 차단으로 접었거나 침묵 통과했다"
+    fi
+  else
+    warn "임시 git 저장소 생성 실패" "판정 불가 분기가 증명되지 않은 상태"
+  fi
+  rm -rf "${ud:-/nonexistent}"
+
+  # ── 차단 사유 ↔ 픽스처 ────────────────────────────────────────────
+  # 「고아 픽스처」는 픽스처→검사 방향만 본다. 반대 방향 — 훅의 **각 차단 사유**에 그것을
+  # 증명하는 픽스처가 있는가 — 가 없어서 차단 지점 22종 중 4종만 증명된 채 4개월을 지났다.
+  # 사유 제목(dblock/block의 1번 인자)을 훅에서 뽑아 위 POS_FX의 기대 사유와 대조한다.
+  local reason rmiss="" rchk=0
+  while IFS= read -r reason; do
+    [ -z "$reason" ] && continue
+    rchk=$((rchk+1))
+    printf '%s\n' "${POS_FX[@]}" | grep -qF -- ":$reason" || rmiss="$rmiss
+      · $reason"
+  done < <(grep -oE '(dblock|block) "[^"]+"' scripts/security-check.sh 2>/dev/null \
+           | sed -E 's/^(dblock|block) "//; s/"$//; s/ \(\$[a-z_]+\)$//' | sort -u)
+  if [ -n "$rmiss" ]; then
+    warn "차단 사유 ${rchk}종 중 픽스처 없는 사유:$rmiss" "그 사유의 차단은 증명되지 않았다 — 살아있음 ≠ 작동함"
+  else
+    ok "차단 사유 ${rchk}종 전부 픽스처로 증명됨"
+  fi
 
   # ── .env 면제 (v3.26.0) ────────────────────────────────────────────
   # 시크릿의 **정당한 목적지**는 gitignore된 .env 파일인데 훅이 거기 쓰는 것까지
@@ -1374,7 +1744,10 @@ run_self_test() {
                  "Phase 표 재출현" "카드 표 .* ≠" "그래프 미선언 스킬" \
                  "미선언" "읽는 노드 없는 저장소" "미배포" \
                  "프리셋 이름 누락" "사전 제작 이음매 누락" "계약에 없는 프론트매터 키" \
-                 "소비자 경로에 플러그인 스킬" "죽은 스킬 참조" "저장소 이름 누출"; do
+                 "소비자 경로에 플러그인 스킬" "죽은 스킬 참조" "저장소 이름 누출" \
+                 "manual인데 disable-model-invocation 없음" "phase가 라우팅 카드에 없음" "같은 path를 가진 노드" \
+                 "설정 필드 선언만 있고" "T0 예산 주장" "코드블록의 플러그인 상대 경로" "스킬 이름 누락" \
+                 "규칙 카드의 플러그인 맥락 경로" "로드 조건 표가 선언에 없는 글롭"; do
         printf '%s' "$base_out" | grep -q "$msg" \
           && bad "기준선 오탐: '$msg'" "결함이 없는데 검출됐다 — 검사가 못 쓰게 된다"
       done
@@ -1387,6 +1760,16 @@ run_self_test() {
       _fx_static_case "$sfx" ref-dangling 'rules/code-change.md' 'references/data-modeling/gone' \
         '점진 로드가 끊긴다' \
         "printf -- '패턴 상세는 [gone.md](../references/data-modeling/gone.md).\n' >> \"\$T/rules/code-change.md\""
+
+      # 문서의 로드 조건 표가 카드의 paths:보다 넓게 주장할 때 (\140 = 백틱)
+      _fx_static_case "$sfx" paths-table-drift 'docs/harness-anatomy.md' 'lib/\*\*' \
+        '로드 조건 표가 선언에 없는 글롭을 주장' \
+        'printf "| \140code-change.md\140 | \140lib/**\140 |\n" >> "$T/docs/harness-anatomy.md"'
+
+      # 카드가 플러그인 저장소 맥락의 경로를 인용했을 때 — 배포되면 없는 파일이 된다
+      _fx_static_case "$sfx" card-plugin-path 'rules/code-change.md' 'templates/CLAUDE.md.hbs' \
+        '규칙 카드의 플러그인 맥락 경로' \
+        "printf -- '템플릿은 \`templates/CLAUDE.md.hbs\`를 본다.\n' >> \"\$T/rules/code-change.md\""
 
       # 쪼개면서 옮겨간 절의 번호가 카드에 잔재로 남았을 때
       _fx_static_case "$sfx" section-stale 'rules/code-change.md' '§7' \
@@ -1415,6 +1798,17 @@ run_self_test() {
       _fx_static_case "$sfx" skill-dir     'skills/sample/SKILL.md' '<skill-dir>' \
         "치환되지 않는 스크립트 경로 표기" 'printf "bash <skill-dir>/scripts/x.sh\n" >> "$T/skills/sample/SKILL.md"'
 
+      # 제목만 있고 본문이 없는 절. 강화할 때 사람이 볼 때만 잡히던 결함이라
+      # 저장소에 16건이 남아 있었다 — 기계가 보기 시작한 뒤로는 남을 수 없다.
+      _fx_static_case "$sfx" empty-heading 'skills/sample/SKILL.md' '^## 빈절' \
+        '빈 절 제목' \
+        'printf "\n## 빈절\n\n## 다음절\n\n본문\n" >> "$T/skills/sample/SKILL.md"'
+
+      # SKILL.md에서도 저장소에서도 닿지 않는 번들 파일. 「스킬 내부 참조」의 역방향이다.
+      _fx_static_case "$sfx" orphan-res 'skills/sample/references/dead.md' '고아' \
+        '고아 리소스' \
+        'mkdir -p "$T/skills/sample/references" && printf "# 고아\n" > "$T/skills/sample/references/dead.md"'
+
       _fx_static_case "$sfx" phase-dup     'templates/CLAUDE.md.hbs' '^| P0' \
         "Phase 표 재출현" 'printf "\n| Phase | 조건 |\n| --- | --- |\n| P0 | x |\n" >> "$T/templates/CLAUDE.md.hbs"'
 
@@ -1434,6 +1828,31 @@ run_self_test() {
       # 쓰기만 있고 읽는 노드가 없는 저장소 (G7) — "문서가 있다"가 아니라 "소비된다".
       _fx_static_case "$sfx" store-orphan 'workflow.graph.json' '"store"' \
         "읽는 노드 없는 저장소" 'jq ".nodes += [{\"id\":\"memo\",\"kind\":\"store\",\"path\":\"rules/code-change.md\"}] | .edges += [{\"from\":\"sample\",\"to\":\"memo\"}]" "$T/workflow.graph.json" > "$T/g.tmp" && mv "$T/g.tmp" "$T/workflow.graph.json"' --graph
+
+      # 그래프가 manual이라 하는데 frontmatter에 dmi가 없는 상태 (G8) — ui-ux-design이 실제로 그랬다.
+      # 표식은 한 줄에 있어야 grep이 본다 — jq -c로 한 줄 JSON을 만든다 (pretty-print는 키마다 줄이 갈린다)
+      _fx_static_case "$sfx" manual-no-dmi 'workflow.graph.json' '"id":"sample","kind":"skill","path":"skills/sample/SKILL.md","manual":true' \
+        "manual인데 disable-model-invocation 없음" 'jq -c "(.nodes[] | select(.id==\"sample\")) += {\"manual\": true}" "$T/workflow.graph.json" > "$T/g.tmp" && mv "$T/g.tmp" "$T/workflow.graph.json"' --graph
+
+      # 그래프에 phase를 달았는데 라우팅 카드에 그 행이 없는 상태 (G9 — G6의 역방향).
+      _fx_static_case "$sfx" phase-not-in-card 'workflow.graph.json' '"P9"' \
+        "phase가 라우팅 카드에 없음" 'jq "(.nodes[] | select(.id==\"sample\")) += {\"phase\": [\"P9\"]}" "$T/workflow.graph.json" > "$T/g.tmp" && mv "$T/g.tmp" "$T/workflow.graph.json"' --graph
+
+      # 두 노드가 한 파일을 가리키는데 note가 없는 상태 (G10).
+      _fx_static_case "$sfx" dup-path 'workflow.graph.json' '"sample2"' \
+        "같은 path를 가진 노드" 'jq ".nodes += [{\"id\":\"sample2\",\"kind\":\"skill\",\"path\":\"skills/sample/SKILL.md\",\"manual\":true}]" "$T/workflow.graph.json" > "$T/g.tmp" && mv "$T/g.tmp" "$T/workflow.graph.json"' --graph
+
+      # 문서가 절로 약속한 설정 필드를 아무 코드도 읽지 않는 상태 (E-30).
+      _fx_static_case "$sfx" config-ghost-field 'docs/configuration.md' '^### ghostField' \
+        "설정 필드 선언만 있고 읽는 코드 없음" 'printf -- "# 설정\n\n### ghostField\n\n아무도 안 읽는다.\n" > "$T/docs/configuration.md"'
+
+      # 카드 본문이 인용한 T0 예산 수치가 검사 상수와 다른 상태 (E-25).
+      _fx_static_case "$sfx" t0-budget-drift 'rules/code-change.md' '예산 40줄' \
+        "T0 예산 주장 40 ≠ 실물" 'printf -- "\nT0 운영 규칙이 예산 40줄을 넘으면 doctor가 막는다.\n" >> "$T/rules/code-change.md"; cp "$T/rules/code-change.md" "$T/rules/harness-change.md"'
+
+      # 코드블록 안에 치환되지 않는 플러그인 상대 경로 (E-34).
+      _fx_static_case "$sfx" bare-path-in-fence 'skills/sample/SKILL.md' 'grep -c x rules/workflow-routing.md' \
+        "코드블록의 플러그인 상대 경로" 'printf -- "\n\`\`\`bash\ngrep -c x rules/workflow-routing.md\n\`\`\`\n" >> "$T/skills/sample/SKILL.md"'
 
       # 버전은 올렸는데 릴리스 태그가 없는 상태 (E-08·E-12). git 저장소일 때만 판정하므로
       # 픽스처도 git init을 해야 한다 — 하지 않으면 '검출됨'이 아니라 '검사가 안 돎'이다.
@@ -1514,6 +1933,16 @@ run_self_test() {
       ok "회전 후 크기 유계 (${rn}행 ≤ 1100)"
     else
       bad "회전 후 크기 ${rn}행" "0이면 로그가 통째로 날아간 것이고, 상한을 넘으면 무한 증식한다"
+    fi
+    # graph.log — 세 로그 중 이것만 회전이 없었다 (평가 v6 · E-28). 같은 방식으로 행동을 본다.
+    awk 'BEGIN{ for (i = 0; i < 5100; i++) print "2026-01-01T00:00:00Z|build|security-check" }' > "$rt/graph.log"
+    EPCC_STATE_DIR="$rt" EPCC_ROOT="$rt" \
+      bash -c '. "$1/scripts/lib/common.sh"; epcc_edge build handoff' _ "$ROOT" >/dev/null 2>&1
+    rn=$(num "$(wc -l < "$rt/graph.log" 2>/dev/null | tr -d ' ')")
+    if [ "$rn" -gt 0 ] && [ "$rn" -le 2600 ] && tail -1 "$rt/graph.log" | grep -q '|build|handoff$'; then
+      ok "graph.log 회전 후 크기 유계 (${rn}행 ≤ 2600) · 마지막 엣지 보존"
+    else
+      bad "graph.log 회전 실패 (${rn}행)" "무한 축적이거나 방금 쓴 엣지가 사라졌다"
     fi
     rm -rf "$rt"
   fi
@@ -1664,6 +2093,45 @@ run_graph() {
       || { bad "produces를 선언했으나 산출 엣지 없음: $id" "산출물이 그래프에서 추적 불가"; unlinked=$((unlinked+1)); }
   done < <(jq -r '.nodes[]? | select(.produces != null and .kind != "stage") | .id' "$g" 2>/dev/null)
   [ "$unlinked" -eq 0 ] && ok "produces 선언 노드 전부 산출 엣지 보유"
+
+  # manual 선언 ↔ frontmatter (G8) — 그래프가 "수동 전용"이라 한 스킬이 description으로
+  # 자동 발동하면 그래프가 거짓이다. ui-ux-design이 그 상태였고 doctor는 frontmatter만 봤다 (평가 v6 · E-26).
+  local gm=0 gmlist="" mid mpath
+  while IFS=$'\t' read -r mid mpath; do
+    [ -z "$mid" ] && continue
+    [ -f "$mpath" ] || continue
+    grep -q '^disable-model-invocation:[[:space:]]*true' "$mpath" 2>/dev/null && continue
+    gm=$((gm+1)); gmlist="$gmlist $mid"
+  done < <(jq -r '.nodes[]? | select(.kind=="skill" and .manual==true) | "\(.id)\t\(.path // "")"' "$g" 2>/dev/null)
+  if [ "$gm" -gt 0 ]; then
+    bad "그래프 manual인데 disable-model-invocation 없음:$gmlist" "그래프는 수동이라 하고 description은 자동 발동한다 — 한쪽이 거짓이다"
+  else
+    ok "manual 노드 전부 frontmatter와 일치"
+  fi
+
+  # 그래프 → 카드 역방향 (G9) — G6은 카드가 말한 호출이 그래프에 있는지만 봤다. 그래프가
+  # 스킬에 phase를 달았는데 카드에 그 행이 없으면 호출 조건 없는 선언이다 (stage는 어휘 앵커라 제외).
+  local g9=0 g9list="" gph gid
+  if [ -f "$rc" ]; then
+    while IFS=$'\t' read -r gid gph; do
+      [ -z "$gid" ] && continue
+      grep -qE "^\| *${gph} *\|" "$rc" 2>/dev/null || { g9=$((g9+1)); g9list="$g9list $gid:$gph"; }
+    done < <(jq -r '.nodes[]? | select(.kind=="skill" and .phase != null) | .id as $i | .phase[] | "\($i)\t\(.)"' "$g" 2>/dev/null)
+    if [ "$g9" -gt 0 ]; then
+      bad "그래프 phase가 라우팅 카드에 없음:$g9list" "카드 행이 없는 phase는 호출 조건이 없는 선언이다"
+    else
+      ok "그래프 phase 전부 라우팅 카드에 행 존재"
+    fi
+  fi
+
+  # 중복 path (G10) — 두 노드가 한 파일을 가리키면 하나는 별칭이다. 의도면 note로 말한다.
+  local dup
+  dup=$(jq -r '[.nodes[]? | select(.path != null and (.note // "") == "")] | group_by(.path) | map(select(length>1)) | .[] | map(.id) | join("+")' "$g" 2>/dev/null)
+  if [ -n "$dup" ]; then
+    warn "같은 path를 가진 노드 (note 없음): $(printf '%s' "$dup" | tr '\n' ' ')" "별칭이면 note에 이유를 적고, 아니면 한쪽을 지운다"
+  else
+    ok "노드 path 중복 없음 (note 없는 노드 기준)"
+  fi
 }
 
 # ════════════════════════════════════════════════════════════════════
@@ -1960,14 +2428,21 @@ run_usage() {
   # 아래 래칫의 역사값이 전부 바이트로 측정됐으므로 값이 아니라 라벨을 맞춘다.
   # **토큰 환산은 하지 않는다** — 환산 계수는 모델별로 다르고 여기서 검증할 수 없다.
   # 검증 불가한 숫자를 만드는 것이 안티골 8이다.
-  local c_t0 c_route c_desc c_sum sfile
+  local c_t0 c_route c_desc c_agent c_sum sfile
+  # T0만 주석을 제거한다 — session-brief.sh가 출력 직전에 실제로 지우기 때문이다.
+  # workflow-routing.md는 Claude Code가 **파일 그대로** 로드하므로 주석도 컨텍스트다.
+  # (여기서 sed로 지우면 계측이 실물보다 작게 거짓말한다 — 실측 414바이트 차이.)
   c_t0=$(num "$(sed '/<!--/,/-->/d' "$PLUGIN_ROOT/templates/operating-contract.md" 2>/dev/null | wc -c | tr -d ' ')")
-  c_route=$(num "$(sed '/<!--/,/-->/d' "$PLUGIN_ROOT/rules/workflow-routing.md" 2>/dev/null | wc -c | tr -d ' ')")
+  c_route=$(num "$(wc -c < "$PLUGIN_ROOT/rules/workflow-routing.md" 2>/dev/null | tr -d ' ')")
   c_desc=0
+  # 리셋은 `[A-Za-z_-]+:` — 프론트매터 키에는 하이픈·대문자가 섞인다(`disable-model-invocation`).
+  # `[a-z_]+:`로는 그 줄이 리셋되지 않아 description 뒤에 딸려 들어갔다. 상주분(c_desc)은
+  # 두 정규식이 같은 값을 내므로 래칫에는 영향이 없었고, **비상주 값만 186바이트 부풀어 있었다** —
+  # 절감 폭을 실제보다 크게 보고하던 자리다.
   local dtop="" dn dv c_hidden=0 n_hidden=0
   for sfile in "$PLUGIN_ROOT"/skills/*/SKILL.md; do
     [ -f "$sfile" ] || continue
-    dv=$(num "$(awk '/^---$/{n++; next} n==1 && /^(name|description):/{p=1} n==1 && /^[a-z_]+:/ && !/^(name|description):/{p=0} n==1 && p{print} n>=2{exit}' "$sfile" | wc -c | tr -d ' ')")
+    dv=$(num "$(awk '/^---$/{n++; next} n==1 && /^(name|description):/{p=1} n==1 && /^[A-Za-z_-]+:/ && !/^(name|description):/{p=0} n==1 && p{print} n>=2{exit}' "$sfile" | wc -c | tr -d ' ')")
     dn=$(basename "$(dirname "$sfile")")
     # disable-model-invocation: true 인 스킬의 description은 상주하지 않는다
     # (docs/platform-contract.md §2.4). 합산하면 측정이 실제보다 크게 거짓말한다.
@@ -1978,15 +2453,76 @@ run_usage() {
     dtop="${dtop}${dv} ${dn}
 "
   done
-  c_sum=$((c_t0 + c_route + c_desc))
+  # 에이전트 description — 스킬과 **같은 성질인데 자산 타입이 달라서** 빠져 있었다.
+  # 부르지 않아도 상주하고(docs/platform-contract.md §6), 심지어 스킬의
+  # disable-model-invocation에 해당하는 비상주 스위치가 **없어서 끌 수도 없다**.
+  # `tools:`까지 세는 이유는 에이전트 목록의 렌더가 `(Tools: …)`를 실제로 포함하기 때문이다
+  # (스킬 목록에는 그 줄이 없어 위 루프는 name/description만 센다).
+  # 리셋 정규식이 위 스킬 루프와 다르다 — 에이전트 프론트매터에는 `disallowedTools:`처럼
+  # 대문자가 섞인 키가 있고, `[a-z_-]+:`로는 리셋되지 않아 그 줄까지 딸려 들어간다(실측 +86바이트).
+  c_agent=0
+  local afile
+  for afile in "$PLUGIN_ROOT"/agents/*.md; do
+    [ -f "$afile" ] || continue
+    c_agent=$((c_agent + $(num "$(awk '/^---$/{n++; next} n==1 && /^(name|description|tools):/{p=1} n==1 && /^[A-Za-z_-]+:/ && !/^(name|description|tools):/{p=0} n==1 && p{print} n>=2{exit}' "$afile" | wc -c | tr -d ' ')")))
+  done
+  local n_agent; n_agent=$(num "$({ ls -1 "$PLUGIN_ROOT"/agents/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')")
+
+  c_sum=$((c_t0 + c_route + c_desc + c_agent))
+
+  # 조건부 카드 — **무조건 소계에서 빠져 있던 부분이다.** paths가 있으니 "조건부"이지만
+  # `src/**`·`app/**`류를 가진 카드는 소스 파일 하나만 읽으면 들어오므로, 코딩 세션에서는
+  # 사실상 확정 로드다. 그것을 계측에서 통째로 빼두면 P5가 실물의 1/3만 보고 판정한다
+  # (실측: 보고 17,063바이트 ↔ 코딩 세션 48,450바이트).
+  # 글롭을 해석하지는 않는다 — 검증 불가한 정교함 대신 **두 묶음**으로 정직하게 나눈다.
+  local c_src=0 c_oth=0 n_src=0 n_oth=0 rcard
+  for rcard in "$PLUGIN_ROOT"/rules/*.md; do
+    [ -f "$rcard" ] || continue
+    grep -q '^paths:' "$rcard" 2>/dev/null || continue    # 상시 카드는 위에서 셌다
+    if grep -qE '^\s+- "(src|app|packages|lib)/\*\*"' "$rcard" 2>/dev/null; then
+      c_src=$((c_src + $(num "$(wc -c < "$rcard" | tr -d ' ')"))); n_src=$((n_src+1))
+    else
+      c_oth=$((c_oth + $(num "$(wc -c < "$rcard" | tr -d ' ')"))); n_oth=$((n_oth+1))
+    fi
+  done
+
   printf "    %-32s %8s바이트\n" "T0 운영 규칙" "$c_t0"
   printf "    %-32s %8s바이트\n" "workflow-routing (상시 로드)" "$c_route"
   printf "    %-32s %8s바이트\n" "스킬 description (상주분)" "$c_desc"
-  printf "    %-32s %8s바이트\n" "── 상주 합계" "$c_sum"
+  printf "    %-32s %8s바이트  ${C_D}끌 수 없음${C_0}\n" "에이전트 description ${n_agent}개" "$c_agent"
+  printf "    %-32s %8s바이트\n" "── 무조건 소계" "$c_sum"
+  printf "    %-32s %8s바이트  ${C_D}소스 1개만 읽으면${C_0}\n" "조건부 카드 ${n_src}장 (src/app/lib)" "$c_src"
+  printf "    %-32s %8s바이트  ${C_D}해당 경로 편집 시${C_0}\n" "조건부 카드 ${n_oth}장 (그 외)" "$c_oth"
+  printf "    %-32s %8s바이트\n" "── 코딩 세션 실측" "$((c_sum + c_src))"
   # 총합만으로는 무엇을 압축할지 모른다 — 상위 3개를 함께 보인다.
   printf "    ${C_D}상위: %s${C_0}\n" "$(printf '%s' "$dtop" | sort -rn | head -3 | awk '{printf "%s %s · ", $2, $1}' | sed 's/ · $//')"
   [ "$n_hidden" -gt 0 ] && printf "    ${C_D}비상주 %d개 %s바이트 (disable-model-invocation)${C_0}\n" "$n_hidden" "$c_hidden"
-  printf "    ${C_D}session-brief 출력은 세션마다 달라 미포함 (정직 보고)${C_0}\n"
+  # 정직 보고 — 무엇을 못 세는지 밝힌다. T0는 session-brief 출력의 대부분이고 위에서 셌다.
+  # 남은 것은 브리핑 가변부(HEAD·미커밋 수·훅 생존 = 약 400~600바이트)뿐이다.
+  printf "    ${C_D}브리핑 가변부(HEAD·미커밋·훅 생존)는 세션마다 달라 미포함${C_0}\n"
+  # 생성 가이드 description — 이전 판은 "소비자 쪽이라 미포함"으로 끝냈지만, 허브는
+  # 플러그인이 배송하는 guides/seams/*/이므로 **여기서 셀 수 있다.** 셀 수 있는데 빼는 것이
+  # 직전 교훈(2026-09-10)이 지목한 낙관적 거짓이다. 다만 소계에는 넣지 않는다 —
+  # epcc-init을 돌린 소비자에게만 생기고 어느 이음매냐에 따라 값이 달라지므로,
+  # 하나를 골라 소계에 더하면 그것이야말로 검증 불가한 수가 된다. 범위로 보고한다.
+  local g_min="" g_max="" gdir gpair gh
+  for gdir in "$PLUGIN_ROOT"/guides/seams/*/; do
+    [ -d "$gdir" ] || continue
+    gpair=0
+    for gh in "$gdir"frontend/HUB.md "$gdir"backend/HUB.md; do
+      [ -f "$gh" ] || continue
+      gpair=$((gpair + $(num "$(awk '/^---$/{n++; next} n==1 && /^(name|description):/{p=1} n==1 && /^[A-Za-z_-]+:/ && !/^(name|description):/{p=0} n==1 && p{print} n>=2{exit}' "$gh" | wc -c | tr -d ' ')")))
+    done
+    [ "$gpair" -eq 0 ] && continue
+    # if로 쓴다 — `[ ] || [ ] && x`는 우선순위가 눈에 보이는 것과 다르고,
+    # 이 파일이 이미 같은 형태로 두 갈래를 함께 실행한 전례가 있다(평가 v3 · E-10).
+    if [ -z "$g_min" ] || [ "$gpair" -lt "$g_min" ]; then g_min="$gpair"; fi
+    if [ -z "$g_max" ] || [ "$gpair" -gt "$g_max" ]; then g_max="$gpair"; fi
+  done
+  if [ -n "$g_min" ]; then
+    printf "    ${C_D}참고: 생성 가이드 description %s~%s바이트 — epcc-init 후 소비자에 상주, 이음매마다 달라 소계 제외${C_0}\n" "$g_min" "$g_max"
+  fi
+  printf "    ${C_D}프로젝트가 저술하는 CLAUDE.md는 내용을 플러그인이 알 수 없어 미포함${C_0}\n"
   # 예산은 **반복 증거가 쌓인 뒤에** 둔다는 규율을 지켰다 — 평가 v3(14,219바이트) · v4(11,662) ·
   # v5(11,662)에서 3회 연속 "예산 있는 T0의 4.8배인데 상한이 없다"로 관측됐다(E-07).
   # 그래서 지금 값을 상한으로 **고정(래칫)**한다: 압축된 상태를 되돌리지 못하게만 한다.
@@ -1999,7 +2535,7 @@ run_usage() {
   else
     ok "스킬 description ${c_desc}/${desc_budget}바이트"
   fi
-  ok "상주 비용 실측 ${c_sum}바이트 (판정은 P5)"
+  ok "상주 비용 실측 — 무조건 ${c_sum}(에이전트 ${c_agent} 포함) · 코딩 세션 $((c_sum + c_src))바이트 (판정은 P5)"
 }
 
 # ════════════════════════════════════════════════════════════════════
@@ -2017,7 +2553,11 @@ run_lessons() {
   while read -r cnt cat; do
     [ -z "$cat" ] && continue
     local status="—"
-    if [ "$(num "$cnt")" -ge "$threshold" ]; then
+    # 오탐은 승격 대상이 아니다 — 규칙(rules/lessons.md)은 이 카테고리를 **수축**으로 처리하라 한다.
+    # 카테고리 합계로 "승격 후보"를 내면 규칙과 반대 방향의 경고가 매 실행 뜬다 (평가 v6 · E-27).
+    if [ "$cat" = "false-positive" ]; then
+      status="${C_D}수축 대상 — 아래 「오탐 수축 후보」 장치별 집계 참조${C_0}"
+    elif [ "$(num "$cnt")" -ge "$threshold" ]; then
       # 대응 룰 카드가 실재하는가?
       #   ① 파일명이 카테고리와 일치        → 확실한 대응 자산
       #   ② 본문에 언급                      → 단 lessons.md 는 제외.
@@ -2046,6 +2586,35 @@ run_lessons() {
     || printf " · ${C_Y}아카이브 파일 없음${C_0}\n"
 
   [ "$found" -gt 0 ] && warn "승격 후보 ${found}건" "승격 시 lessons-archive.md로 물리 이동 (선언이 아니라 파일 이동으로 증명)"
+
+  # ── 오탐 수축 후보 — 장치별 ──
+  # 서로 다른 장치의 오탐을 카테고리 하나로 합치면 "무엇을 좁힐 것인가"가 사라진다. 장치는
+  # 항목의 `- 장치:` 줄이 정본이고, 없으면 본문 첫 스크립트/스킬 이름으로 추정한다(추정은 표시한다).
+  # 같은 장치 2건 이상이면 규칙대로 **조건을 좁히거나 경고로 내린다** — 규칙을 추가하지 않는다.
+  sec "오탐 수축 후보 (장치별)"
+  local fp_total fp_hot=0
+  fp_total=$(num "$(grep -c '^## \[category: false-positive\]' "$lf" 2>/dev/null)")
+  if [ "$fp_total" -eq 0 ]; then
+    printf "  (기록 없음)\n"
+  else
+    while read -r cnt dev; do
+      [ -z "$dev" ] && continue
+      printf "  %-44s %s건\n" "$dev" "$cnt"
+      [ "$(num "$cnt")" -ge 2 ] && fp_hot=$((fp_hot+1))
+    done < <(awk '
+      /^## \[category: /{ if (fp && dev=="") print "(장치 미표기)"; fp=($0 ~ /false-positive\]/); dev=""; next }
+      fp && /^- 장치:/ { d=$0; sub(/^- 장치:[ \t]*/,"",d); if (dev=="") { dev=d; print d }; next }
+      fp && dev=="" {
+        if (match($0, /[a-z-]+\.sh/))               { dev=substr($0,RSTART,RLENGTH) "(추정)"; print dev }
+        else if (match($0, /skills\/[a-z-]+/))     { dev=substr($0,RSTART,RLENGTH) "(추정)"; print dev }
+        else if ($0 ~ /하네스 평가|harness-evaluation/) { dev="harness-evaluation(추정)"; print dev } }
+      END { if (fp && dev=="") print "(장치 미표기)" }' "$lf" | sort | uniq -c | sort -rn)
+    if [ "$fp_hot" -gt 0 ]; then
+      warn "같은 장치 오탐 2건 이상 — ${fp_hot}개 장치" "규칙을 추가하지 않는다 — 그 장치의 조건을 좁히거나 경고로 내린다 (rules/lessons.md)"
+    else
+      ok "오탐 ${fp_total}건 — 장치별 2건 미만"
+    fi
+  fi
 
   # 반복 요청 [request: X] — 3건+이면 자동화(스킬 승격) 후보
   sec "반복 요청 집계"
@@ -2091,6 +2660,103 @@ run_lessons() {
 }
 
 # ════════════════════════════════════════════════════════════════════
+# --inventory : 영역별 자산 인벤토리 (판정 없음)
+#
+# /harness-evaluation의 요청 관점 ①「영역별 검토」와 ⑨「토큰 비용」의 **입력**이다. 평가 스킬은
+# 다시 세지 않는다 — 여기서 센 것을 판단한다. 판정(ok/bad)을 내지 않는 이유: 이 수들은
+# 예산이 아니라 관측이고, 관측에 임계를 박는 것은 반복 증거가 쌓인 뒤의 일이다(E-07의 규율).
+# ════════════════════════════════════════════════════════════════════
+run_inventory() {
+  printf "\n${C_D}epcc doctor --inventory${C_0}  (plugin: %s)\n" "$PLUGIN_ROOT"
+  local g="workflow.graph.json" hasjq=0
+  command -v jq >/dev/null 2>&1 && [ -f "$g" ] && hasjq=1
+
+  sec "스킬 (${C_D}줄=SKILL.md · desc=상주 바이트 · 호출시=디렉토리 .md 합계 · in/out=그래프 엣지 · 문서=README+docs 언급 파일 수${C_0})"
+  printf "  %-26s %5s %6s %-3s %8s %5s %4s  %s\n" "스킬" "줄" "descB" "상주" "호출시B" "in/out" "문서" "phase"
+  local sd sn sl dv dmi ib eio dm ph
+  for sd in skills/*/; do
+    [ -f "$sd/SKILL.md" ] || continue
+    sn=$(basename "$sd")
+    sl=$(num "$(wc -l < "$sd/SKILL.md")")
+    dv=$(num "$(awk '/^---$/{n++; next} n==1 && /^(name|description):/{p=1} n==1 && /^[a-z_-]+:/ && !/^(name|description):/{p=0} n==1 && p{print} n>=2{exit}' "$sd/SKILL.md" | wc -c | tr -d ' ')")
+    dmi="○"; grep -q '^disable-model-invocation:[[:space:]]*true' "$sd/SKILL.md" 2>/dev/null && dmi="—"
+    ib=$(num "$(find "$sd" -name '*.md' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -c | tr -d ' ')")
+    eio="?"; ph=""
+    if [ "$hasjq" -eq 1 ]; then
+      eio=$(jq -r --arg n "$sn" '"\([.edges[]|select(.to==$n)]|length)/\([.edges[]|select(.from==$n)]|length)"' "$g" 2>/dev/null)
+      ph=$(jq -r --arg n "$sn" '[.nodes[]|select(.id==$n)|.phase[]?]|join(",")' "$g" 2>/dev/null)
+    fi
+    dm=$(num "$(grep -lF -- "$sn" README.md docs/*.md 2>/dev/null | wc -l | tr -d ' ')")
+    printf "  %-26s %5s %6s %-3s %8s %5s %4s  %s\n" "$sn" "$sl" "$dv" "$dmi" "$ib" "$eio" "$dm" "$ph"
+  done
+
+  sec "규칙 카드 (${C_D}paths=조건 글롭 수, 0=상시 · 링크=../references 참조 수${C_0})"
+  printf "  %-24s %5s %-8s %5s %5s\n" "카드" "줄" "스탬프" "paths" "링크"
+  local rc rl rs rp rk
+  for rc in rules/*.md; do
+    [ -f "$rc" ] || continue
+    rl=$(num "$(wc -l < "$rc")")
+    rs=$(grep -m1 -oE 'epcc-rule-version: [0-9.]+' "$rc" | awk '{print $2}')
+    rp=$(num "$(awk '/^---$/{n++; next} n==1 && /^[[:space:]]*- /{c++} END{print c+0}' "$rc")")
+    rk=$(num "$(grep -oE '\.\./references/[A-Za-z0-9_./-]+\.md' "$rc" | sort -u | wc -l | tr -d ' ')")
+    printf "  %-24s %5s %-8s %5s %5s\n" "$(basename "$rc")" "$rl" "${rs:-없음}" "$rp" "$rk"
+  done
+  printf "  %-24s %5s\n" "합계" "$(num "$(cat rules/*.md 2>/dev/null | wc -l | tr -d ' ')")"
+
+  sec "훅 (${C_D}차단=dblock/block 호출 지점 · 픽스처=이 스크립트를 먹이는 fixtures/*.json${C_0})"
+  printf "  %-22s %5s %-24s %5s %6s\n" "스크립트" "줄" "이벤트" "차단" "픽스처"
+  if [ -f hooks/hooks.json ] && command -v jq >/dev/null 2>&1; then
+    local hs hev hl hb hf
+    while IFS=$'\t' read -r hs hev; do
+      [ -f "$hs" ] || continue
+      hl=$(num "$(wc -l < "$hs")")
+      hb=$(num "$(grep -cE '^[[:space:]]*(&& |\|\| )?(dblock|block) "' "$hs")")
+      hf=$(num "$(ls -1 scripts/fixtures/${hev%%|*}*.json 2>/dev/null | wc -l | tr -d ' ')")
+      printf "  %-22s %5s %-24s %5s %6s\n" "$(basename "$hs")" "$hl" "$hev" "$hb" "$hf"
+    done < <(jq -r '.hooks | to_entries[] | .key as $e | .value[]?.hooks[]?.command
+                    | capture("(?<f>scripts/[a-z0-9./-]+\\.sh)").f + "\t" + $e' hooks/hooks.json 2>/dev/null \
+             | awk -F'\t' '{ if ($1 in ev) ev[$1]=ev[$1]"|"$2; else ev[$1]=$2 } END { for (k in ev) print k "\t" ev[k] }' | sort)
+  fi
+  printf "  %-22s %5s\n" "lib/common.sh" "$(num "$(wc -l < scripts/lib/common.sh 2>/dev/null)")"
+
+  sec "에이전트 (${C_D}descB=상주 바이트 · 스킬 표와 달리 비상주 스위치가 없다${C_0})"
+  local af adv
+  for af in agents/*.md; do
+    [ -f "$af" ] || continue
+    # 스킬 표의 descB는 name+description만 센다. 여기도 **같은 식**을 쓴다 — 두 표를 나란히
+    # 읽는 것이 --inventory의 용도이므로 비교 가능성이 우선이다. `tools:`까지 더한 값은
+    # --usage의 「상주 컨텍스트 비용」이 낸다(그쪽은 실제 렌더를 재는 것이 목적이라 포함한다).
+    adv=$(num "$(awk '/^---$/{n++; next} n==1 && /^(name|description):/{p=1} n==1 && /^[A-Za-z_-]+:/ && !/^(name|description):/{p=0} n==1 && p{print} n>=2{exit}' "$af" | wc -c | tr -d ' ')")
+    printf "  %-16s %4s줄 %6s descB  model=%-7s tools=%s\n" "$(basename "$af" .md)" "$(num "$(wc -l < "$af")")" \
+      "$adv" \
+      "$(grep -m1 -E '^model:' "$af" | sed 's/^model:[[:space:]]*//')" \
+      "$(grep -m1 -E '^tools:' "$af" | sed 's/^tools:[[:space:]]*//')"
+  done
+
+  sec "축 가이드 팩 (${C_D}verified=팩 검증일 · pkgs=신선도 기준 패키지 수${C_0})"
+  local pk pj
+  for pk in guides/frontend/*/ guides/backend/*/; do
+    [ -f "$pk/pack.json" ] || continue
+    pj="$pk/pack.json"
+    printf "  %-28s %3s파일 %6s줄  v%-7s verified=%s pkgs=%s\n" "${pk#guides/}" \
+      "$(num "$(find "$pk" -type f | wc -l | tr -d ' ')")" \
+      "$(num "$(find "$pk" -name '*.md' -print0 | xargs -0 cat 2>/dev/null | wc -l | tr -d ' ')")" \
+      "$(jq -r '.packVersion // "?"' "$pj" 2>/dev/null)" "$(jq -r '.verified // "?"' "$pj" 2>/dev/null)" \
+      "$(jq -r '(.pkgs // []) | length' "$pj" 2>/dev/null)"
+  done
+  printf "  이음매: %s\n" "$({ ls -1d guides/seams/*/ 2>/dev/null || true; } | sed -E 's|.*/([^/]+)/$|\1|' | tr '\n' ' ')"
+
+  sec "기타 자산"
+  printf "  %-14s %3s파일 %6s줄\n" "references/" "$(num "$(find references -name '*.md' 2>/dev/null | wc -l | tr -d ' ')")" "$(num "$(find references -name '*.md' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l | tr -d ' ')")"
+  printf "  %-14s %3s파일 %6s줄\n" "templates/" "$(num "$(find templates -type f 2>/dev/null | wc -l | tr -d ' ')")" "$(num "$(find templates -type f -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l | tr -d ' ')")"
+  printf "  %-14s %3s파일\n" "presets/" "$(num "$(find presets -name '*.json' 2>/dev/null | wc -l | tr -d ' ')")"
+  printf "  %-14s %3s파일\n" "fixtures/" "$(num "$(ls -1 scripts/fixtures/*.json 2>/dev/null | wc -l | tr -d ' ')")"
+  printf "  %-14s %3s파일 %6s줄\n" "docs/" "$(num "$(ls -1 docs/*.md 2>/dev/null | wc -l | tr -d ' ')")" "$(num "$(cat docs/*.md 2>/dev/null | wc -l | tr -d ' ')")"
+  printf "  %-14s %3s파일 %6s줄  (검사 스크립트 — 판정 장치의 유지비)\n" "scripts/*.sh" "$(num "$(ls -1 scripts/*.sh 2>/dev/null | wc -l | tr -d ' ')")" "$(num "$(cat scripts/*.sh 2>/dev/null | wc -l | tr -d ' ')")"
+  printf "  ${C_D}상주 비용의 실측은 --usage, 호출 흔적은 --usage의 스킬 호출 절이 낸다 — 여기서는 세지 않는다${C_0}\n"
+}
+
+# ════════════════════════════════════════════════════════════════════
 MODE="${1:---default}"
 case "$MODE" in
   --fast)      run_fast ;;
@@ -2099,10 +2765,13 @@ case "$MODE" in
   --usage)     run_usage ;;
   --lessons)   run_lessons ;;
   --consumer)  run_consumer ;;
-  --all)       run_fast; run_self_test; run_graph; run_consumer; run_usage; run_lessons ;;
+  --inventory) run_inventory ;;
+  --all)       run_fast; run_self_test; run_graph; run_consumer; run_usage; run_lessons; run_inventory ;;
   --default)   run_fast; run_graph ;;
   -h|--help)
-    sed -n '2,24p' "$0" | sed 's/^# \?//'
+    # 헤더 주석 전체를 낸다. 줄 번호를 박으면 헤더가 자라는 순간 잘리거나 구현이 샌다 —
+    # `sed -n '2,24p'`가 실제로 `set -uo pipefail`까지 6줄을 출력하고 있었다 (평가 v6 · E-36).
+    awk 'NR==1{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$0"
     exit 0 ;;
   *) printf "알 수 없는 옵션: %s (--help 참조)\n" "$MODE" >&2; exit 2 ;;
 esac

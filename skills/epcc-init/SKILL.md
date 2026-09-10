@@ -23,10 +23,15 @@ cat pyproject.toml requirements.txt 2>/dev/null
 ls pnpm-lock.yaml yarn.lock package-lock.json bun.lockb uv.lock poetry.lock 2>/dev/null
 ls src app packages services apps 2>/dev/null   # sourceDir · repoTopology
 cat tsconfig.json 2>/dev/null | head -20        # importAlias · strict
+git remote get-url origin 2>/dev/null           # vcsPlatform — github.com / gitlab.com
 ```
 
 실측으로 정해지는 것: 프로젝트 이름 · 프레임워크 · 언어 · 패키지 매니저 · 빌드/테스트/린트
-명령 · 소스 디렉토리 · importAlias · 레포 토폴로지 · (deps로 추정한) 백엔드 축.
+명령 · 소스 디렉토리 · importAlias · 레포 토폴로지 · (deps로 추정한) 백엔드 축 ·
+코드 호스팅 플랫폼.
+
+remote URL에 `github.com`이 있으면 `github`, `gitlab.com`이 있으면 `gitlab`으로 **확정한다**
+— 묻지 않는다. 자체 호스팅이거나 remote가 없어 판정되지 않을 때만 3차 호출에서 묻는다.
 **신규 빈 프로젝트면 실측할 것이 없으므로 프리셋 기본값이 그 자리를 대신한다.**
 
 ### Step 0.5: 환경 점검 — `jq`
@@ -86,7 +91,7 @@ Step 2·4·4.5·4.7은 원래 필수 대기 3곳 + 조건부 5곳이었다. Step
 | --- | --- | --- |
 | **1차 — 무엇을 만드는가** | ① 제품 형태 ② 백엔드 유형 ③ 응답 언어 ④ 경험 수준 | ①이 프론트 목록을, ②가 백엔드 세부 목록을 가른다 |
 | **2차 — 무엇으로 만드는가** | ⑤ 프론트엔드(①로 필터) ⑥ 백엔드 세부(②로 필터) ⑦ 언어 TS/JS 또는 PWA 여부 ⑧ 레포 토폴로지 | 목록이 확정된 뒤라야 물을 수 있다 |
-| **3차 — 무엇 위에 올리는가** (조건부) | ⑨ 배포 대상(자체 서버 프레임워크일 때) ⑩ 백엔드 미확정 차원 ⑪ 실측 실패분 | ⑨는 ⑥에 의존한다 |
+| **3차 — 무엇 위에 올리는가** (조건부) | ⑨ 배포 대상(자체 서버 프레임워크일 때) ⑩ 백엔드 미확정 차원 ⑪ 코드 호스팅(Step 0에서 판정 실패했을 때만 — `github` · `gitlab`) ⑫ 실측 실패분 | ⑨는 ⑥에 의존한다 |
 
 - **실측값이 있으면 그것을 기본 선택지 첫 번째로 둔다** — 대부분 그대로 확인만 하고 지난다
 - **3차는 채울 것이 없으면 호출하지 않는다.** 사전 제작 조합은 대부분 2회로 끝난다
@@ -344,11 +349,11 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/install-rules.sh"
 | `code-change.md` | `src/**` `app/**` `packages/**` `lib/**` 편집 시 |
 | `security.md` | `src/**` `app/**` `packages/**` `lib/**` 편집 시 |
 | `reversibility.md` | 소스·마이그레이션·워크스페이스 편집 시 |
-| `harness-change.md` | `.claude/**` `scripts/**` `hooks/**` `dev/docs/**` 편집 시 |
+| `harness-change.md` | `.claude/**` `scripts/**` `hooks/**` `dev/docs/harness-evaluation/**` 편집 시 |
 | `lessons.md` | 소스·`.claude/**`·`scripts/**`·`dev/docs/**` 편집 시 |
 | `doc-dependency.md` | `dev/docs/{prd,database,design,architecture,api}/**` 편집 시 |
 | `data-modeling.md` | `supabase/**` `**/migrations/**` `db/**` `prisma/**` 등 DB 경로 편집 시. §1~8만 담고 열 가지 패턴은 `.claude/references/data-modeling/`으로 내려 **필요한 것만** 읽는다 |
-| `ui-design.md` | `**/components/**` `**/*.{tsx,jsx,vue,svelte,css,scss}` 편집 시 |
+| `ui-design.md` | `**/components/**` `**/*.{css,scss}` `**/app/**/page.{tsx,jsx}` `**/app/**/layout.{tsx,jsx}` 편집 시 |
 
 > 이 표는 `rules/`의 실제 frontmatter를 반영해야 한다. 카드를 추가·수정하면 여기도 고친다
 > — `doctor --fast`가 카드 수 불일치를 검출한다.

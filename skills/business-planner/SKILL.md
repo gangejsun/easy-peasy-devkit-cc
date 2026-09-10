@@ -50,6 +50,13 @@ description: 아이디어나 기능을 사업적 관점에서 검증하고 사�
 
 ## 참조 문서
 
-- 사업 기획 프레임워크: `references/business-frameworks.md`
-- 사업 기획서 저장소: `dev/docs/business/`
-- 리서치 저장소: `dev/docs/research/`
+`references/business-frameworks.md`는 234줄이다. **Step마다 해당 절만 읽는다** —
+통째로 읽으면 5C 질문을 시작하기도 전에 컨텍스트를 절반 쓴다.
+
+| Step | 읽을 절 |
+| --- | --- |
+| Step 3 | §1 5C Analysis 가이드 |
+| Step 4 | §2 Lean Canvas · §3 가격 책정 · §4 리스크 매트릭스 |
+| Step 5 | §5 사업 기획서 출력 템플릿 |
+
+- 사업 기획서 저장소: `dev/docs/business/` · 리서치 저장소: `dev/docs/research/`

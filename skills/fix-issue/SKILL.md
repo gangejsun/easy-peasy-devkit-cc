@@ -1,25 +1,31 @@
 ---
 name: fix-issue
-description: GitHub 이슈 기반 버그 수정 (이슈 컨텍스트 자동 주입). 사용자가 "이슈 수정", "fix issue", "fix #123", "이슈 해결" 등을 요청할 때 사용합니다. 이슈 번호가 제공되면 gh CLI로 컨텍스트를 자동 수집합니다. 수동 호출 전용.
+description: 이슈 트래커 기반 버그 수정 (이슈 컨텍스트 자동 주입). 사용자가 "이슈 수정", "fix issue", "fix #123", "이슈 해결" 등을 요청할 때 사용합니다. 이슈 번호가 제공되면 gh(GitHub)·glab(GitLab) CLI로 컨텍스트를 자동 수집합니다. 수동 호출 전용.
 disable-model-invocation: true
 ---
 
 # Fix Issue
 
-GitHub 이슈의 컨텍스트를 자동 수집하여 버그 수정 워크플로우에 주입합니다.
+이슈의 컨텍스트를 자동 수집하여 버그 수정 워크플로우에 주입합니다.
+
+**호스트 판정** — `epcc.config.json`의 `techStack.vcsPlatform`을 읽는다. 없으면
+`git remote get-url origin`에 `github.com`/`gitlab.com`이 있는지 본다. 그래도 불명이면
+사용자에게 묻는다. GitHub는 PR, GitLab은 MR이고 **MR 참조 기호는 `#N`이 아니라 `!N`**이다.
 
 ## 워크플로우
 
 ### Step 1: 이슈 컨텍스트 수집
 
-이슈 번호를 확인하고 `gh` CLI로 정보 수집:
+이슈 번호를 확인하고 호스트의 CLI로 정보 수집:
 
 ```bash
-# 이슈 상세
+# GitHub
 gh issue view <NUMBER> --json title,body,labels,assignees,comments
+gh pr list --search "<NUMBER>" --json number,title,state      # 관련 PR (있으면)
 
-# 관련 PR (있으면)
-gh pr list --search "<NUMBER>" --json number,title,state
+# GitLab
+glab issue view <NUMBER> --output json
+glab mr list --search "<NUMBER>"                              # 관련 MR (있으면)
 ```
 
 추출할 정보:
@@ -95,12 +101,15 @@ gh pr list --search "<NUMBER>" --json number,title,state
 
 이슈 번호가 제공되지 않으면:
 
-1. `gh issue list --state open --label bug` 로 열린 버그 이슈 목록 표시
+1. 열린 버그 이슈 목록 표시 — GitHub는 `gh issue list --state open --label bug`,
+   GitLab은 `glab issue list --state opened --label bug`
+   (GitLab의 상태값은 `open`이 아니라 **`opened`**다)
 2. 사용자에게 이슈 선택 요청
 3. 선택 후 Step 1부터 진행
 
 ## 주의사항
 
-- `gh` CLI 인증이 필요 — 미설치/미인증 시 사용자에게 안내
+- 호스트 CLI(`gh` 또는 `glab`) 인증이 필요 — 미설치/미인증 시 사용자에게 안내하고,
+  이슈 내용을 직접 붙여넣게 해서 Step 2부터 진행한다
 - 이슈 컨텍스트를 100% 신뢰하지 않음 — 코드에서 직접 확인 필수
 - 이슈에 명시된 범위만 수정 — 관련 없는 리팩토링/개선 금지

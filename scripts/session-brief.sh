@@ -137,25 +137,54 @@ if [ -f "$HOOKS_JSON" ] && command -v jq >/dev/null 2>&1; then
   # 분모는 **고유 스크립트 수**다. 선언 엔트리 수를 쓰면 안 된다 — handoff.sh 하나가
   # PreCompact·SessionEnd 두 이벤트에 걸려 있어 분자(로그의 스크립트명 distinct)가 분모에
   # 도달하는 것이 구조적으로 불가능해진다. 그러면 매 세션 미달을 표시하는 꺼지지 않는
-  # 경고가 되고, 무시를 학습시킨다. doctor.sh의 --usage와 같은 식을 쓴다 (평가 v5 · E-14).
+  # 경고가 되고, 무시를 학습시킨다 (평가 v5 · E-14).
+  #
+  # **경고의 분모는 그보다 더 좁다 — `matcher` 없는 훅만이다.** 같은 E-14의 논리를 한 단계
+  # 더 적용한 것이다: matcher가 있는 훅은 그 도구를 쓰지 않으면 발화할 기회 자체가 없다.
+  #   matcher 없음 → SessionStart·Stop·SessionEnd·PreCompact = 세션마다 무조건 발화
+  #   matcher 있음 → PreToolUse(Edit|Write|Bash) · PostToolUse(Skill) = 사용자 행동에 종속
+  # 스킬을 한 번도 부르지 않는 사용자는 track-skill.sh가 영영 안 돌아 4/5에 머문다.
+  # 전체 수를 분모로 쓰면 그 사용자에게는 **고칠 방법이 없는 경고가 영구 표시**된다.
+  # doctor --usage의 「살아있는 훅 N/M」은 전체 수를 쓰되 경고하지 않는 계측이라 그대로 둔다.
   EXPECTED=$(epcc_num "$(jq -r '[.hooks|to_entries[].value[]?.hooks[]?.command
                   | capture("(?<f>[a-z0-9-]+)\\.sh").f] | unique | length' "$HOOKS_JSON" 2>/dev/null)")
-  if [ -f "$HB" ]; then
-    # 로그에 남은 **고유 훅 이름 수**. 시간 필터는 없다 — 여기 있던 "최근 7일 내"는
-    # 코드에 없는 조건이었다. 의미는 메시지대로 "돈 적 있는가"이고, 그것이 성립하려면
-    # 회전이 이름의 마지막 증거를 지우지 않아야 한다 (common.sh epcc_heartbeat의 불변식).
-    SEEN=$(epcc_num "$(awk -F'|' '{print $1}' "$HB" 2>/dev/null | sort -u | wc -l)")
-    FAILED=$(awk -F'|' '$4!="0" {print $1}' "$HB" 2>/dev/null | sort -u | tr '\n' ' ')
-    if [ "$SEEN" -lt "$EXPECTED" ]; then
-      printf -- '- ⚠️ 훅 생존 %s/%s — 일부 훅이 실행된 적 없음. `bash "%s/scripts/doctor.sh" --self-test` 확인\n' "$SEEN" "$EXPECTED" "$PLUGIN_ROOT"
-      epcc_edge "session-start" "doctor"
-    else
-      printf -- '- 훅 %s/%s 정상\n' "$SEEN" "$EXPECTED"
-    fi
-    [ -n "$FAILED" ] && printf -- '- ⚠️ 비정상 종료 훅: %s\n' "$FAILED"
+  UNCOND=$({ jq -r '[.hooks|to_entries[].value[]? | select((.matcher // "") == "")
+                  | .hooks[]?.command | capture("(?<f>[a-z0-9-]+)\\.sh").f] | unique | .[]' \
+                  "$HOOKS_JSON" 2>/dev/null || true; })
+  UN=$(epcc_num "$(printf '%s\n' "$UNCOND" | grep -c .)")
+
+  # 로그에 남은 **고유 훅 이름 수**. 시간 필터는 없다 — 여기 있던 "최근 7일 내"는
+  # 코드에 없는 조건이었다. 의미는 메시지대로 "돈 적 있는가"이고, 그것이 성립하려면
+  # 회전이 이름의 마지막 증거를 지우지 않아야 한다 (common.sh epcc_heartbeat의 불변식).
+  #
+  # `[ -f "$HB" ]` 분기는 두지 않는다 — 이 파일 17행의 epcc_begin이 판정보다 먼저
+  # 로그를 만들므로 「없음」은 도달 불가였다. 첫 세션은 **파일 부재가 아니라
+  # session-brief 자신의 기록 수**로 판정한다 (이번 세션 것이 이미 1건 들어있다).
+  SEEN=$(epcc_num "$(awk -F'|' '{print $1}' "$HB" 2>/dev/null | sort -u | wc -l)")
+  SESSIONS=$(epcc_num "$(awk -F'|' '$1=="session-brief"' "$HB" 2>/dev/null | wc -l)")
+  FAILED=$(awk -F'|' '$4!="0" {print $1}' "$HB" 2>/dev/null | sort -u | tr '\n' ' ')
+
+  # 무조건 발화 훅 중 로그에 없는 것
+  UMISS=""
+  for h in $UNCOND; do
+    awk -F'|' -v n="$h" '$1==n {found=1} END{exit !found}' "$HB" 2>/dev/null || UMISS="$UMISS $h"
+  done
+
+  if [ "$SESSIONS" -le 1 ]; then
+    # 첫 세션. SessionStart 말고는 어떤 훅도 돌 기회가 없었다 — 여기서 경고를 내면
+    # 신규 사용자가 가장 먼저 보는 것이 「고장」이 되고, 그것은 오탐이다.
+    printf -- '- 첫 세션 — 훅 생존 판정은 다음 세션부터 (지금은 SessionStart만 발화 가능)\n'
+  elif [ -n "$UMISS" ]; then
+    printf -- '- ⚠️ 훅 생존 %s/%s — 세션마다 발화해야 하는 훅이 실행된 적 없음:%s. `bash "%s/scripts/doctor.sh" --self-test` 확인\n' \
+      "$((UN - $(printf '%s\n' $UMISS | grep -c .)))" "$UN" "$UMISS" "$PLUGIN_ROOT"
+    epcc_edge "session-start" "doctor"
+  elif [ "$SEEN" -lt "$EXPECTED" ]; then
+    # 무조건 훅은 전부 살아있고, 조건부 훅만 미발화 — 정상이다. 경고하지 않는다.
+    printf -- '- 훅 %s/%s 정상 (조건부 %s개는 해당 도구 사용 시 발화)\n' "$UN" "$UN" "$((EXPECTED - SEEN))"
   else
-    printf -- '- 훅 하트비트 없음 (첫 세션)\n'
+    printf -- '- 훅 %s/%s 정상\n' "$SEEN" "$EXPECTED"
   fi
+  [ -n "$FAILED" ] && printf -- '- ⚠️ 비정상 종료 훅: %s\n' "$FAILED"
 fi
 
 # jq 부재 — 조용히 기능이 준다. 빌드 게이트는 판정 불가로 떨어지고(차단하지 않음)
@@ -277,10 +306,13 @@ printf -- '- 자기검증: `bash "%s/scripts/doctor.sh"`\n' "$PLUGIN_ROOT"
 LF="$EPCC_ROOT/docs/lessons.md"
 if [ -f "$LF" ]; then
   # grep은 무매칭 시 exit 1 — pipefail+ERR 트랩이 훅을 죽이지 않도록 || true 가드
+  # false-positive는 승격이 아니라 수축 대상이다 (rules/lessons.md) — 승격 후보에서 빼고 따로 알린다
   CAND=$({ grep -oE '\[category: [^]]+\]' "$LF" 2>/dev/null || true; } \
     | sed 's/\[category: //;s/\]//' | sort | uniq -c | sort -rn \
-    | awk '$1>=3 {printf "%s(%s) ", $2, $1}')
+    | awk '$1>=3 && $2!="false-positive" {printf "%s(%s) ", $2, $1}')
   [ -n "$CAND" ] && printf -- '- 교훈 승격 후보: %s→ `bash "%s/scripts/doctor.sh" --lessons`\n' "$CAND" "$PLUGIN_ROOT"
+  FPN=$(epcc_num "$({ grep -c '^## \[category: false-positive\]' "$LF" 2>/dev/null || true; })")
+  [ "$FPN" -ge 2 ] && printf -- '- 오탐 %s건 기록 — 장치별 수축 후보는 `--lessons`가 집계 (규칙 추가가 아니라 조건 좁히기)\n' "$FPN"
   RCAND=$({ grep -oE '\[request: [^]]+\]' "$LF" 2>/dev/null || true; } \
     | sed 's/\[request: //;s/\]//' | sort | uniq -c | sort -rn \
     | awk '$1>=3 {printf "%s(%s) ", $2, $1}')
