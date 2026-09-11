@@ -15,13 +15,24 @@
 자산이 늘거나 이름이 바뀌면 다시 돌려서 나온 SVG 를 user.html 에 갈아넣는다.
 
 사용:
-  python3 scripts/gen/graph-svg.py [그래프.json] [출력.svg]
-  기본값: workflow.graph.json → docs/manual/graph.svg
+  python3 scripts/gen/graph-svg.py [그래프.json] [출력.svg] [--lang ko|en]
+  기본값: workflow.graph.json → docs/manual/graph.svg (ko)
 """
 import json, pathlib, sys
 
-SRC = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "workflow.graph.json")
-OUT = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else "docs/manual/graph.svg")
+argv, LANG, _it = [], "ko", iter(sys.argv[1:])
+for a in _it:
+    if a == "--lang":
+        LANG = next(_it, "ko")            # 값까지 소비한다 — 안 그러면 위치 인자로 샌다
+    elif a.startswith("--"):
+        sys.exit("알 수 없는 옵션: %s" % a)
+    else:
+        argv.append(a)
+if LANG not in ("ko", "en"):
+    sys.exit("--lang 은 ko 또는 en 입니다: %s" % LANG)
+SRC = pathlib.Path(argv[0] if len(argv) > 0 else "workflow.graph.json")
+OUT = pathlib.Path(argv[1] if len(argv) > 1 else
+                   ("docs/manual/en/graph.svg" if LANG == "en" else "docs/manual/graph.svg"))
 if not SRC.exists():
     sys.exit("그래프를 찾지 못했습니다: %s (저장소 루트에서 실행하세요)" % SRC)
 
@@ -39,9 +50,24 @@ CH1 = 640                                          # 띠1 되돌림 채널
 CH2 = 1060                                         # 띠2 되돌림 채널
 LANES = [672, 686, 700, 714]                       # 띠 사이 가로 차선
 
-RULER = [("진입", 0), ("탐색·계획", 1), ("준비 산출", 2), ("구현", 3),
-         ("검증", 4), ("교차검증", 5), ("되받기", 6)]
+RULER_KO = [("진입", 0), ("탐색·계획", 1), ("준비 산출", 2), ("구현", 3),
+            ("검증", 4), ("교차검증", 5), ("되받기", 6)]
+RULER_EN = [("Enter", 0), ("Explore · Plan", 1), ("Prep output", 2), ("Build", 3),
+            ("Verify", 4), ("Cross-check", 5), ("Take back", 6)]
 
+EN = {
+    "session-start": "session briefing", "understand": "explore", "plan": "plan",
+    "build": "implement", "verify": "hand to review", "cross-check": "reviewer's extra pass",
+    "epcc-planner": "delegated design", "epcc-reviewer": "independent review",
+    "security-check": "blocks secrets · destructive cmds", "build-gate": "verification gate",
+    "track-skill": "records skill use", "handoff": "handoff note",
+    "prd-generator": "writes the PRD", "dev-docs-generator": "dev documents",
+    "completion-review": "closing docs", "codex-claude-loop": "external model check",
+    "receiving-code-review": "vets incoming feedback", "doctor": "self-verification",
+    "lessons": "lessons log", "eval-report": "evaluation report",
+    "rule-promotion": "asset promotion", "user-report": "report to a human",
+    "harness-evaluation": "harness evaluation", "skill-enhancer": "skill redesign",
+}
 KO = {
     "session-start": "세션 시작 브리핑", "understand": "탐색", "plan": "계획",
     "build": "구현", "verify": "리뷰 맡김", "cross-check": "리뷰어의 추가 단계",
@@ -95,11 +121,27 @@ CROSS = {
     ("cross-check", "lessons"):             (1, "t", COLX[6] + 60),
     ("completion-review", "user-report"):   (0, "t", COLX[0] + 100),
 }
+_SUB = {"ko": "서브에이전트 · 별도 컨텍스트", "en": "subagent · separate context"}[LANG]
+_IRR = {"ko": "Irreversible 전용 묶음", "en": "Irreversible only"}[LANG]
 GROUPS = [
-    (COLX[2] - 14, 296, W + 28, 96,  "서브에이전트 · 별도 컨텍스트"),
-    (COLX[5] - 14, 92,  W + 28, 96,  "서브에이전트 · 별도 컨텍스트"),
-    (COLX[5] - 14, 190, W + 28, 100, "Irreversible 전용 묶음"),
+    (COLX[2] - 14, 296, W + 28, 96,  _SUB),
+    (COLX[5] - 14, 92,  W + 28, 96,  _SUB),
+    (COLX[5] - 14, 190, W + 28, 100, _IRR),
 ]
+LABEL = KO if LANG == "ko" else EN
+RULER = RULER_KO if LANG == "ko" else RULER_EN
+TXT = {
+  "ko": dict(band1="작업 흐름 — 왼쪽에서 오른쪽으로",
+             band2="피드백 루프 — 오른쪽에서 왼쪽으로 되먹인다",
+             flow="진행 →", bus="구현하는 내내 · 기계가 실행",
+             ch1="← 결함이 나오면 구현으로 되돌아간다", ch2="← 평가 결과가 교훈으로",
+             short="진입 조건 4상태 충족 → 준비 단계를 건너뛴다"),
+  "en": dict(band1="WORK FLOW — left to right",
+             band2="FEEDBACK LOOP — feeds back right to left",
+             flow="order →", bus="throughout the build · run by the machine",
+             ch1="← defects send the work back to build", ch2="← evaluation results become lessons",
+             short="all four entry states met → prep phases are skipped"),
+}[LANG]
 
 def x_of(nid):  return COLX[POS[nid][0]]
 def y_of(nid):  return POS[nid][1]
@@ -210,7 +252,7 @@ def shape(nid, x, y):
     if nid in BLOCKING:
         col = "var(--g-block)"
     o.append('<text class="gn" x="%.0f" y="%d" text-anchor="middle" fill="%s">%s</text>' % (x + W / 2, y + 24, col, nid))
-    o.append('<text class="gk" x="%.0f" y="%d" text-anchor="middle" fill="var(--g-soft)">%s</text>' % (x + W / 2, y + 42, KO.get(nid, "")))
+    o.append('<text class="gk" x="%.0f" y="%d" text-anchor="middle" fill="var(--g-soft)">%s</text>' % (x + W / 2, y + 42, LABEL.get(nid, "")))
     return "\n".join(o)
 
 def edge(d, kind="fwd", both=False):
@@ -258,13 +300,22 @@ for a, b, inst in E:
     else:
         back.append((a, b, inst))
 
+ALT = {
+  "ko": ("workflow.graph.json 의 핵심 경로. 왼쪽에서 오른쪽으로 진행하며 열이 순서를 나타낸다. "
+         "진입에서 탐색과 계획을 거쳐 준비 산출물을 만들고 구현으로 모인 뒤 검증과 교차검증으로 이어진다. "
+         "구현 아래에는 훅 넷이 버스로 매달려 있고 차단하는 둘은 경고색이다. "
+         "되돌아가는 선은 본문을 지나지 않고 띠 아래 전용 채널로 빠져 구현으로 합류한다. "
+         "아래 띠는 피드백 루프이며 오른쪽 교훈 기록에서 왼쪽 사람에게 보고까지 되먹인다."),
+  "en": ("The core paths of workflow.graph.json. Work runs left to right and the column is the order. "
+         "From session start through explore and plan, preparation outputs converge on build, "
+         "then verify and cross-check. Four hooks hang from a bus below build; the two that block are "
+         "drawn in the warning colour. Return edges never cross the body — they drop into a dedicated "
+         "channel under the band and merge back into build. The lower band is the feedback loop, "
+         "feeding from the lessons log on the right back to the human report on the left."),
+}[LANG]
+
 parts = [
-    '<svg viewBox="0 0 %d 1150" role="img" aria-label="'
-    'workflow.graph.json 의 핵심 경로. 왼쪽에서 오른쪽으로 진행하며 열이 순서를 나타낸다. '
-    '진입에서 탐색과 계획을 거쳐 준비 산출물을 만들고 구현으로 모인 뒤 검증과 교차검증으로 이어진다. '
-    '구현 아래에는 훅 넷이 버스로 매달려 있고 차단하는 둘은 경고색이다. '
-    '되돌아가는 선은 본문을 지나지 않고 띠 아래 전용 채널로 빠져 구현으로 합류한다. '
-    '아래 띠는 피드백 루프이며 오른쪽 교훈 기록에서 왼쪽 사람에게 보고까지 되먹인다.">' % CANVAS_W,
+    '<svg viewBox="0 0 %d 1150" role="img" aria-label="%s">' % (CANVAS_W, ALT),
     '<defs>',
 ]
 for mid, col in [("ga", "--g-edge"), ("gi", "--g-inst"), ("gb", "--g-back")]:
@@ -275,8 +326,8 @@ for mid, col in [("ga", "--g-edge"), ("gi", "--g-inst"), ("gb", "--g-back")]:
 parts.append('</defs>')
 
 # 띠
-for (bx, by, bw, bh, label) in [(*BAND1, "작업 흐름 — 왼쪽에서 오른쪽으로"),
-                                (*BAND2, "피드백 루프 — 오른쪽에서 왼쪽으로 되먹인다")]:
+for (bx, by, bw, bh, label) in [(*BAND1, TXT["band1"]),
+                                (*BAND2, TXT["band2"])]:
     parts.append('<rect x="%d" y="%d" width="%d" height="%d" rx="10" fill="var(--g-band)" stroke="var(--g-line)" stroke-width="1"/>'
                  % (bx, by, bw, bh))
     parts.append('<text class="gb" x="%d" y="%d" fill="var(--g-faint)">%s</text>' % (bx + 18, by + 24, label))
@@ -286,7 +337,7 @@ parts.append('<line x1="%d" y1="72" x2="%d" y2="72" stroke="var(--g-line)" strok
 for label, c in RULER:
     parts.append('<text class="gr" x="%.0f" y="62" text-anchor="middle" fill="var(--g-faint)">%s</text>' % (COLX[c] + W / 2, label))
     parts.append('<line x1="%.0f" y1="66" x2="%.0f" y2="78" stroke="var(--g-line)" stroke-width="1.5"/>' % (COLX[c] + W / 2, COLX[c] + W / 2))
-parts.append('<text class="gr" x="%d" y="62" fill="var(--g-faint)">진행 →</text>' % (BAND1[0] + 8))
+parts.append('<text class="gr" x="%d" y="62" fill="var(--g-faint)">%s</text>' % (BAND1[0] + 8, TXT["flow"]))
 
 # 점선 묶음
 for (gx, gy, gw, gh, glabel) in GROUPS:
@@ -340,13 +391,13 @@ if SHORTCUT in lookup:
                       % (cx(a), y_of(a), ty + 9, cx(a), ty, cx(a) + 9, ty,
                          cx(b) - 9, cx(b), ty, cx(b), ty + 9, y_of(b)), "fwd"))
     parts.append('<text class="gg" x="%.0f" y="%d" text-anchor="middle" fill="var(--g-soft)">'
-                 '진입 조건 4상태 충족 → 준비 단계를 건너뛴다</text>' % ((cx(a) + cx(b)) / 2, ty - 8))
+                 '%s</text>' % ((cx(a) + cx(b)) / 2, ty - 8, TXT["short"]))
 
 # ── 훅 버스 ─────────────────────────────────────────────────────────
 bus_bottom = HOOK_Y0 + HOOK_DY * (len(HOOKBUS) - 1) + H / 2
 parts.append('<rect x="%d" y="%d" width="%d" height="%d" rx="8" fill="none" stroke="var(--g-hook)" stroke-width="1.1" stroke-dasharray="5 5" opacity="0.55"/>'
              % (TRUNK_X - 16, HOOK_Y0 - 22, W + 76, bus_bottom - HOOK_Y0 + 52))
-parts.append('<text class="gg" x="%d" y="%d" fill="var(--g-hook)">구현하는 내내 · 기계가 실행</text>' % (TRUNK_X - 16, HOOK_Y0 - 30))
+parts.append('<text class="gg" x="%d" y="%d" fill="var(--g-hook)">%s</text>' % (TRUNK_X - 16, HOOK_Y0 - 30, TXT["bus"]))
 parts.append('<path d="M%.0f,%d V%.0f" fill="none" stroke="var(--g-hook)" stroke-width="1.6"/>'
              % (cx("build"), y_of("build") + H, HOOK_Y0 - 22))
 parts.append('<path d="M%.0f,%d H%d V%.0f" fill="none" stroke="var(--g-hook)" stroke-width="1.6"/>'
@@ -370,8 +421,8 @@ for i, hid in enumerate(HOOKBUS):
     parts.append(shape(hid, HOOK_X, HOOK_Y0 + HOOK_DY * i))
 
 # 채널 라벨 — 되돌아오는 선이 무엇인지 말해 준다
-parts.append('<text class="gg" x="%d" y="%d" fill="var(--g-back)">← 결함이 나오면 구현으로 되돌아간다</text>' % (COLX[3] + 30, CH1 + 18))
-parts.append('<text class="gg" x="%d" y="%d" fill="var(--g-back)">← 평가 결과가 교훈으로</text>' % (COLX[3], CH2 + 18))
+parts.append('<text class="gg" x="%d" y="%d" fill="var(--g-back)">%s</text>' % (COLX[3] + 30, CH1 + 18, TXT["ch1"]))
+parts.append('<text class="gg" x="%d" y="%d" fill="var(--g-back)">%s</text>' % (COLX[3], CH2 + 18, TXT["ch2"]))
 parts.append('</svg>')
 
 OUT.parent.mkdir(parents=True, exist_ok=True)

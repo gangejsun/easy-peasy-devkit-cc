@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EPCC 하네스 설명서</title>
-<meta name="description" content="EPCC Devkit 하네스를 그림으로 설명합니다 — 쓰는 사람을 위한 작업 지도와, 관리자를 위한 관리 지도.">
-<meta property="og:title" content="EPCC 하네스 설명서">
-<meta property="og:description" content="쓰는 사람을 위한 작업 지도와, 관리자를 위한 관리 지도.">
+<title>EPCC Harness Guide</title>
+<meta name="description" content="The EPCC Devkit harness explained in pictures — a work map for people who use it, and an admin map for people who maintain it.">
+<meta property="og:title" content="EPCC Harness Guide">
+<meta property="og:description" content="A work map for people who use it, and an admin map for people who maintain it.">
 <meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🪢</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <style>
   :root{
     color-scheme:light dark;
@@ -20,8 +20,8 @@
     --line:#C4CCCA; --line-hard:#9EAAA8;
     --anod:#0B7B85; --anod-soft:#D2E6E7;
     --webbing:#B87E05; --webbing-soft:#F6E7BE;
-    --display:"Black Han Sans","IBM Plex Sans KR",sans-serif;
-    --body:"IBM Plex Sans KR","Noto Sans KR",system-ui,sans-serif;
+    --display:"Archivo Black","IBM Plex Sans",sans-serif;
+    --body:"IBM Plex Sans",system-ui,sans-serif;
     --mono:"IBM Plex Mono",ui-monospace,monospace;
   }
   @media (prefers-color-scheme:dark){
@@ -43,7 +43,7 @@
   .wrap{max-width:900px;margin:0 auto;padding:0 24px 80px}
   header{padding:72px 0 44px;border-bottom:2px solid var(--ink)}
   .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--anod);margin:0 0 20px;font-weight:600}
-  h1{font-family:var(--display);font-weight:400;font-size:clamp(42px,8vw,78px);line-height:1.04;margin:0 0 18px;letter-spacing:-.01em}
+  h1{font-family:var(--display);font-weight:400;font-size:clamp(38px,7vw,68px);line-height:1.06;margin:0 0 18px;letter-spacing:-.01em}
   .lede{font-size:clamp(17px,2.2vw,20px);color:var(--soft);max-width:50ch;margin:0}
   .lede strong{color:var(--ink);font-weight:600}
 
@@ -66,50 +66,50 @@
 </head>
 <body>
 
-<div class="strap"><span>EPCC Devkit</span><span>그림 설명서</span><a href="en/">English →</a><span>v3.28.0</span></div>
+<div class="strap"><span>EPCC Devkit</span><span>Illustrated guide</span><a href="../">한국어 →</a><span>v3.28.0</span></div>
 
 <div class="wrap">
   <header>
-    <p class="kicker">하네스 = 안전벨트</p>
-    <h1>EPCC 하네스<br>설명서</h1>
-    <p class="lede">Claude Code용 개발 하네스입니다. <strong>길을 정해주고, 위험한 곳에서 밧줄을 굵게 하고, 떨어지려 할 때 잡아줍니다.</strong> 어느 쪽에서 보실지 고르세요.</p>
+    <p class="kicker">a harness is a safety line</p>
+    <h1>EPCC Harness<br>Guide</h1>
+    <p class="lede">A development harness for Claude Code. <strong>It picks the route, thickens the rope where the ground is dangerous, and catches you when you slip.</strong> Choose where you are standing.</p>
   </header>
 
   <div class="pick">
     <a class="card" href="user.html">
-      <span class="who">이 장비를 매는 사람</span>
-      <h2>작업 지도</h2>
-      <p>무엇을 언제 어떻게 쓰는가.</p>
+      <span class="who">You clip into this gear</span>
+      <h2>Harness Map</h2>
+      <p>What fires when, and why.</p>
       <ul>
-        <li>작업 유형마다 다른 길 길이</li>
-        <li>되돌림 클래스 — 밧줄 세 굵기</li>
-        <li>시간 축에 걸린 문 다섯 개</li>
-        <li>큰 작업 한 번 따라가기</li>
-        <li>막혔을 때 · 안티패턴</li>
+        <li>Each task type walks a different length</li>
+        <li>Reversibility class — three rope gauges</li>
+        <li>Five gates on the session timeline</li>
+        <li>Pick a case and see its exact path</li>
+        <li>When you get blocked · anti-patterns</li>
       </ul>
-      <span class="go">열기 →</span>
+      <span class="go">Open →</span>
     </a>
 
     <a class="card" href="ops.html">
-      <span class="who">이 장비를 관리하는 사람</span>
-      <h2>관리자 지도</h2>
-      <p>고치고 유지보수할 때 알아야 할 것.</p>
+      <span class="who">You maintain this gear</span>
+      <h2>Admin Map</h2>
+      <p>What to know before you change it.</p>
       <ul>
-        <li>부품 여섯 종과 로드 비용</li>
-        <li>런북 12종 — 고치려는 대상을 고른다</li>
-        <li>차단 장치는 세 상태다</li>
-        <li>버전은 4곳이 아니라 5단계</li>
-        <li>절대 깨지 않는 불변식 8개</li>
+        <li>Six kinds of part, and what each costs to load</li>
+        <li>12 runbooks — pick what you are touching</li>
+        <li>A blocking device has three states</li>
+        <li>Releasing is five steps, not four places</li>
+        <li>Eight invariants that never break</li>
       </ul>
-      <span class="go">열기 →</span>
+      <span class="go">Open →</span>
     </a>
   </div>
 
   <div class="after">
-    <h3>이 페이지들은 그림 요약입니다</h3>
-    <p><strong>판정 기준은 저장소 파일이 갖고 있습니다.</strong> 여기 적힌 것과 저장소가 다르면 저장소가 맞습니다 — 사본이 정본 행세를 하지 않도록 그렇게 정해두었습니다.</p>
-    <p>글로 된 전체 문서: <code>docs/user-manual.md</code> · <code>docs/operations-manual.md</code> · <code>docs/harness-anatomy.md</code>.
-       저장소는 <a href="https://github.com/gangejsun/easy-peasy-devkit-cc">github.com/gangejsun/easy-peasy-devkit-cc</a>에 있습니다.</p>
+    <h3>These pages are a picture summary</h3>
+    <p><strong>The judgement rules live in the repository files.</strong> Where these pages and the repository disagree, the repository is right — set that way so a copy never poses as the original.</p>
+    <p>The full prose documents: <code>docs/user-manual.md</code> · <code>docs/operations-manual.md</code> · <code>docs/harness-anatomy.md</code>.
+       The repository lives at <a href="https://github.com/gangejsun/easy-peasy-devkit-cc">github.com/gangejsun/easy-peasy-devkit-cc</a>.</p>
   </div>
 </div>
 
