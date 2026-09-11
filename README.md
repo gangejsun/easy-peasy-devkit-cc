@@ -15,7 +15,7 @@ v2에서 훅 11개 중 10개가 경로 계산 오류와 출력 규격 불일치�
 아무도 그것을 알아채지 못했습니다. v3는 그 실패가 구조적으로 불가능하도록 다시 만들었습니다.
 
 > **각 장치가 왜 그 자리에 그 형태로 있는지**는 [하네스 해부](docs/harness-anatomy.md)에
-> 정리되어 있습니다 — 훅 5종·규칙 3계층·루프 5종·그래프 엔지니어링을 각각이 막는 실패에서
+> 정리되어 있습니다 — 훅 5종·규칙 3계층·루프 6종·그래프 엔지니어링을 각각이 막는 실패에서
 > 출발해 설명하고, 작업 1건을 끝까지 추적하는 워크스루로 넷을 한 번에 보여줍니다.
 
 ## Quick Start
@@ -39,6 +39,8 @@ claude plugin install epcc-devkit
 > claude plugin marketplace add <이 저장소 경로>
 > claude plugin install epcc-devkit@easy-peasy-devkit
 > ```
+
+**하네스 평가 스킬은 소비자에게 배송되지 않습니다.** `/harness-evaluation`은 이 플러그인을 **만드는** 사람만 쓰는 도구라 `epcc-harness`로 분리했습니다 — 설치할 필요가 없습니다.
 
 **마케팅 스킬은 별도 플러그인입니다.** 같은 마켓플레이스에 `epcc-marketing`(스킬 5종 —
 AI 프롬프트 · 스크롤 드리븐 사이트 · SEO 3-Mode · 웹 에셋)이 함께 있고, **독립 버전**으로
@@ -104,9 +106,9 @@ Phase 번호는 순서 표시일 뿐 의무가 아닙니다 — 진입 조건 4�
 | 계층 | 수 | 내용 |
 |------|-----|------|
 | **훅** | 5 스크립트 / 6 등록 | SessionStart · PreToolUse · Stop · PreCompact · SessionEnd · PostToolUse |
-| **규칙** | T0 41줄 + T1 9개 1,071줄 | T0는 훅이 상시 주입(플러그인 소유). T1은 `workflow-routing`이 **매 세션 상시**, 나머지는 경로 매칭 시 조건부 로드 |
+| **규칙** | T0 41줄 + T1 9개 1,051줄 | T0는 훅이 상시 주입(플러그인 소유). T1은 `workflow-routing`이 **매 세션 상시**, 나머지는 경로 매칭 시 조건부 로드 |
 | **에이전트** | 2 | `epcc-planner`(쓰기 없음) · `epcc-reviewer`(읽기 전용) |
-| **스킬** | 26 | 측량·기획·구현·검증·보안·PR 워크플로우 + 스택 가이드 생성기 + 스킬 강화기 (마케팅 5종은 `epcc-marketing` 플러그인으로 분리) |
+| **스킬** | 25 | 측량·기획·구현·검증·보안·PR 워크플로우 + 스택 가이드 생성기 + 스킬 강화기 (마케팅 5종은 `epcc-marketing`, 하네스 평가 1종은 `epcc-harness` 플러그인으로 분리) |
 | **프리셋** | 2축 5+9 | 프론트엔드: nextjs·react-vite·vue·vanilla·none / 백엔드: supabase·firebase·aws-serverless·aws-container·gcp-serverless·fastapi·node-api·node-nest·none |
 
 ### 훅
@@ -148,7 +150,7 @@ code-conventions)을 생성합니다 — 레포 토폴로지(싱글/모노레포
 
 권한이 없으면 위반이 불가능합니다. 지시보다 권한 제거를 우선합니다.
 
-### 스킬 26개 — 무엇이 부르는가
+### 스킬 25개 — 무엇이 부르는가
 
 호출 조건의 정본은 `.claude/rules/workflow-routing.md`의 Phase 표입니다. 아래는 그 인용이며,
 `doctor --fast`가 이 표에 스킬 이름이 빠지면 실패시킵니다.
@@ -188,7 +190,7 @@ bash scripts/doctor.sh --all        # 전체
 ## 그래프 선언
 
 `workflow.graph.json`이 노드(에이전트·스킬·훅)와 엣지(전이 조건), **에러 엣지**를
-기계 판독 가능한 형태로 선언합니다. 현재 노드 48 · 엣지 85.
+기계 판독 가능한 형태로 선언합니다. 현재 노드 48 · 엣지 87.
 
 `doctor --graph`가 검증합니다:
 - 모든 엣지의 타깃이 실재하는가
@@ -273,11 +275,11 @@ mkdir -p .claude/skills/my-brainstorming
 | 항목 | v2 | v3 |
 |------|-----|-----|
 | 훅 | 11개 (Stop의 `decision`/`reason` 등 출력 규격 위반으로 다수가 무효) | **5개, 전부 자기검증** |
-| 규칙 | generator가 `.claude/rules/`에 복사 (무조건 로드 3장 + 조건부 11장) | **T0 41줄 + T1 1,071줄, `install-rules.sh`로 설치 실증. 상시/조건부 구분 유지** |
+| 규칙 | generator가 `.claude/rules/`에 복사 (무조건 로드 3장 + 조건부 11장) | **T0 41줄 + T1 1,051줄, `install-rules.sh`로 설치 실증. 상시/조건부 구분 유지** |
 | 검증 강도 | S/M/L 규모 판단 | **되돌림 가능성 축 (경로 판정)** |
 | Phase | P0~P6 (`.claude/rules/task-workflow.md` 상시 로드) | **P0~P6 유지** — `workflow-routing.md`로 이관, 상시 로드 성질 보존 |
 | 에이전트 | frontmatter 없음, 전체 도구 접근 | **계약 완비 + 최소 권한** |
-| 스킬 | 37개 | **26개** (네이티브가 더 나은 것만 제거, 가이드 생성기·강화기·축약 원장 추가) |
+| 스킬 | 37개 | **25개** (네이티브가 더 나은 것만 제거, 가이드 생성기·강화기·축약 원장 추가) |
 | 검증 | 없음 | **`doctor` 5개 모드** |
 | 그래프 | 산문으로 흩어짐 | **`workflow.graph.json` + 계측** |
 
@@ -304,7 +306,7 @@ PostToolUse 추적기 3종
 ## Next Steps
 
 - [사용자 매뉴얼](docs/user-manual.md) — **작업 유형별로 무엇을 언제 쓰는가** (여정 중심)
-- [운영 매뉴얼](docs/operations-manual.md) — 하네스를 고치고 유지보수하는 사람용 (절차·런북)
+- [운영 매뉴얼](docs/operations-manual.md) — 관리자용: 하네스를 고치고 유지보수하는 절차·런북
 - [하네스 해부](docs/harness-anatomy.md) — 훅·규칙 3계층·루프·그래프가 **왜 그렇게 구현됐는가**
 - [Configuration Reference](docs/configuration.md) — `epcc.config.json` 전체 옵션
 - [Presets Guide](docs/presets.md) — 프리셋 상세
