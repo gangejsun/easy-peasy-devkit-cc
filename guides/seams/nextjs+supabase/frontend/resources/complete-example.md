@@ -1,13 +1,23 @@
-<!-- epcc-seam: nextjs+supabase/frontend v3.12.0 -->
+<!-- epcc-seam: nextjs+supabase/frontend v3.31.0 -->
 # Complete Example — Tasks (목록 + 생성)
 
 기능 하나를 처음부터 끝까지: 할 일 **목록 조회 + 새 항목 생성**.
 Server Component 페칭 → Server Action 변이 → `revalidatePath` 갱신의 전체 루프.
 
-## 0. 전제
+## 0. 이 예제가 쓰는 계약
+
+프론트와 백엔드가 같은 것을 보게 하는 정본은 스키마가 아니라 **와이어 계약**이다
+(프로젝트에서는 `dev/docs/api/wire-contract.md`). 이 예제는 그 계약의 두 절을 소비한다:
+
+- 어휘(§0): 엔티티 `Task` · 컬렉션 `tasks` · 한국어 표기 작업
+- Server Action 경계(§6): `ActionState` — 폼 에러는 throw가 아니라 타입으로 돌려준다
+
+서버 컴포넌트가 데이터 계층을 직접 읽으므로 이 예제는 §1~§5의 HTTP 봉투를 소비하지 않는다.
+아래는 **이 계약을 만족하는 스키마**다 — 선행 조건이 아니라 같은 계약의 백엔드 쪽 면이고,
+테이블·RLS·검증 설계는 backend-guide 관할이다. 화면이 먼저 굳고 스키마가 그 뒤를 따른다.
 
 - `tasks` 테이블: `id uuid pk` · `user_id uuid` · `title text` · `done boolean` · `created_at timestamptz`
-- RLS로 본인 행만 접근 가능 — 테이블·RLS·검증 설계는 backend-guide 관할
+- RLS로 본인 행만 접근 가능
 - `lib/supabase/server.ts`·`middleware.ts`는 구성 완료 상태
   (각각 resources/data-fetching.md, resources/routing.md)
 
