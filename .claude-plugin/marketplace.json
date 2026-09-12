@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "EasyPeasy Claude Code Devkit — AI Native Dev Harness (되돌림 축 + 자기검증 훅 + 그래프 계측)",
-    "version": "3.28.0"
+    "version": "3.29.0"
   },
   "plugins": [
     {
       "name": "epcc-devkit",
       "source": "./",
-      "description": "AI Native Dev Harness — 되돌림 가능성 축 워크플로우, 자기검증 훅 5종, 그래프 계측(doctor). 26개 스킬 + 축 가이드 팩(프론트 4 · 백엔드 8), 2축 프리셋(프론트 5 · 백엔드 9).",
-      "version": "3.28.0",
+      "description": "AI Native Dev Harness — 되돌림 가능성 축 워크플로우, 자기검증 훅 5종, 그래프 계측(doctor). 25개 스킬 + 축 가이드 팩(프론트 4 · 백엔드 8), 2축 프리셋(프론트 5 · 백엔드 9).",
+      "version": "3.29.0",
       "author": {
         "name": "gangejsun"
       },
@@ -67,6 +67,31 @@
         "content",
         "favicon",
         "landing-page"
+      ]
+    },
+    {
+      "name": "epcc-harness",
+      "source": "./harness/",
+      "description": "하네스 저작 전용 도구 — 그래프 엔진을 경로 단위 8축으로 전수 평가하는 harness-evaluation 스킬. epcc-devkit을 **쓰는** 사람에게는 불필요하고, epcc-devkit을 **만드는** 사람만 설치한다. 개발 하네스와 독립 버전이다.",
+      "version": "1.0.0",
+      "author": {
+        "name": "gangejsun"
+      },
+      "license": "MIT",
+      "homepage": "https://github.com/gangejsun/easy-peasy-devkit-cc",
+      "repository": "https://github.com/gangejsun/easy-peasy-devkit-cc",
+      "keywords": [
+        "claude-code",
+        "harness",
+        "evaluation",
+        "meta"
+      ],
+      "category": "development-workflows",
+      "tags": [
+        "harness",
+        "evaluation",
+        "graph",
+        "meta"
       ]
     }
   ]

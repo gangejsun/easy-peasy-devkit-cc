@@ -57,11 +57,13 @@ num() { local v; v=$(printf '%s' "${1:-}" | tr -d '[:space:]'); case "$v" in ''|
 # 문서가 인용하는 수는 「선언↔실물」이 이 상수와 대조한다 (평가 v6 · E-25).
 T0_BUDGET=42
 
-# 스킬 루트가 둘이다 — dev 하네스(skills/)와 마케팅 플러그인(marketing/skills/).
-# **위생 검사는 둘 다** 본다: 분리가 검사 사각지대를 만들면 그 분리는 개선이 아니다.
-# 반대로 description 예산 · 그래프 선언 · 「선언↔실물」의 스킬 수는 **skills/만** 센다 —
-# 마케팅 스킬은 개발 세션 컨텍스트에 상주하지 않고 workflow.graph.json에도 없기 때문이다.
-skill_roots() { local d; for d in skills marketing/skills; do [ -d "$d" ] && printf '%s\n' "$d"; done; }
+# 스킬 루트가 셋이다 — 소비자 하네스(skills/) · 마케팅 플러그인(marketing/skills/) ·
+# 하네스 저작 플러그인(harness/skills/). 뒤의 둘은 소비자가 설치하지 않는다.
+# **위생 검사는 셋 다** 본다: 분리가 검사 사각지대를 만들면 그 분리는 개선이 아니다.
+# 반대로 description 예산 · 「선언↔실물」의 스킬 수는 **skills/만** 센다 —
+# 소비자 세션에 상주하는 것이 그것뿐이기 때문이다. 그래프는 예외로 harness/skills를
+# 포함한다: harness-evaluation은 되먹임 루프의 노드라 빠지면 그 루프가 끊긴다.
+skill_roots() { local d; for d in skills marketing/skills harness/skills; do [ -d "$d" ] && printf '%s\n' "$d"; done; }
 skill_dirs()  { local r; while IFS= read -r r; do find "$r" -mindepth 1 -maxdepth 1 -type d 2>/dev/null; done < <(skill_roots); }
 skill_mds()   { local d; while IFS= read -r d; do [ -f "$d/SKILL.md" ] && printf '%s\n' "$d/SKILL.md"; done < <(skill_dirs); }
 _shared_copies() { local d; while IFS= read -r d; do grep -rl 'epcc-doctor: shared-copy' "$d/references" "$d/resources" 2>/dev/null; done < <(skill_dirs); }
@@ -262,7 +264,7 @@ run_fast() {
   # **실패하지 않고 조용히 무매칭**이 되므로 검사가 아무것도 안 잡는 채로 통과한다.
   # -E(ERE)를 쓰고 | 로 적어야 한다.
   local bre="" n=0
-  for f in scripts/*.sh skills/*/scripts/*.sh marketing/skills/*/scripts/*.sh; do
+  for f in scripts/*.sh skills/*/scripts/*.sh marketing/skills/*/scripts/*.sh harness/skills/*/scripts/*.sh; do
     [ -f "$f" ] || continue
     code_lines "$f" 2>/dev/null | grep -qE "(grep|sed)([[:space:]]+-[a-df-zA-Z]+)*[[:space:]]+'[^']*\\\\\\|" || continue
     bre="$bre $(basename "$f")"; n=$((n+1))
@@ -576,7 +578,7 @@ run_fast() {
       # 다른 스킬이 **호출**하는가. 이름을 언급만 하는 「경계」 선언
       # ("…를 보는 것은 `/x`다")과 구분해야 한다 — 오탐은 검사를 꺼버리게 만든다.
       # 그래서 호출 동사가 같은 줄에 있을 때만 센다. 놓치는 쪽(미탐)으로 기운 판정이다.
-      elif [ "$(grep -rh -- "\`/${sname}\`" "$ROOT"/skills/*/SKILL.md "$ROOT"/marketing/skills/*/SKILL.md 2>/dev/null \
+      elif [ "$(grep -rh -- "\`/${sname}\`" "$ROOT"/skills/*/SKILL.md "$ROOT"/marketing/skills/*/SKILL.md "$ROOT"/harness/skills/*/SKILL.md 2>/dev/null \
                | grep -cE '실행|호출|부른다|순차')" -gt 0 ]; then
         flagged_routed="$flagged_routed $sname(다른 스킬이 호출)"
       fi
@@ -783,6 +785,8 @@ $c"
   # 스캔 대상 — 소비자에게 배포되거나 소비자 문서를 생성하는 자산.
   # dev/는 넣지 않는다: 개발 기록이라 옛 이름을 서술하는 것이 정상이다.
   local _pr_targets=() _pt
+  # harness/ 는 넣지 않는다: 이 절은 **소비자에게 배포되는** 자산의 잔재를 보는데,
+  # harness/ 는 저작자 본인만 설치하는 플러그인이라 자기 이름·플러그인 경로가 정상 서술이다.
   for _pt in skills rules agents templates guides marketing; do
     [ -d "$_pt" ] && _pr_targets+=("$_pt")
   done
@@ -801,7 +805,7 @@ $c"
       case "$_sname" in
         frontend-guide|backend-guide) continue ;;   # 생성물 — 정상
       esac
-      if [ -f "skills/$_sname/SKILL.md" ] || [ -f "marketing/skills/$_sname/SKILL.md" ]; then
+      if [ -f "skills/$_sname/SKILL.md" ] || [ -f "marketing/skills/$_sname/SKILL.md" ] || [ -f "harness/skills/$_sname/SKILL.md" ]; then
         bad "소비자 경로에 플러그인 스킬: .claude/skills/$_sname" \
             "플러그인 스킬은 캐시에 산다. 소비자 .claude/skills/에는 생성물(frontend-guide·backend-guide)만 놓인다"
         _pr_bad=$((_pr_bad+1))
@@ -944,7 +948,7 @@ $c"
     [ "$cv" = "$pv" ] || mism="$mism plugin.json=${cv:-없음}"
     [ "$rv" = "$pv" ] || mism="$mism README배지=${rv:-없음}"
     # marketplace.json의 버전은 2곳이다 — 마켓플레이스 metadata + **이 플러그인의** 항목.
-    # 이 저장소는 플러그인을 둘 호스팅하고(epcc-marketing은 독립 버전이다) 파일의 모든
+    # 이 저장소는 플러그인을 셋 호스팅하고(epcc-marketing·epcc-harness는 독립 버전이다) 파일의 모든
     # "version"을 긁으면 남의 버전까지 기준과 대조해 **오탐으로 실패한다.** 엔트리로 좁힌다.
     # jq 부재는 판정 불가다 — 차단하지 않고 건너뛰되 침묵하지 않는다 (3상태 규율).
     local mpname mtot=0 mbad=0 mv mskip=0
@@ -983,7 +987,18 @@ $c"
     rtag="${pname:-plugin}--v${pv}"
     if [ -e .git ] && command -v git >/dev/null 2>&1; then
       if git rev-parse -q --verify "refs/tags/$rtag" >/dev/null 2>&1; then
-        ok "릴리스 태그 존재 ($rtag)"
+        # 태그가 **있다**는 것과 **HEAD가 배포됐다**는 것은 다르다. 태그 뒤에 자산 커밋이
+        # 쌓이면 이름은 통과하는데 소비자는 그 커밋을 하나도 받지 못한다 — 3.28.0 태그 뒤
+        # 13커밋이 그 상태였다 (평가 v7 · E-52). 버전을 올리면 태그 이름이 바뀌어 위의
+        # 「미배포」 경고로 넘어가므로, 이 경고는 "올려야 할 때"를 가리킨다.
+        local after_tag
+        after_tag=$(num "$(git rev-list --count "$rtag..HEAD" -- skills agents rules hooks scripts templates guides references presets schema workflow.graph.json 2>/dev/null)")
+        if [ "$after_tag" -gt 0 ]; then
+          warn "릴리스 태그 존재 ($rtag) — 그 뒤 자산 커밋 ${after_tag}건이 미배포" \
+               "소비자는 태그 시점의 자산만 받는다. 버전 4곳 인상 → 커밋 → 'claude plugin tag --push'"
+        else
+          ok "릴리스 태그 존재 ($rtag) · 태그 이후 자산 커밋 0"
+        fi
       else
         warn "버전 $pv 미배포 — 릴리스 태그 '$rtag' 없음" \
              "커밋 후 'claude plugin tag --push'. 태그 없이 버전만 올리면 소비자는 계속 옛 버전을 받는다"
@@ -1118,6 +1133,18 @@ $c"
         _claim "그래프 엣지" "$a_ed" "$real_ed" "$AN"
       fi
     fi
+  fi
+
+  # 스킬 수의 사본은 매뉴얼 두 곳에도 있다 — "N개를 외울 필요 없습니다"(user-manual) ·
+  # "N개 합계 12,000바이트 예산"(operations-manual). 26→25 정리가 위 세 패턴만 고치고
+  # 이 둘을 남겼다 (평가 v7 · E-50). 해부 문서의 「수동 전용 N개」도 손으로 적은 수다 —
+  # skill-enhancer를 넣어 6이라 적었는데 dmi 실물은 5였다 (E-49).
+  _claim "스킬 수" "$(grep -m1 -oE '[0-9]+개를 외울 필요' docs/user-manual.md 2>/dev/null | grep -oE '^[0-9]+')" "$real_sk" "docs/user-manual.md"
+  _claim "스킬 수" "$(grep -m1 -oE '[0-9]+개 합계 12,000바이트' docs/operations-manual.md 2>/dev/null | grep -oE '^[0-9]+')" "$real_sk" "docs/operations-manual.md"
+  if [ -f "$AN" ]; then
+    local real_dmi
+    real_dmi=$(num "$({ grep -l '^disable-model-invocation:[[:space:]]*true' skills/*/SKILL.md 2>/dev/null || true; } | wc -l | tr -d ' ')")
+    _claim "수동 전용 수" "$(grep -m1 -oE '수동 호출 전용\*\* \(`disable-model-invocation`\) \|[^|]*— \*\*[0-9]+개\*\*' "$AN" 2>/dev/null | grep -oE '\*\*[0-9]+개\*\*$' | tr -d '*개')" "$real_dmi" "$AN"
   fi
 
   # 위 검사는 `grep -m1`로 **한 형식의 첫 매치만** 본다. 같은 문서가 다른 표현으로 같은 수를
@@ -1747,7 +1774,8 @@ run_self_test() {
                  "소비자 경로에 플러그인 스킬" "죽은 스킬 참조" "저장소 이름 누출" \
                  "manual인데 disable-model-invocation 없음" "phase가 라우팅 카드에 없음" "같은 path를 가진 노드" \
                  "설정 필드 선언만 있고" "T0 예산 주장" "코드블록의 플러그인 상대 경로" "스킬 이름 누락" \
-                 "규칙 카드의 플러그인 맥락 경로" "로드 조건 표가 선언에 없는 글롭"; do
+                 "규칙 카드의 플러그인 맥락 경로" "로드 조건 표가 선언에 없는 글롭" \
+                 "수동 전용 수 주장" "그래프 manual 없음"; do
         printf '%s' "$base_out" | grep -q "$msg" \
           && bad "기준선 오탐: '$msg'" "결함이 없는데 검출됐다 — 검사가 못 쓰게 된다"
       done
@@ -1834,6 +1862,11 @@ run_self_test() {
       _fx_static_case "$sfx" manual-no-dmi 'workflow.graph.json' '"id":"sample","kind":"skill","path":"skills/sample/SKILL.md","manual":true' \
         "manual인데 disable-model-invocation 없음" 'jq -c "(.nodes[] | select(.id==\"sample\")) += {\"manual\": true}" "$T/workflow.graph.json" > "$T/g.tmp" && mv "$T/g.tmp" "$T/workflow.graph.json"' --graph
 
+      # frontmatter는 dmi인데 그래프 노드에 manual이 없는 상태 (G8' — G8의 역방향).
+      # sample은 라우팅·phase·호출 어디에도 없으므로 「자동 발동 대상에 모델 호출 차단」과 부딪히지 않는다.
+      _fx_static_case "$sfx" dmi-not-manual 'skills/sample/SKILL.md' '^disable-model-invocation' \
+        "그래프 manual 없음" 'printf -- "---\nname: sample\ndescription: x\ndisable-model-invocation: true\n---\nbash \${CLAUDE_SKILL_DIR}/scripts/x.sh\n" > "$T/skills/sample/SKILL.md"' --graph
+
       # 그래프에 phase를 달았는데 라우팅 카드에 그 행이 없는 상태 (G9 — G6의 역방향).
       _fx_static_case "$sfx" phase-not-in-card 'workflow.graph.json' '"P9"' \
         "phase가 라우팅 카드에 없음" 'jq "(.nodes[] | select(.id==\"sample\")) += {\"phase\": [\"P9\"]}" "$T/workflow.graph.json" > "$T/g.tmp" && mv "$T/g.tmp" "$T/workflow.graph.json"' --graph
@@ -1869,6 +1902,10 @@ run_self_test() {
       # 조용히 건너뛰고, 그것은 통과와 구분되지 않는다.
       _fx_static_case "$sfx" anatomy-drift 'docs/harness-anatomy.md' '스킬 9' \
         "스킬 수 주장 9 ≠ 실물 3" 'sed "s/스킬 3/스킬 9/" "$T/docs/harness-anatomy.md" > "$T/a.tmp" && mv "$T/a.tmp" "$T/docs/harness-anatomy.md"'
+
+      # 해부 문서의 「수동 전용 N개」 — 픽스처 트리의 dmi 실물은 epcc-init 1개다 (E-49).
+      _fx_static_case "$sfx" manual-count-drift 'docs/harness-anatomy.md' '\*\*9개\*\*' \
+        "수동 전용 수 주장 9 ≠ 실물 1" 'printf -- "\n| **수동 호출 전용** (\`disable-model-invocation\`) | \`epcc-init\` — **9개** | x |\n" >> "$T/docs/harness-anatomy.md"'
 
       _fx_static_case "$sfx" marketplace-drift '.claude-plugin/marketplace.json' '훅 9종' \
         "훅 수 주장 9 ≠ 실물 1" 'sed "s/훅 1종/훅 9종/" "$T/.claude-plugin/marketplace.json" > "$T/m.tmp" && mv "$T/m.tmp" "$T/.claude-plugin/marketplace.json"'
@@ -2107,6 +2144,23 @@ run_graph() {
     bad "그래프 manual인데 disable-model-invocation 없음:$gmlist" "그래프는 수동이라 하고 description은 자동 발동한다 — 한쪽이 거짓이다"
   else
     ok "manual 노드 전부 frontmatter와 일치"
+  fi
+
+  # 역방향 (G8') — frontmatter가 dmi인데 그래프 노드에 manual이 없으면 그래프가 그 스킬을
+  # 자동 발동 가능으로 그리는 셈이다. G8만 있던 동안 epcc-init·harness-evaluation이 그 상태였다
+  # (평가 v7 · E-51). 그래프에 노드가 없는 스킬은 「그래프 미선언 스킬」이 따로 잡는다.
+  local g8r=0 g8rlist="" dpath did
+  while IFS= read -r dpath; do
+    [ -z "$dpath" ] && continue
+    did=$(jq -r --arg p "$dpath" '.nodes[]? | select(.kind=="skill" and .path==$p) | .id' "$g" 2>/dev/null | head -1)
+    [ -z "$did" ] && continue
+    jq -e --arg n "$did" '.nodes[]? | select(.id==$n and .manual==true)' "$g" >/dev/null 2>&1 && continue
+    g8r=$((g8r+1)); g8rlist="$g8rlist $did"
+  done < <(grep -l '^disable-model-invocation:[[:space:]]*true' $(skill_mds) 2>/dev/null)
+  if [ "$g8r" -gt 0 ]; then
+    bad "disable-model-invocation인데 그래프 manual 없음:$g8rlist" "frontmatter는 수동이라 하고 그래프는 자동 발동으로 그린다 — 노드에 \"manual\": true"
+  else
+    ok "dmi 스킬 전부 그래프 manual과 일치"
   fi
 
   # 그래프 → 카드 역방향 (G9) — G6은 카드가 말한 호출이 그래프에 있는지만 봤다. 그래프가

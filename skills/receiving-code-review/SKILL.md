@@ -37,6 +37,13 @@ description: 받은 코드 리뷰 피드백을 기술적으로 검증하고 심�
 | 내장 `/code-review` 또는 `epcc-reviewer` 결과 | Step 2 → Step 3 → Step 4 |
 | 외부 AI 교차검증(`codex-claude-loop`) 결과 | Step 2 → Step 3 → Step 4 |
 | 사용자가 전달한 외부 리뷰 피드백 | Step 2(소스 신뢰도 낮음으로 검증 강화) → Step 3 → Step 4 |
+| 정적 분석기(SonarQube) 이슈 — `health-check` Step 5.6 | Step 2(**검증 강화**) → Step 3 → Step 4 → Step 5 |
+
+정적 분석기 이슈의 검증을 강화하는 이유: **규칙 엔진은 프로젝트 맥락을 모른다.** Sonar의
+code smell은 Step 2의 YAGNI 검증("현재 규모에서 이 추상화가 정당한가")과 대체물 명시에 특히
+자주 걸린다 — 규칙은 임계값을 넘었다는 것만 말할 뿐 무엇으로 바꾸라고 말하지 않는다.
+되돌림 비용이 큰 경로(`**/migrations/**` · auth/RLS · 결제 · `**/api/**` · `**/actions.ts` ·
+`**/middleware.ts`)의 이슈는 **채택해도 여기서 고치지 않는다** — `epcc-reviewer`로 넘긴다.
 
 ### Step 2: 피드백 검증
 
@@ -125,6 +132,16 @@ build 단계로 돌아가 수정을 진행할까요?
 [Critical/Important가 모두 처리된 경우]
 → 문서 최신화(completion-review)로 진행합니다.
 ```
+
+### Step 5: 정적 분석 재확인 (Sonar 경로 전용)
+
+소스가 `health-check` Step 5.6일 때만 수행한다. 수정이 끝나면 **Sonar를 한 번만 다시 돌려**
+이슈가 줄었는지 확인한다 — 실행 명령의 정본은 `health-check` Step 5.5이고, 여기에 사본을 두지
+않는다(사본은 드리프트 원천이다).
+
+종료 술어는 `신규 이슈 0건 OR 재분석 1회 소진`이다. 남은 이슈는 목록으로 사용자에게 넘기고
+**두 번째 재분석은 하지 않는다** — 상한 없는 수정 루프는 결함이다. 수정으로 이슈가 늘었으면
+그 자체를 보고한다(회귀 신호).
 
 ## 반론 작성 가이드
 

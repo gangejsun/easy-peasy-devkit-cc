@@ -93,7 +93,13 @@ command -v semgrep     >/dev/null && semgrep --config=auto --error 2>&1
 command -v bandit      >/dev/null && bandit -r . 2>&1        # Python
 command -v gosec       >/dev/null && gosec ./... 2>&1        # Go
 command -v govulncheck >/dev/null && govulncheck ./... 2>&1  # Go
+command -v sonar-scanner >/dev/null && echo "SonarQube 감지 — health-check Step 5.5로 위임"
 ```
+
+**SonarQube는 여기서 돌리지 않는다.** 서버가 필요하고 수 분이 걸려 사용자 동의가 선행돼야
+한다 — 실행과 동의는 `health-check` Step 5.5가 맡는다. 그 경로로 이미 분석이 돌았다면
+Security Hotspot·Vulnerability 결과를 이 보고서에 합치고, **Sonar가 덮은 축은 손으로 다시
+감사하지 않는다**(바로 아래 규율).
 
 **도구가 덮은 축은 손으로 다시 감사하지 않는다.** 같은 결함을 두 번 보고하면 경보 피로가
 생기고, 경보 피로는 보고서를 안 읽게 만든다.
@@ -155,6 +161,7 @@ LOW (N건)
 ---------------
 [확인하지 못한 것과 그 이유 — 도구 부재 · 락파일 없음 · 실행 환경 없음 · 접근 불가]
 예) SAST: semgrep 미설치 — 정적 규칙 검사를 수행하지 못함
+예) SAST: SonarQube 미실행(서버 미기동/사용자 보류) — 규칙 엔진 검사를 수행하지 못함
 예) 의존성: 락파일 없음 — CVE 대조 불가
 
 종합 평가

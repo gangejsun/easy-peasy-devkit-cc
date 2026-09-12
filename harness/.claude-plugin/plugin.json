@@ -1,0 +1,19 @@
+{
+  "name": "epcc-harness",
+  "version": "1.0.0",
+  "displayName": "EasyPeasy Harness Dev Kit",
+  "description": "하네스 저작 전용 — 그래프 엔진 8축 전수 평가. 이 플러그인을 만드는 사람만 설치한다",
+  "author": {
+    "name": "gyeong"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/gangejsun/easy-peasy-devkit-cc",
+  "keywords": [
+    "claude-code",
+    "claude-code-plugin",
+    "harness",
+    "evaluation",
+    "meta"
+  ],
+  "skills": "./skills/"
+}

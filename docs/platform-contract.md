@@ -106,10 +106,11 @@ Bash 규칙. 같은 변수를 양쪽에 쓰면 권한 프롬프트 없이 번들
 | 서브 플러그인 매니페스트 | 각 플러그인 디렉토리에 **자기 `.claude-plugin/plugin.json`이 있어야 한다** |
 | 버전 | 플러그인마다 **독립**이다. 마켓플레이스 `metadata.version`과 같을 필요가 없다 |
 
-이 저장소가 그 형태다 — `epcc-devkit`(`source: "./"`)과 `epcc-marketing`
-(`source: "./marketing/"`)이 공존한다. 마케팅 스킬을 분리한 이유는 **개발 세션의
-컨텍스트 예산**이다: 스킬 description은 스킬을 한 번도 쓰지 않아도 상주하므로,
-개발과 무관한 스킬이 개발 세션의 예산을 먹는다.
+이 저장소가 그 형태다 — `epcc-devkit`(`source: "./"`) · `epcc-marketing`
+(`source: "./marketing/"`) · `epcc-harness`(`source: "./harness/"`)가 공존한다.
+분리 이유는 셋 다 같다 — **컨텍스트 예산**: 스킬 description은 스킬을 한 번도 쓰지 않아도
+상주하므로, 그 사람이 쓸 수 없는 스킬이 그 사람의 예산을 먹는다. 마케팅 스킬은 개발
+세션에서, 하네스 저작 스킬은 **소비자 세션에서** 그렇다.
 
 **따라오는 함정 하나** — `doctor`의 버전 대조가 `marketplace.json`의 **모든** `"version"`을
 긁으면 남의 플러그인 버전까지 기준과 맞춰야 하는 것으로 읽혀 **오탐으로 실패한다.**
@@ -181,6 +182,25 @@ Bash 규칙. 같은 변수를 양쪽에 쓰면 권한 프롬프트 없이 번들
 >
 > **계측의 공백은 훅의 죽음과 같은 모양을 한다.** 가르는 것은 "그 이벤트가 발생할
 > 기회가 있었는가"이고, 그것은 로그가 아니라 **발화 조건**을 봐야 안다.
+
+### 5.3 timeout — 기본값과 초과 시 운명
+
+확인: 2026-09-12 · 출처: https://code.claude.com/docs/en/hooks
+
+`command` 훅의 기본 timeout은 **600초**다(`prompt` 30 · `agent` 60. `UserPromptSubmit`류는 30,
+`MessageDisplay`는 10으로 낮아진다). 훅별로 `"timeout": <초>` 필드로 줄인다.
+
+> Claude Code cancels a `command`, `http`, or `mcp_tool` hook that reaches its `timeout`,
+> discarding the hook's output, so on most events a timed-out hook renders no decision.
+>
+> A timed-out `command` hook doesn't block the tool call. The call continues through the
+> normal permission flow, so don't count on a stalled hook to act as a gate.
+
+| 사실 | 이 하네스에 대한 함의 |
+| --- | --- |
+| 초과 시 출력 **폐기**, 오류 표시 없음 | 침묵 실패의 한 형태 — 훅이 느려지면 브리핑·차단이 조용히 사라진다 |
+| `PreToolUse` 초과는 **차단하지 않는다**(fail-open) | `security-check`가 15초를 넘기면 그 호출은 검사 없이 통과한다. 게이트의 강도는 timeout 안에서 끝나는 속도에 의존한다 |
+| 기본 600초 | 선언하지 않으면 멈춘 훅이 세션을 10분 붙잡는다 — `hooks/hooks.json`은 훅별로 10~30초를 선언한다 |
 
 ## 5.2 Windows에서 훅 실행 셸
 

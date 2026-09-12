@@ -72,7 +72,11 @@ disable-model-invocation: true
 한 블록이다. 전부 돌리고 출력을 보관한다 — 이것이 8축의 「측정」 열이다.
 
 ```bash
-R="${CLAUDE_PLUGIN_ROOT:-.}"
+# 이 스킬은 `epcc-harness` 플러그인 소속이라 CLAUDE_PLUGIN_ROOT 가 harness/ 를 가리킨다 —
+# 평가 대상인 devkit 자산(scripts/·skills/·agents/)은 그 **한 단계 위**에 있다.
+# 저장소 루트를 직접 구한다. 이 스킬은 하네스 소스 저장소 밖에서는 평가할 대상이 없다.
+R="$(git rev-parse --show-toplevel 2>/dev/null)"
+[ -n "$R" ] && [ -f "$R/scripts/doctor.sh" ] || { echo "하네스 소스 저장소가 아니다 — 평가 대상 없음(판정 불가)"; exit 2; }
 bash "$R/scripts/doctor.sh" --all            # fast · self-test · graph · consumer · usage · lessons · inventory
 bash "$R/scripts/doctor.sh" --usage --root <소비자 프로젝트>     # 소비자가 있을 때만
 # 가이드 하네스 — 직전 리포트 이후 guides/·stack-guide-generator/ 커밋이 있을 때만 (--regress는 느리다)
@@ -107,6 +111,8 @@ git -C "$R" status --porcelain -- skills agents rules hooks scripts templates wo
 - **실패 시나리오를 쓸 수 없으면 그 결함은 보고하지 않는다** — "~일 수 있다"는 추측이다.
 - **grep·doctor·inventory에 걸리지 않은 문서를 읽으러 가지 않는다.** 전 문서 독해는 폐기된 방식이다.
 - 전회 판정을 계승하지 않는다 — 반드시 현재 파일로 재확인한다.
+- **위임(Explore 등) 보고의 결함 후보는 파일:행을 직접 열어 재확인한 것만 목록에 올린다** —
+  v6·v7 연속으로 위임 보고 2건씩이 현재 파일과 어긋났다(스탬프 부재 주장 · 플랫폼 기본값 주장).
 
 **Critical은 재현으로만 확정한다.** 문서 독해만으로는 Important 이하다. 재현은 계측 로그를
 오염시키지 않는다(`EPCC_STATE_DIR` 격리 — v5 E-13의 교훈). 재현 명령에 파괴 구문·시크릿이

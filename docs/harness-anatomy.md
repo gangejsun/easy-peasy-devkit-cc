@@ -11,7 +11,7 @@
 > 이 문서는 사본이 아니라 **읽기 표면**이며, 값이 갈리면 정본이 옳다.
 > 사본은 드리프트의 원천이라는 것이 이 저장소의 일관된 입장이고, 이 문서도 예외가 아니다.
 
-**실물 대조** — 훅 5 · T1 규칙 카드 9 · 스킬 26 · 그래프 노드 48 · 엣지 85
+**실물 대조** — 훅 5 · T1 규칙 카드 9 · 스킬 25 · 그래프 노드 48 · 엣지 87
 (`doctor --fast`가 이 줄을 실물과 대조한다. 손으로 적은 수는 반드시 낡기 때문이다.)
 
 | 절 | 무엇을 다루는가 |
@@ -20,7 +20,7 @@
 | [00-a](#00-a--사용자-관점--이-하네스는-나를-언제-막는가) | **사용자 관점** — 설치 후 무엇이 달라지고, 막혔을 때 무엇을 하는가 |
 | [01](#01--훅-5종--시간-축의-개입-지점) | 훅 5종 — 시간 축의 다섯 개입 지점 |
 | [02](#02--규칙-3계층--로드-시점--소유권) | 규칙 3계층 — 로드 시점 × 소유권 |
-| [03](#03--루프-5종--넷은-게이트-하나는-플라이휠) | 루프 5종 — 넷은 게이트, 하나는 플라이휠 |
+| [03](#03--루프-6종--다섯은-게이트-하나는-플라이휠) | 루프 6종 — 다섯은 게이트, 하나는 플라이휠 |
 | [04](#04--그래프-엔지니어링--체크리스트가-답할-수-없는-것) | 그래프 엔지니어링 — 체크리스트가 답할 수 없는 것 |
 | [05](#05--작업-1건-워크스루--네-장치가-한-번에-보이는-곳) | 작업 1건 워크스루 — 네 장치가 한 서사에서 |
 | [06](#06--에이전트--스킬--가이드) | 에이전트 · 스킬 · 가이드 |
@@ -174,7 +174,7 @@ Claude Code 플러그인의 컴포넌트 타입은 `skills`/`commands`/`agents`/
 | 컨텍스트가 사라질 때 | `handoff` | PreCompact · SessionEnd | 아니오 | 압축·종료는 예고 없이 온다. 그 순간을 아는 것은 런타임뿐 |
 | 스킬을 쓴 뒤 | `track-skill` | PostToolUse (`Skill`) | 아니오 | 사용 사실은 그 순간에만 관측 가능하다 |
 
-같은 구분이 `skills/harness-evaluation/SKILL.md`의 **개입 지점 4종**으로도 표현된다 —
+같은 구분이 `harness/skills/harness-evaluation/SKILL.md`의 **개입 지점 4종**으로도 표현된다 —
 ①시작 브리핑 ②결정 시점 ③행동 체크포인트 ④사후 복구. **같은 실패라도 어느 지점에
 놓느냐로 효과가 갈린다**는 것이 이 하네스의 반복되는 주장이고, 훅 5종은 그 지점들을
 빠짐없이 덮는 최소 집합이다.
@@ -485,7 +485,7 @@ T0에 무엇이 들어가는가도 이 예산이 정한다 — **작업 시작 �
 
 ### T2가 왜 on-demand인가
 
-스킬 26개의 본문을 상주시키면 컨텍스트가 남지 않는다. 상주하는 것은 각 스킬의
+스킬 25개의 본문을 상주시키면 컨텍스트가 남지 않는다. 상주하는 것은 각 스킬의
 `description`뿐이고, 그마저 `doctor --usage`가 문자 수로 예산을 잰다.
 **규범은 상주해야 하고 절차는 불릴 때 오면 된다** — 그 구분이 T1과 T2의 경계다.
 
@@ -528,7 +528,7 @@ description이 매 세션 컨텍스트에서 빠진다(`docs/platform-contract.m
 | `code-change.md` | `src/**` `app/**` `packages/**` `lib/**` | **이미 있는 것을 다시 쓰는 것**(구현 사다리 — 저장소 재사용 → 표준 → 플랫폼 네이티브 → 기존 의존성 → 한 줄) · 고친 뒤 남는 잔재 · 패턴 전파 누락 · "존재 ≠ 실행" 배선 미확인 · 의존성 무단 추가 |
 | `security.md` | 같음 | 정규식 훅이 **못 잡는** 것 — 시크릿의 **배치**, `NEXT_PUBLIC_`/`VITE_` 노출, 입력·인가 경계, XSS, 오픈 리다이렉트 |
 | `reversibility.md` | `src/**` `supabase/**` `**/migrations/**` `dev/active/**` | 클래스 판정 **이후**에 무엇을 하는가 · 접근 정책 분기점 · 분기점의 **선택이 증발하는 것**(결정 기록) |
-| `harness-change.md` | `.claude/**` `scripts/**` `hooks/**` `dev/docs/harness-evaluation/**` | 하네스가 자라기만 하는 것 · 침묵 실패 · 도달 경로 없는 자산 (릴리스 도달은 플러그인 개발 전용이라 §08로 내렸다) |
+| `harness-change.md` | `.claude/**` `scripts/**` `hooks/**` | 하네스가 자라기만 하는 것 · 침묵 실패 · 도달 경로 없는 자산 (플러그인 저작 전용분은 `harness/rules/harness-authoring.md`로, 릴리스 도달은 §08로 내렸다) |
 | `lessons.md` | 코드·하네스·문서 경로 전반 | 지적을 받고 기록하지 않는 것 · 승격 선언만 하고 자산은 안 바뀌는 것 |
 | `doc-dependency.md` | `dev/docs/{prd,database,design,architecture,api}/**` | 문서 6엣지 의존 그래프가 열린 채 남는 것 |
 | `data-modeling.md` | `supabase/**` `**/migrations/**` `db/**` `prisma/**` `drizzle/**` | 관계형 모델링 규범 (NoSQL 프로젝트에서는 자연히 잠든다) |
@@ -561,7 +561,7 @@ description이 매 세션 컨텍스트에서 빠진다(`docs/platform-contract.m
 
 ---
 
-## 03 — 루프 5종 — 넷은 게이트, 하나는 플라이휠
+## 03 — 루프 6종 — 다섯은 게이트, 하나는 플라이휠
 
 **정본**: `workflow.graph.json`의 역방향 엣지 · `rules/lessons.md`
 
@@ -581,9 +581,10 @@ description이 매 세션 컨텍스트에서 빠진다(`docs/platform-contract.m
 | **빌드 게이트** | `build-gate → build` | 소스는 바뀌었는데 빌드/테스트 흔적이 없음 | transcript에서 빌드/테스트 Bash 호출 감지 | `stop_hook_active` 재차단 금지 |
 | **리뷰** | `epcc-reviewer → build` | Critical 발견 | Critical 0건 | 읽기 전용 — 스스로 고치지 않는다 |
 | **교차검증** | `cross-check → build` | 3렌즈 중 과반 미달 | 과반이 문제 없음 | 재검증 **최대 2회** → 사용자 tie-break |
+| **Sonar 수정 회귀** | `receiving-code-review → health-check` | 정적 분석 이슈를 수정한 뒤 | 신규 이슈 0건 | 재분석 **1회** → 남으면 사용자 |
 | **되먹임** | `lessons → doctor → rule-promotion` | 사용자 지적 누적 | 카테고리 3건 임계 · 승인 1회 | 아카이브로 **물리 이동** |
 
-### 앞의 넷은 게이트, 다섯째만 플라이휠
+### 앞의 다섯은 게이트, 여섯째만 플라이휠
 
 **게이트**는 조건이 충족될 때까지 같은 자리로 되돌린다. 한 바퀴를 돌아도 시스템은 그대로고,
 바뀌는 것은 **작업물**뿐이다.
@@ -610,6 +611,12 @@ Write·Edit이 막혀 있어 **발견해도 스스로 고칠 수 없다.** 지�
 필수**이고, 경계를 넘는 유일한 경로라 `harness-evaluation`의 **P7 축**이 이것 때문에
 생겼다. 재검증 상한이 명시적으로 2회인 것도 이 루프뿐이다 — 외부 모델과의 왕복은
 비용이 눈에 보이기 때문이다.
+
+**Sonar 수정 회귀 루프**는 교차검증 루프와 형태가 같고 상대가 다르다 — 외부 모델 대신
+규칙 엔진이다. 그래서 같은 두 규율을 받는다: **사전 동의**(`health-check` Step 5.5가 묻는다)와
+**명시적 상한**(재분석 1회). 상한을 1회로 둔 것은 규칙 엔진의 지적이 서로 얽히지 않기
+때문이다 — 한 바퀴에 고칠 수 있는 것은 다 고쳐지고, 두 바퀴째에 새로 줄어드는 것은
+거의 없다. 되돌림 비용이 큰 경로의 이슈는 이 루프에 태우지 않고 `epcc-reviewer`로 보낸다.
 
 **되먹임 루프**만 다음 절이 따로 필요하다.
 
@@ -673,7 +680,7 @@ v2는 「✅ 승격됨」을 **22건 선언하고 규칙은 0건 바뀌었다.**
 
 ## 04 — 그래프 엔지니어링 — 체크리스트가 답할 수 없는 것
 
-**정본**: `workflow.graph.json` (노드 48 · 엣지 85) · `dev/docs/port-to-origin/phase-5-graph.md`
+**정본**: `workflow.graph.json` (노드 48 · 엣지 87) · `dev/docs/port-to-origin/phase-5-graph.md`
 
 ### 왜 그래프인가
 
@@ -699,7 +706,7 @@ v2에서도 이 구조는 존재했다. 다만 **마크다운 표와 산문에 �
 
 | kind | 수 | 무엇 |
 | --- | --- | --- |
-| `skill` | 27 | 스킬 26개 + `install-guide`(조립 전용 경로를 따로 세운 노드) |
+| `skill` | 27 | 스킬 25개 + `harness-evaluation`(`epcc-harness` 플러그인) + `install-guide`(조립 전용 경로를 따로 세운 노드) |
 | `stage` | 6 | `understand` · `plan` · `build` · `verify` · `cross-check` · `rule-promotion` — **모델의 행동**이라 코드가 방출할 수 없다 |
 | `hook` | 5 | 코드가 실행하는 유일한 부류 |
 | `agent` | 2 | `epcc-planner` · `epcc-reviewer` |
@@ -708,7 +715,7 @@ v2에서도 이 구조는 존재했다. 다만 **마크다운 표와 산문에 �
 | `terminal` | 1 | `user-report` — 루프가 사람에게서 끝나는 자리 |
 
 **엣지**는 전이이고 `cond`(조건)와 `instrumented`를 갖는다.
-**경로**는 이 하네스의 평가 단위다 — `skills/harness-evaluation/SKILL.md:8`의 표현으로는
+**경로**는 이 하네스의 평가 단위다 — `harness/skills/harness-evaluation/SKILL.md:8`의 표현으로는
 자산 단위("무엇이 있는가")가 아니라 경로 단위,
 **"작업 1건이 어떤 노드를 밟고, 어디서 멈추고, 무엇을 남기는가."**
 
@@ -816,12 +823,12 @@ P6으로 가고, `cross-check` 3렌즈 과반과 사용자 확인과 롤백 절�
 에이전트는 `.claude/rules/`를 상속받지 않으므로 필요한 규범은 **에이전트 프롬프트에 직접**
 적는다. 단 같은 규범을 두 곳이 주장하지 않게 한 쪽은 인용으로 둔다.
 
-### 스킬 26 — 발동 방식으로 나뉜다
+### 스킬 25 — 발동 방식으로 나뉜다
 
 | 발동 방식 | 예 | 성격 |
 | --- | --- | --- |
 | 조건 충족 시 모델이 자동 발동 | `prd-generator` · `completion-review` · `receiving-code-review` · `shortcut-ledger` · `pr-prep` | 라우팅 카드의 Phase가 조건을 정한다. Phase가 없는 것은 description이 정한다 |
-| **수동 호출 전용** (`disable-model-invocation`) | `epcc-init` · `epcc-migrate` · `execution-dashboard` · `fix-issue` · `harness-evaluation` · `health-check` — **6개** | 자동으로 돌면 비용이 크거나 사용자 의도가 필요하다. 이 여섯의 description은 **상주하지 않는다** |
+| **수동 호출 전용** (`disable-model-invocation`) | `epcc-init` · `epcc-migrate` · `execution-dashboard` · `fix-issue` · `health-check` — **5개** | 자동으로 돌면 비용이 크거나 사용자 의도가 필요하다. 이 다섯의 description은 **상주하지 않는다** |
 | 다른 스킬·훅이 호출 | `stack-guide-generator`(← `epcc-init`) · `skill-enhancer`(← 네이티브 `skill-creator` · 평가) | 그래프에서 인바운드 엣지를 갖는다 |
 
 **스킬을 만드는 경로는 셋이 이어진다.** 세 단계가 각각 주인이 다르다 —
@@ -859,8 +866,18 @@ P6으로 가고, `cross-check` 3렌즈 과반과 사용자 확인과 롤백 절�
 `scroll-stop-builder` · `scroll-stop-prompter` · `seo-strategy` · `web-asset-generator`)을
 같은 저장소의 두 번째 플러그인 `epcc-marketing`으로 옮겼다(`docs/platform-contract.md` §2.5).
 **개발과 무관한 스킬이 개발 세션의 예산을 먹는 것이 문제였지, 스킬이 나쁜 것이 아니었다.**
-분리가 검사 사각지대를 만들지 않도록 `doctor`의 **위생 검사는 두 루트를 모두** 보고,
-예산·그래프·「선언↔실물」의 스킬 수만 `skills/`로 좁혔다.
+
+같은 판정을 반대 방향으로 한 번 더 적용했다 — `harness-evaluation`은 이 플러그인을
+**만드는** 사람만 쓰는 도구이므로 세 번째 플러그인 `epcc-harness`(`harness/`)로 옮겼다.
+소비자에게는 실행할 수 없는 스킬의 description이 상주하지 않는다. 같은 이유로
+`rules/harness-change.md`에서 소비자가 실행할 수 없는 항목(그래프 등록 · `epcc-init` 설치
+단계 · 프리셋 분기 · 플러그인 저장소 폐기)을 `harness/rules/harness-authoring.md`로 떼어냈다.
+
+**판정은 하나다: 소비자 프로젝트에서 이 자산이 할 일이 있는가.** 없으면 `harness/`다.
+
+분리가 검사 사각지대를 만들지 않도록 `doctor`의 **위생 검사는 세 루트를 모두** 보고,
+예산·「선언↔실물」의 스킬 수만 `skills/`로 좁혔다. 그래프는 예외로 `harness/skills`를
+포함한다 — `harness-evaluation`은 되먹임 루프의 노드라 빠지면 그 루프가 끊긴다.
 
 **합성 판정의 첫 사례가 `shortcut-ledger`다.** `/simplify`는 *이미 쓴* 코드를 줄이고
 `/code-review`는 diff의 지적을 만든다 — 둘 다 대상이 **diff**다. 결손은 **쓰기 전**이었고,

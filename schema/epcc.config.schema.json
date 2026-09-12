@@ -128,9 +128,12 @@
             },
             "lint": {
               "type": "string"
+            },
+            "sonar": {
+              "type": "string"
             }
           },
-          "description": "프로젝트 대표 명령. build-gate·health-check가 읽는 값이므로 반드시 채운다. 축별로 툴체인이 다르면 각 축의 commands에 따로 기록하고 여기에는 대표값을 둔다"
+          "description": "프로젝트 대표 명령. build-gate·health-check가 읽는 값이므로 반드시 채운다. sonar는 선택이며 SonarQube를 쓰는 프로젝트만 채운다(health-check Step 5.5가 읽는다). 축별로 툴체인이 다르면 각 축의 commands에 따로 기록하고 여기에는 대표값을 둔다"
         },
         "backend": {
           "type": "object",
@@ -195,6 +198,9 @@
                   "type": "string"
                 },
                 "lint": {
+                  "type": "string"
+                },
+                "sonar": {
                   "type": "string"
                 }
               }
@@ -279,6 +285,9 @@
                   "type": "string"
                 },
                 "lint": {
+                  "type": "string"
+                },
+                "sonar": {
                   "type": "string"
                 }
               }

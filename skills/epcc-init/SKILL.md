@@ -349,7 +349,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/install-rules.sh"
 | `code-change.md` | `src/**` `app/**` `packages/**` `lib/**` 편집 시 |
 | `security.md` | `src/**` `app/**` `packages/**` `lib/**` 편집 시 |
 | `reversibility.md` | 소스·마이그레이션·워크스페이스 편집 시 |
-| `harness-change.md` | `.claude/**` `scripts/**` `hooks/**` `dev/docs/harness-evaluation/**` 편집 시 |
+| `harness-change.md` | `.claude/**` `scripts/**` `hooks/**` 편집 시 |
 | `lessons.md` | 소스·`.claude/**`·`scripts/**`·`dev/docs/**` 편집 시 |
 | `doc-dependency.md` | `dev/docs/{prd,database,design,architecture,api}/**` 편집 시 |
 | `data-modeling.md` | `supabase/**` `**/migrations/**` `db/**` `prisma/**` 등 DB 경로 편집 시. §1~8만 담고 열 가지 패턴은 `.claude/references/data-modeling/`으로 내려 **필요한 것만** 읽는다 |

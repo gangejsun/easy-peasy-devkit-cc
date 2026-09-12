@@ -28,6 +28,7 @@ The configuration file lives at the project root. All fields are optional except
 | `commands.build` | string | | Build command |
 | `commands.test` | string | | Test command |
 | `commands.lint` | string | | Lint command |
+| `commands.sonar` | string | | SonarQube scanner command (optional). Read by `health-check` Step 5.5 via `build-parser.sh sonar`; needs `SONAR_HOST_URL` and `SONAR_TOKEN` in the environment — never in this file |
 | `additionalStack` | string[] | `[]` | Additional technologies |
 
 ### domains

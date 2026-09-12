@@ -1,6 +1,6 @@
 # AI Review Loop — 공통 워크플로우
 
-이 파일은 `codex-claude-loop`의 워크플로우 본문이다. provider별 차이(CLI 명령어 · API 키 ·
+이 파일은 `codex-claude-loop`의 워크플로우 본문이다. provider별 차이(CLI 명령어 · 인증 ·
 전제조건)는 SKILL.md가 정의한다.
 
 ## 핵심 철학

@@ -195,13 +195,13 @@ P0~P3을 통째로 건너뛰고 바로 구현에 들어갑니다.
 | 내장 `/code-review` 결과 | `/receiving-code-review`로 넘김 |
 | `epcc-reviewer` 보고 | 〃 |
 | 사람이 준 리뷰 코멘트 | 〃 |
-| 외부 AI 교차검증이 필요 | `/codex-claude-loop` — **소스가 외부 모델로 전송되므로 동의 없이 실행 안 됨** |
+| 외부 AI 교차검증이 필요 | `/codex-claude-loop` — **소스가 외부 모델로 전송되므로 동의 없이 실행 안 됨**. 인증은 `codex login`(ChatGPT 계정 또는 API 키) — 키를 환경변수·설정 파일에 두지 않습니다 |
 
 ---
 
 ## 5. 스킬 카탈로그 — 상황별 색인
 
-**26개를 외울 필요 없습니다.** Claude가 상황에 맞게 부릅니다. 이 표는 "직접 부르고 싶을 때"용입니다.
+**25개를 외울 필요 없습니다.** Claude가 상황에 맞게 부릅니다. 이 표는 "직접 부르고 싶을 때"용입니다.
 
 ### 기획·설계
 
@@ -244,7 +244,6 @@ P0~P3을 통째로 건너뛰고 바로 구현에 들어갑니다.
 | 프로젝트를 처음 설정한다 | `/epcc-init` |
 | 구버전에서 옮겨온다 | `/epcc-migrate` |
 | 진행 상황을 보고 싶다 | `/execution-dashboard` |
-| 하네스 자체를 평가한다 | `/harness-evaluation` |
 | 스킬을 강화한다 | `/skill-enhancer` |
 
 > 📌 **내장 도구와 겹치지 않습니다.** `/code-review`·`/simplify`·`/security-review`(브랜치

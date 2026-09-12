@@ -1,6 +1,6 @@
 {
   "name": "easy-peasy-devkit-cc",
-  "version": "3.28.0",
+  "version": "3.29.0",
   "description": "EasyPeasy Claude Code Devkit — AI Native Dev Harness Runtime Plugin",
   "author": "gyeong",
   "license": "MIT",
@@ -26,11 +26,13 @@
     "skills/",
     "agents/",
     "rules/",
+    "references/",
     "guides/",
     "presets/",
     "templates/",
     "schema/",
-    "docs/"
+    "docs/",
+    "workflow.graph.json"
   ],
   "engines": {
     "node": ">=18.0.0"
@@ -38,7 +40,7 @@
   "scripts": {
     "doctor": "bash scripts/doctor.sh",
     "doctor:all": "bash scripts/doctor.sh --all",
-    "test": "bash scripts/doctor.sh --default && bash scripts/doctor.sh --self-test && bash skills/ui-ux-design/scripts/ui-probe.sh --self-test",
+    "test": "bash scripts/doctor.sh --default && bash scripts/doctor.sh --self-test && bash scripts/doctor.sh --consumer && bash skills/ui-ux-design/scripts/ui-probe.sh --self-test",
     "test:render": "bash skills/ui-ux-design/scripts/ui-probe.sh --self-test"
   },
   "devDependencies": {
