@@ -6,6 +6,8 @@ description: Vue 3 + Vite SPA frontend guide for a Node/Express REST API backend
 
 ## Quick Start
 
+> `dev/docs/api/wire-contract.md`가 있으면 봉투·에러 코드·페이지네이션은 거기가 정본이다. 없는데 프론트·백엔드를 함께 새로 만드는 중이면 `workflow-routing.md`의 「기능 하나의 안쪽 순서」 1·2를 먼저 한다.
+
 ### 새 데이터 화면을 만든다
 
 - [ ] 라우트를 `src/router/routes.ts`에 추가한다 — 보호가 필요하면 `meta.requiresAuth`

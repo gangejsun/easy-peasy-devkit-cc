@@ -8,6 +8,8 @@ description: "[Preset: nextjs-supabase] Next.js App Router backend guide. Covers
 
 ## Quick Start
 
+> `dev/docs/api/wire-contract.md`가 있으면 봉투·에러 코드·페이지네이션은 거기가 정본이다. 없는데 프론트·백엔드를 함께 새로 만드는 중이면 `workflow-routing.md`의 「기능 하나의 안쪽 순서」 1·2를 먼저 한다.
+
 **New Route Handler:**
 
 - [ ] Define/extend the Zod schema in `lib/validations/<feature>.ts`

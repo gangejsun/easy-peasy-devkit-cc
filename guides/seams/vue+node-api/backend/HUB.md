@@ -6,6 +6,8 @@ description: Express 5 + Prisma 6 + PostgreSQL 백엔드 개발 가이드. 라�
 
 ## Quick Start
 
+> `dev/docs/api/wire-contract.md`가 있으면 봉투·에러 코드·페이지네이션은 거기가 정본이다. 없는데 프론트·백엔드를 함께 새로 만드는 중이면 `workflow-routing.md`의 「기능 하나의 안쪽 순서」 1·2를 먼저 한다.
+
 ### 새 엔드포인트를 추가한다
 
 1. `src/schemas/task.ts`에 요청 스키마를 넣는다 — 본문은 `z.strictObject`, 쿼리는 `z.object`

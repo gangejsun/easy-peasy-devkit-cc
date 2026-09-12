@@ -9,6 +9,8 @@ React + Vite SPA를 클라이언트로 두는 컨테이너 백엔드 가이드�
 
 ## Quick Start
 
+> `dev/docs/api/wire-contract.md`가 있으면 봉투·에러 코드·페이지네이션은 거기가 정본이다. 없는데 프론트·백엔드를 함께 새로 만드는 중이면 `workflow-routing.md`의 「기능 하나의 안쪽 순서」 1·2를 먼저 한다.
+
 ### 신규 엔드포인트 추가
 
 - [ ] `src/schemas/<resource>.ts`에 Zod 요청/응답 스키마를 정의한다 — PATCH 스키마는

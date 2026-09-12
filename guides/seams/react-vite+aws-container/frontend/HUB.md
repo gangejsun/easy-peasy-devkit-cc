@@ -11,6 +11,8 @@ description: "[Preset: react-vite × aws-container] React 18 + Vite 5 SPA fronte
 
 ## Quick Start
 
+> `dev/docs/api/wire-contract.md`가 있으면 봉투·에러 코드·페이지네이션은 거기가 정본이다. 없는데 프론트·백엔드를 함께 새로 만드는 중이면 `workflow-routing.md`의 「기능 하나의 안쪽 순서」 1·2를 먼저 한다.
+
 ### 새 화면(라우트) 추가
 
 - [ ] `src/components/common/`과 `src/components/layout/`을 **먼저 검색**해 재사용할 셸·폼·테이블을 확인
