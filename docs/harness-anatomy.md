@@ -869,9 +869,16 @@ P6으로 가고, `cross-check` 3렌즈 과반과 사용자 확인과 롤백 절�
 
 같은 판정을 반대 방향으로 한 번 더 적용했다 — `harness-evaluation`은 이 플러그인을
 **만드는** 사람만 쓰는 도구이므로 세 번째 플러그인 `epcc-harness`(`harness/`)로 옮겼다.
-소비자에게는 실행할 수 없는 스킬의 description이 상주하지 않는다. 같은 이유로
-`rules/harness-change.md`에서 소비자가 실행할 수 없는 항목(그래프 등록 · `epcc-init` 설치
-단계 · 프리셋 분기 · 플러그인 저장소 폐기)을 `harness/rules/harness-authoring.md`로 떼어냈다.
+**다만 이쪽의 근거는 예산이 아니다.** 이 스킬은 `disable-model-invocation: true`라
+`skills/`에 둬도 상주 비용이 **0**이다(§2.4의 표). 그런데도 옮긴 이유는 **커맨드 목록**이다 —
+`skills/`에 있으면 소비자가 `/harness-evaluation`을 보고 누르는데, 그 스킬은 소스 저장소 밖에서
+「평가 대상 없음」으로 exit 2 한다. **쓸 수 없는 커맨드를 주지 않는 것**이 분리가 산 것이다.
+비용이 둘(상주 토큰 · 커맨드 한 줄)이고 `dmi`는 앞의 하나만 끈다 — 이 구분을 놓치면
+"`dmi`를 붙였으니 `skills/`에 둬도 된다"는 틀린 결론이 나온다.
+
+같은 판정으로 `rules/harness-change.md`에서 소비자가 실행할 수 없는 항목(그래프 등록 ·
+`epcc-init` 설치 단계 · 프리셋 분기 · 플러그인 저장소 폐기)을
+`harness/rules/harness-authoring.md`로 떼어냈다.
 
 **판정은 하나다: 소비자 프로젝트에서 이 자산이 할 일이 있는가.** 없으면 `harness/`다.
 

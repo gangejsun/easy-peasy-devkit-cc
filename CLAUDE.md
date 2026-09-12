@@ -18,7 +18,7 @@
 
 ## 이 저장소 고유 사실
 
-**버전은 4곳을 동시에 올린다** — `plugin.json` · `package.json` · `README.md` 배지 · `marketplace.json`(2군데). doctor가 대조한다. 4곳은 전부 로컬 파일이라 **거기서 끝나면 소비자는 아무것도 받지 못한다** — 커밋 → `claude plugin validate .` → `claude plugin tag --push` → main 병합까지가 인상이다(`docs/harness-anatomy.md` §08 「버전 인상은 4곳이 아니라 5단계다」). `marketing/`의 `epcc-marketing`과 `harness/`의 `epcc-harness`는 **독립 버전이라 이 4곳과 함께 올리지 않는다** — 소비자 세션의 description 예산을 먹지 않게 분리한 것이다. **새 스킬은 이름보다 루트를 먼저 정한다**: 소비자 프로젝트에서 할 일이 없으면 `skills/`가 아니라 `harness/skills/`다.
+**버전은 4곳을 동시에 올린다** — `plugin.json` · `package.json` · `README.md` 배지 · `marketplace.json`(2군데). doctor가 대조한다. 4곳은 전부 로컬 파일이라 **거기서 끝나면 소비자는 아무것도 받지 못한다** — 커밋 → `claude plugin validate .` → `claude plugin tag --push` → main 병합까지가 인상이다(`docs/harness-anatomy.md` §08 「버전 인상은 4곳이 아니라 5단계다」). `marketing/`의 `epcc-marketing`과 `harness/`의 `epcc-harness`는 **독립 버전이라 이 4곳과 함께 올리지 않는다** — 분리 근거는 서로 다르다: 마케팅은 description 예산, 하네스는 **소비자에게 쓸 수 없는 커맨드를 주지 않기 위해서다**(`dmi: true`라 예산은 이미 0이다). **새 스킬은 이름보다 루트를 먼저 정한다**: 소비자 프로젝트에서 할 일이 없으면 `skills/`가 아니라 `harness/skills/`다.
 
 **스크립트 배치** — 스킬 전용이면 `skills/<스킬>/scripts/`에 두고 **`${CLAUDE_SKILL_DIR}`**로 호출한다 (자작 표기는 치환되지 않아 소비자에서 실패 — doctor가 검출).
 루트 `scripts/*.sh`는 훅·doctor·**설치기**(`install-rules.sh`·`install-guide.sh`) 전용이다(`scripts/gen/`은 그림 설명서 생성기 — 셸이 아니고 소비자와 무관). 여기
