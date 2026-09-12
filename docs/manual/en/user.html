@@ -242,14 +242,14 @@
   svg .mm{font-family:var(--mono)}
 </style>
 
-<div class="strap"><span>EPCC Devkit</span><span>For users</span><a href="../user.html">한국어 →</a><a href="ops.html">For maintainers →</a><span>v3.28.0</span></div>
+<div class="strap"><span>EPCC Devkit</span><span>For users</span><a href="../user.html">한국어 →</a><a href="ops.html">For maintainers →</a><span>v3.30.0</span></div>
 
 <div class="wrap">
 
 <header>
-  <p class="kicker">26 skills · 9 rule cards · 5 hooks · 48 graph nodes</p>
+  <p class="kicker">27 skills · 9 rule cards · 5 hooks · 49 graph nodes</p>
   <h1>EPCC<br>Harness Map</h1>
-  <p class="lede">Everything that fires between a request arriving and code shipping — <strong>where it fires, and why it is there.</strong> 26 skills · 9 rule cards · 5 hooks · 24 things that get blocked.</p>
+  <p class="lede">Everything that fires between a request arriving and code shipping — <strong>where it fires, and why it is there.</strong> 27 skills · 9 rule cards · 5 hooks · 24 things that get blocked.</p>
   <div class="legend">
     <b><i style="background:var(--skill)"></i>skill</b>
     <b><i style="background:var(--rule)"></i>rule card</b>
@@ -267,7 +267,7 @@
     <a href="#cases">Path explorer</a>
     <a href="#agents">Two subagents</a>
     <a href="#runtime">Runtime</a>
-    <a href="#skills">26 skills</a>
+    <a href="#skills">27 skills</a>
     <a href="#guides">Guide axes</a>
     <a href="#outputs">Outputs</a>
   </nav>
@@ -602,7 +602,7 @@
     <figcaption><strong>Lines only turn at right angles, and vertical moves happen only in the empty lanes between columns</strong> — that is what makes direction readable. <strong>Return edges (dashed) never cross the body</strong>: they drop into a channel under the band and merge into one line. <strong>Build is the hub</strong> — every preparation phase converges there, and when verification finds a defect the work <b>comes back to it</b>.</figcaption>
   </figure>
 
-  <div class="note"><b>Only 7 edges are instrumented</b> (out of 87). The teal ones are emitted by code; the rest are <b>model behaviour, which code cannot emit</b> — so they are excluded from the "dead edge" check. <b>We do not pretend to measure what cannot be measured.</b></div>
+  <div class="note"><b>Only 7 edges are instrumented</b> (out of 90). The teal ones are emitted by code; the rest are <b>model behaviour, which code cannot emit</b> — so they are excluded from the "dead edge" check. <b>We do not pretend to measure what cannot be measured.</b></div>
 </section>
 
 <!-- ══════════ 1-b. what ships ══════════ -->
@@ -615,9 +615,9 @@
     <table>
       <thead><tr><th style="width:190px">Plugin</th><th style="width:90px">Version</th><th style="width:130px">source</th><th>Who installs it</th></tr></thead>
       <tbody>
-        <tr><td><span class="pill p-skill">epcc-devkit</span></td><td class="m">3.28.0</td><td class="m">./</td><td><b>People building a product.</b> Everything this page describes lives here — 26 skills · 9 cards · 5 hooks · guide packs.</td></tr>
-        <tr><td><span class="pill p-skill">epcc-marketing</span></td><td class="m">1.0.0</td><td class="m">./marketing/</td><td>Only when you need marketing content. <b>It is versioned separately so it never spends the development session's description budget.</b></td></tr>
-        <tr><td><span class="pill p-skill">epcc-harness</span></td><td class="m">1.0.0</td><td class="m">./harness/</td><td><b>Only people who build the harness.</b> <span class="m">harness-evaluation</span>, which scores the graph on 8 axes, lives here — useless to anyone who merely <em>uses</em> the devkit.</td></tr>
+        <tr><td><span class="pill p-skill">epcc-devkit</span></td><td class="m">3.30.0</td><td class="m">./</td><td><b>People building a product.</b> Everything this page describes lives here — 26 skills · 9 cards · 5 hooks · guide packs.</td></tr>
+        <tr><td><span class="pill p-skill">epcc-marketing</span></td><td class="m">1.1.0</td><td class="m">./marketing/</td><td>Only when you need marketing content. <b>It is versioned separately so it never spends the development session's description budget.</b></td></tr>
+        <tr><td><span class="pill p-skill">epcc-harness</span></td><td class="m">1.1.0</td><td class="m">./harness/</td><td><b>Only people who build the harness.</b> <span class="m">harness-evaluation</span>, which scores the graph on 8 axes, lives here — useless to anyone who merely <em>uses</em> the devkit.</td></tr>
       </tbody>
     </table>
   </div>
@@ -1243,13 +1243,15 @@
 
 <!-- ══════════ 8. skills ══════════ -->
 <section id="skills">
-  <p class="eyebrow">All 26 skills</p>
+  <p class="eyebrow">All 27 skills</p>
   <h2>Every one is attached to a stage in the graph</h2>
-  <p class="say">A skill <strong>loads only when it is invoked, so it costs nothing until it is needed.</strong> Twenty trigger on their own when the situation matches; six wait for a <span class="badge b-cmd">/command</span>. All of them are wired to a stage, which is what lets <span class="m">doctor --usage</span> answer <strong>"has this skill ever actually been used?"</strong> — and this repository's rule is that <strong>nothing gets culled without that measurement.</strong></p>
+  <p class="say">A skill <strong>loads only when it is invoked, so it costs nothing until it is needed.</strong> Twenty-one trigger on their own when the situation matches; six wait for a <span class="badge b-cmd">/command</span>. All of them are wired to a stage, which is what lets <span class="m">doctor --usage</span> answer <strong>"has this skill ever actually been used?"</strong> — and this repository's rule is that <strong>nothing gets culled without that measurement.</strong></p>
+
+  <div class="note"><b>Only two things ever leave your machine.</b> Every other skill finishes locally. <span class="pill p-skill" style="font-size:11px">/codex-claude-loop</span> sends <b>plan text or a <span class="m">git diff</span></b> — never the whole tree — and asks every time. <span class="pill p-skill" style="font-size:11px">/image-generator</span> sends <b>only the image prompt</b>, never source, but it is <b>billed separately from any ChatGPT subscription</b> — so it shows the price before calling and records your answer in <span class="m">epcc.config.json</span> instead of asking again. With no API key it <b>does not block</b>: it writes a prompt for you to paste into ChatGPT yourself.</div>
 
   <div class="filterbar">
     <input id="q" type="search" placeholder="Search by situation or name — e.g. PRD, security, review, design" aria-label="Search skills">
-    <span class="count" id="cnt">showing all 26</span>
+    <span class="count" id="cnt">showing all 27</span>
   </div>
 
   <div class="tbl-wrap">
@@ -1269,7 +1271,7 @@
         <tr><td><span class="pill p-skill">/prd-generator</span></td><td><span class="badge b-auto">auto</span></td><td>Writes the PRD when none covers the feature. Picks single or modular form by scale.</td></tr>
         <tr><td><span class="pill p-skill">/dev-docs-generator</span></td><td><span class="badge b-auto">auto</span></td><td>Creates plan · context · tasks in <span class="m">dev/active/</span>. <b>Only when the work will outlive the session.</b></td></tr>
 
-        <tr class="grouphead"><td colspan="3">build <span class="cnt">· 7</span> — <span class="why">the largest cluster — where things actually get made</span></td></tr>
+        <tr class="grouphead"><td colspan="3">build <span class="cnt">· 8</span> — <span class="why">the largest cluster — where things actually get made</span></td></tr>
         <tr><td><span class="pill p-skill">/ui-ux-design</span></td><td><span class="badge b-auto">auto</span></td><td>Picks style, palette and type pairing from datasets into a design system → <b>a direction review</b> (is this my default?) → a canvas draft → write-back and comparison → <b>render proof</b> (zero console errors · empty/loading/error states).</td></tr>
         <tr><td><span class="pill p-skill">/image-generator</span></td><td><span class="badge b-auto">auto</span></td><td>Makes <b>raster images</b> that code cannot produce — photos, illustrations, mockups. With <code>OPENAI_API_KEY</code> it generates them through gpt-image-2 (<b>billed separately from any ChatGPT subscription</b> — it asks once and remembers), and without a key it writes <b>a prompt you can paste straight into ChatGPT</b> to get the same result. Diagrams belong to <span class="pill p-skill" style="font-size:11px">diagram-design</span>.</td></tr>
         <tr><td><span class="pill p-skill">/test-driven-development</span></td><td><span class="badge b-auto">auto</span></td><td>Write the failing test before the implementation. Covers where tests go (the seams) and <b>what makes a passing test worthless.</b></td></tr>
@@ -1422,7 +1424,7 @@
       </tbody>
     </table>
   </div>
-  <div class="note"><b>The telemetry is honest</b> — of 87 graph edges, <b>only 7 are emitted by code</b> and 3 more are conditional. The rest are model behaviour, which code cannot emit, so they are <b>excluded from the "dead edge" check.</b> We do not pretend to measure what cannot be measured.</div>
+  <div class="note"><b>The telemetry is honest</b> — of 90 graph edges, <b>only 7 are emitted by code</b> and 3 more are conditional. The rest are model behaviour, which code cannot emit, so they are <b>excluded from the "dead edge" check.</b> We do not pretend to measure what cannot be measured.</div>
 </section>
 
 <!-- ══════════ 9. stuck ══════════ -->

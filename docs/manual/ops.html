@@ -151,12 +151,12 @@
   svg .mm{font-family:var(--mono)}
 </style>
 
-<div class="strap"><span>EPCC Devkit</span><span>관리자용</span><a href="en/ops.html">English →</a><a href="user.html">사용자용 →</a><span>v3.28.0</span></div>
+<div class="strap"><span>EPCC Devkit</span><span>관리자용</span><a href="en/ops.html">English →</a><a href="user.html">사용자용 →</a><span>v3.30.0</span></div>
 
 <div class="wrap">
 
 <header>
-  <p class="kicker">플러그인 3개 · 훅 5 · 카드 9 · 스킬 26 · 노드 48</p>
+  <p class="kicker">플러그인 3개 · 훅 5 · 카드 9 · 스킬 27 · 노드 49</p>
   <h1>EPCC<br>관리자 지도</h1>
   <p class="lede">사용자는 이 장비를 믿고 매답니다. <strong>여기서 잘못 조인 나사 하나가, 저기서 4개월 동안 아무도 모르게 풀려 있습니다.</strong></p>
   <div class="legend">
@@ -212,9 +212,9 @@
     <table>
       <thead><tr><th style="width:180px">플러그인</th><th style="width:80px">버전</th><th style="width:120px">source</th><th>내용과 대상</th></tr></thead>
       <tbody>
-        <tr><td><b>epcc-devkit</b></td><td class="m">3.28.0</td><td class="m">./</td><td>본체. 스킬 26 · 카드 9 · 훅 5 · 가이드 팩. <b>버전 4곳 인상은 이것만</b> 가리킵니다</td></tr>
-        <tr><td><b>epcc-marketing</b></td><td class="m">1.0.0</td><td class="m">./marketing/</td><td>마케팅 스킬 5종. <b>독립 버전인 이유는 개발 세션의 description 예산을 먹지 않게</b> 하려는 것입니다</td></tr>
-        <tr><td><b>epcc-harness</b></td><td class="m">1.0.0</td><td class="m">./harness/</td><td><b>당신이 설치할 것.</b> <code>harness-evaluation</code>과 <code>harness-authoring</code> 카드가 여기 있습니다 — devkit을 <em>쓰는</em> 사람에겐 불필요합니다</td></tr>
+        <tr><td><b>epcc-devkit</b></td><td class="m">3.30.0</td><td class="m">./</td><td>본체. 스킬 26 · 카드 9 · 훅 5 · 가이드 팩. <b>버전 4곳 인상은 이것만</b> 가리킵니다</td></tr>
+        <tr><td><b>epcc-marketing</b></td><td class="m">1.1.0</td><td class="m">./marketing/</td><td>마케팅 스킬 5종. <b>독립 버전인 이유는 개발 세션의 description 예산을 먹지 않게</b> 하려는 것입니다</td></tr>
+        <tr><td><b>epcc-harness</b></td><td class="m">1.1.0</td><td class="m">./harness/</td><td><b>당신이 설치할 것.</b> <code>harness-evaluation</code>과 <code>harness-authoring</code> 카드가 여기 있습니다 — devkit을 <em>쓰는</em> 사람에겐 불필요합니다</td></tr>
       </tbody>
     </table>
   </div>
@@ -230,10 +230,23 @@
         <tr><td><span class="pill p-skill">스킬</span></td><td class="m">skills/*/SKILL.md</td><td class="num">26개</td><td>description 예산 <b>12,000바이트</b> · 그래프 선언 · <code>${CLAUDE_SKILL_DIR}</code></td></tr>
         <tr><td><span class="pill p-agent">에이전트</span></td><td class="m">agents/*.md</td><td class="num">2개</td><td><b><code>.claude/rules/</code>를 상속받지 않습니다</b> — 규범을 프롬프트에 직접 적습니다</td></tr>
         <tr><td><b>가이드</b></td><td class="m">guides/{frontend,backend,seams}</td><td class="num">154파일<br>2MB</td><td><code>pack.json</code> · <code>policies.md</code> · <code>ledger.md</code>를 <b>함께</b> · <code>guide-gate</code> + <code>pack-smoke</code></td></tr>
-        <tr><td><b>그래프</b></td><td class="m">workflow.graph.json</td><td class="num">노드 48<br>엣지 87</td><td>모든 자산의 선언. <b>수치를 적은 문서 4곳</b>이 함께 낡습니다</td></tr>
+        <tr><td><b>그래프</b></td><td class="m">workflow.graph.json</td><td class="num">노드 49<br>엣지 90</td><td>모든 자산의 선언. <b>수치를 적은 문서 4곳</b>이 함께 낡습니다</td></tr>
       </tbody>
     </table>
   </div>
+
+  <h3>기계 밖으로 나가는 자산은 둘뿐입니다 <span class="m">— 2026-09-12 하나 늘었습니다</span></h3>
+  <p class="say">나머지 스킬은 전부 로컬에서 끝납니다. <b>이 둘만 경계를 넘고, 둘 다 사전 동의가 선행 조건입니다.</b></p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>자산</th><th>나가는 것</th><th>비용</th><th>동의</th></tr></thead>
+      <tbody>
+        <tr><td><span class="pill p-skill">/codex-claude-loop</span></td><td>계획 텍스트 또는 <span class="m">git diff</span> — <b>전체 트리가 아닙니다</b></td><td>구독 범위</td><td>매번 — 기록하지 않습니다</td></tr>
+        <tr><td><span class="pill p-skill">/image-generator</span></td><td><b>이미지 프롬프트만</b> — 소스는 나가지 않습니다</td><td><b>구독과 별개로 과금</b></td><td>프로젝트 1회 → <span class="m">epcc.config.json</span>의 <span class="m">assets.imageProvider</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note"><b><span class="pill p-skill" style="font-size:11px">/image-generator</span>가 하네스 최초의 유료 외부 호출입니다.</b> 그래서 셋을 지킵니다 — ① <b>단가를 숫자로 먼저 보여주고 고르게 합니다</b>(「과금됩니다」만으로는 판단할 수 없습니다) ② <b>치수·quality·포맷을 호출 전에 검증합니다</b>(잘못된 입력으로 돈이 나가지 않게) ③ <b>호출 후에는 응답의 <span class="m">usage</span>를 그대로 보고합니다</b> — 추정이 아니라 실측이 청구의 근거입니다.<br><br>키는 어디에도 저장하지 않습니다. 환경변수 <span class="m">OPENAI_API_KEY</span>만 읽습니다 — <span class="m">.env</span>·<span class="m">epcc.config.json</span>·셸 설정에 쓰면 이 하네스 자신의 <span class="pill p-hook" style="font-size:11px">security-check</span>가 막습니다. <b>키가 없으면 판정 불가(exit 2)이고 차단이 아닙니다</b> — 인계 모드로 빠져 사람이 ChatGPT에 붙여넣을 프롬프트를 냅니다(불변식 ①).</div>
 
   <h3>비용은 로드 시점이 정합니다</h3>
   <figure class="scroller">
@@ -359,7 +372,7 @@
         <rect x="20" y="40" width="200" height="76" fill="var(--store-soft)" stroke="var(--store)" stroke-width="1.6"/>
         <text x="34" y="66" font-size="14" font-weight="700" fill="currentColor">계측</text>
         <text class="mm" x="34" y="87" font-size="10.5" fill="var(--soft)">track-skill · graph.log</text>
-        <text class="mm" x="34" y="104" font-size="10.5" fill="var(--soft)">엣지 7/87 만 코드가 방출</text>
+        <text class="mm" x="34" y="104" font-size="10.5" fill="var(--soft)">엣지 7/90 만 코드가 방출</text>
 
         <rect x="260" y="40" width="200" height="76" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.6"/>
         <text class="mm" x="274" y="66" font-size="14" font-weight="600" fill="currentColor">doctor.sh</text>

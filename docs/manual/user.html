@@ -242,12 +242,12 @@
   svg .mm{font-family:var(--mono)}
 </style>
 
-<div class="strap"><span>EPCC Devkit</span><span>사용자용</span><a href="en/user.html">English →</a><a href="ops.html">관리자용 →</a><span>v3.28.0</span></div>
+<div class="strap"><span>EPCC Devkit</span><span>사용자용</span><a href="en/user.html">English →</a><a href="ops.html">관리자용 →</a><span>v3.30.0</span></div>
 
 <div class="wrap">
 
 <header>
-  <p class="kicker">스킬 26 · 규칙 카드 9 · 훅 5 · 그래프 노드 48</p>
+  <p class="kicker">스킬 27 · 규칙 카드 9 · 훅 5 · 그래프 노드 49</p>
   <h1>EPCC 하네스<br>지도</h1>
   <p class="lede">설치 한 번, 매 세션, 작업 하나, 그리고 그 밑에서 계속 도는 자기검증. <strong>네 가지 리듬으로 나눠서, 각각 무엇이 언제 왜 발동하는지</strong> 전부 적었습니다.</p>
   <div class="legend">
@@ -615,7 +615,7 @@
     <figcaption><strong>선은 직교로만 꺾고, 세로 이동은 열 사이 빈 차선에서만 합니다</strong> — 그래야 어디서 어디로 가는지가 읽힙니다. <strong>되돌아가는 선(점선)은 본문을 지나지 않고</strong> 띠 아래 채널로 빠져 한 줄로 합류합니다. <strong>구현(<span class="m">build</span>)이 허브입니다.</strong> 모든 준비 단계가 여기로 모이고, 검증에서 결함이 나오면 <b>다시 여기로 돌아옵니다</b> — 위 띠의 되돌아오는 엣지가 그것입니다. 아래 띠는 <b>하네스가 자기를 고치는 루프</b>이고, 끝이 <span class="m">user-report</span>인 이유는 <b>실패가 조용히 사라지지 않게</b> 하려는 것입니다.</figcaption>
   </figure>
 
-  <div class="note"><b>계측 엣지는 8개뿐입니다</b>(전체 87개 중). 청록으로 그린 것만 코드가 실제로 방출하고, 나머지는 <b>모델 행동이라 코드가 방출할 수 없습니다</b> — 그래서 「죽은 엣지」 판정에서 제외됩니다. <b>잴 수 없는 것을 잰 척하지 않습니다.</b></div>
+  <div class="note"><b>계측 엣지는 8개뿐입니다</b>(전체 90개 중). 청록으로 그린 것만 코드가 실제로 방출하고, 나머지는 <b>모델 행동이라 코드가 방출할 수 없습니다</b> — 그래서 「죽은 엣지」 판정에서 제외됩니다. <b>잴 수 없는 것을 잰 척하지 않습니다.</b></div>
 </section>
 
 <!-- ══════════ 1-b. 저장소가 내는 것 ══════════ -->
@@ -628,9 +628,9 @@
     <table>
       <thead><tr><th style="width:190px">플러그인</th><th style="width:90px">버전</th><th style="width:130px">source</th><th>누가 설치하나</th></tr></thead>
       <tbody>
-        <tr><td><span class="pill p-skill">epcc-devkit</span></td><td class="m">3.28.0</td><td class="m">./</td><td><b>제품을 만드는 사람</b> — 이 페이지가 설명하는 것이 전부 여기 있습니다. 스킬 26 · 카드 9 · 훅 5 · 가이드 팩.</td></tr>
-        <tr><td><span class="pill p-skill">epcc-marketing</span></td><td class="m">1.0.0</td><td class="m">./marketing/</td><td>마케팅 콘텐츠가 필요할 때만. <b>독립 버전인 이유는 개발 세션의 description 예산을 먹지 않게 하려는 것</b>입니다.</td></tr>
-        <tr><td><span class="pill p-skill">epcc-harness</span></td><td class="m">1.0.0</td><td class="m">./harness/</td><td><b>하네스를 만드는 사람만.</b> 그래프를 8축으로 전수 평가하는 <span class="m">harness-evaluation</span>이 여기 있습니다 — devkit을 <em>쓰는</em> 사람에겐 불필요합니다.</td></tr>
+        <tr><td><span class="pill p-skill">epcc-devkit</span></td><td class="m">3.30.0</td><td class="m">./</td><td><b>제품을 만드는 사람</b> — 이 페이지가 설명하는 것이 전부 여기 있습니다. 스킬 26 · 카드 9 · 훅 5 · 가이드 팩.</td></tr>
+        <tr><td><span class="pill p-skill">epcc-marketing</span></td><td class="m">1.1.0</td><td class="m">./marketing/</td><td>마케팅 콘텐츠가 필요할 때만. <b>독립 버전인 이유는 개발 세션의 description 예산을 먹지 않게 하려는 것</b>입니다.</td></tr>
+        <tr><td><span class="pill p-skill">epcc-harness</span></td><td class="m">1.1.0</td><td class="m">./harness/</td><td><b>하네스를 만드는 사람만.</b> 그래프를 8축으로 전수 평가하는 <span class="m">harness-evaluation</span>이 여기 있습니다 — devkit을 <em>쓰는</em> 사람에겐 불필요합니다.</td></tr>
       </tbody>
     </table>
   </div>
@@ -1261,11 +1261,13 @@
 <section id="skills">
   <p class="eyebrow">스킬 26개 전수</p>
   <h2>모두 그래프의 어느 단계에 매여 있습니다</h2>
-  <p class="say">스킬은 <strong>불릴 때만 로드되므로 그 전까지는 비용이 0</strong>입니다. 20개는 상황이 맞으면 <b>스스로 발동</b>하고, 6개는 <span class="badge b-cmd">/명령</span>을 기다립니다. 모두 그래프의 단계에 배선돼 있고, 그래서 <span class="m">doctor --usage</span>가 <strong>"이 스킬이 한 번이라도 실제로 쓰였나"</strong>를 답할 수 있습니다 — 이 저장소의 규칙은 <strong>그 측정 없이는 아무것도 걷어내지 않는다</strong>입니다.</p>
+  <p class="say">스킬은 <strong>불릴 때만 로드되므로 그 전까지는 비용이 0</strong>입니다. 21개는 상황이 맞으면 <b>스스로 발동</b>하고, 6개는 <span class="badge b-cmd">/명령</span>을 기다립니다. 모두 그래프의 단계에 배선돼 있고, 그래서 <span class="m">doctor --usage</span>가 <strong>"이 스킬이 한 번이라도 실제로 쓰였나"</strong>를 답할 수 있습니다 — 이 저장소의 규칙은 <strong>그 측정 없이는 아무것도 걷어내지 않는다</strong>입니다.</p>
+
+  <div class="note"><b>기계 밖으로 나가는 것은 둘뿐입니다.</b> 나머지 스킬은 전부 로컬에서 끝납니다. <span class="pill p-skill" style="font-size:11px">/codex-claude-loop</span>은 <b>계획 텍스트 또는 <span class="m">git diff</span></b>를 보내고(전체 트리가 아닙니다) 매번 동의를 받습니다. <span class="pill p-skill" style="font-size:11px">/image-generator</span>는 <b>이미지 프롬프트만</b> 보내며 소스는 나가지 않지만, <b>ChatGPT 구독과 별개로 과금됩니다</b> — 그래서 단가를 숫자로 먼저 보여주고, 한 번 고른 답을 <span class="m">epcc.config.json</span>에 적어 다시 묻지 않습니다. 키가 없으면 <b>막지 않고</b> 사람이 ChatGPT에 붙여넣을 프롬프트를 대신 내줍니다.</div>
 
   <div class="filterbar">
     <input id="q" type="search" placeholder="상황이나 이름으로 찾기 — 예: PRD, 보안, 리뷰, 디자인" aria-label="스킬 검색">
-    <span class="count" id="cnt">26개 전부 표시 중</span>
+    <span class="count" id="cnt">27개 전부 표시 중</span>
   </div>
 
   <div class="tbl-wrap">
@@ -1285,7 +1287,7 @@
         <tr><td><span class="pill p-skill">/prd-generator</span></td><td><span class="badge b-auto">자동</span></td><td>해당 PRD가 없을 때 씁니다. 규모에 따라 단일형·모듈형을 고릅니다.</td></tr>
         <tr><td><span class="pill p-skill">/dev-docs-generator</span></td><td><span class="badge b-auto">자동</span></td><td><span class="m">dev/active/</span>에 plan·context·tasks. <b>작업이 세션을 넘어갈 때만</b> 만듭니다.</td></tr>
 
-        <tr class="grouphead"><td colspan="3">build <span class="cnt">· 7</span> — <span class="why">가장 큰 무리 — 실제로 만드는 단계</span></td></tr>
+        <tr class="grouphead"><td colspan="3">build <span class="cnt">· 8</span> — <span class="why">가장 큰 무리 — 실제로 만드는 단계</span></td></tr>
         <tr><td><span class="pill p-skill">/ui-ux-design</span></td><td><span class="badge b-auto">자동</span></td><td>스타일·팔레트·폰트를 데이터에서 골라 디자인 시스템 생성 → <b>방향 심사</b>(내 기본값인가?) → 캔버스 시안 → 되쓰기·대조 → <b>렌더 증명</b>(콘솔 error 0 · 빈/로딩/에러 3상태).</td></tr>
         <tr><td><span class="pill p-skill">/image-generator</span></td><td><span class="badge b-auto">자동</span></td><td>사진·일러스트·목업처럼 코드로 만들 수 없는 <b>래스터 이미지</b>를 만듭니다. <code>OPENAI_API_KEY</code>가 있으면 gpt-image-2로 생성하고(<b>ChatGPT 구독과 별개로 과금</b> — 쓸지 한 번 묻고 기억합니다), 없으면 <b>ChatGPT에 그대로 붙여넣어 같은 결과를 얻는 프롬프트</b>를 만들어 줍니다. 도해는 <span class="pill p-skill" style="font-size:11px">diagram-design</span>이 담당합니다.</td></tr>
         <tr><td><span class="pill p-skill">/test-driven-development</span></td><td><span class="badge b-auto">자동</span></td><td>구현보다 테스트를 먼저. 테스트를 어디(seam)에 두는지, 무엇이 <b>통과해도 쓸모없는 테스트</b>인지 다룹니다.</td></tr>
@@ -1449,7 +1451,7 @@
       </tbody>
     </table>
   </div>
-  <div class="note"><b>계측은 정직합니다</b> — 그래프 엣지 87개 중 <b>코드가 실제로 방출하는 것은 7개</b>이고 3개는 조건부입니다. 나머지는 모델 행동이라 코드가 방출할 수 없으므로 <b>「죽은 엣지」 판정에서 제외</b>됩니다. 잴 수 없는 것을 잰 척하지 않습니다.</div>
+  <div class="note"><b>계측은 정직합니다</b> — 그래프 엣지 90개 중 <b>코드가 실제로 방출하는 것은 7개</b>이고 3개는 조건부입니다. 나머지는 모델 행동이라 코드가 방출할 수 없으므로 <b>「죽은 엣지」 판정에서 제외</b>됩니다. 잴 수 없는 것을 잰 척하지 않습니다.</div>
 </section>
 
 <!-- ══════════ 9. 막혔을 때 ══════════ -->
