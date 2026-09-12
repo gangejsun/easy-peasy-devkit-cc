@@ -63,7 +63,13 @@
     "sharedPackage": "<입력값>",
     "importAlias": "<입력값>",
     "repoTopology": "<monorepo | single | msa — Step 4.7 선택값>"
-  }
+  },
+
+  // 비워 둔 채로 생성한다 — 여기서 묻지 않는다.
+  // /image-generator 가 **첫 이미지 요청 때** imageProvider("openai" | "manual")를
+  // 한 번 묻고 기록한다. 쓸지 안 쓸지 모르는 기능을 초기 인터뷰에 넣으면
+  // 인터뷰만 길어지고 대부분의 프로젝트에서 답이 버려진다.
+  "assets": {}
 }
 ```
 

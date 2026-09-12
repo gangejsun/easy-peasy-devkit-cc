@@ -7,7 +7,7 @@ disable-model-invocation: true
 # Web Asset Generator
 
 로고/텍스트/이모지 → favicon + OG 이미지 → Next.js 통합 코드 제공.
-하이브리드 생성 엔진: **Pillow**(파비콘 전용) + **Nano Banana 2**(OG 이미지 선택적).
+생성 엔진은 **Pillow** 하나다 — 로컬에서 도형·텍스트를 그려 래스터화한다. 키도 네트워크도 쓰지 않는다.
 
 ## 워크플로우
 
@@ -49,7 +49,13 @@ python3 ${CLAUDE_SKILL_DIR}/scripts/generate_og_images.py --title "<제목>" --o
   [--subtitle "<부제>"] [--logo <path>] [--bg "#0F172A"] [--fg "#FFFFFF"]
 ```
 
-**AI 모드** (Nano Banana 2): 사용자가 고품질을 원할 때만. API 키 확인 후 프롬프트 기반 생성.
+**AI로 배경·일러스트를 만들고 싶을 때**는 이 스킬이 하지 않는다 — `/image-generator`가
+그 일을 한다(개발 하네스 쪽 스킬이다). 거기서 받은 이미지를 `--logo`·배경으로 넘겨 합성한다.
+그 스킬이 보이지 않으면 위 Pillow 모드가 그대로 답이다(단색 배경 + 텍스트).
+
+> 이전 판은 여기에 「Nano Banana 2 AI 모드」가 있다고 적어 두었지만 **구현이 없었다** —
+> 스크립트도 인자도 키 확인 절차도 존재하지 않았다. 없는 기능을 있다고 적으면 모델이
+> 그것을 부르려다 실패한다. 그래서 실물이 있는 곳을 가리키도록 고쳤다.
 
 ### Step 6: 검증 결과 확인
 

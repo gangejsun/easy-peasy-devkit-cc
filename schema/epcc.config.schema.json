@@ -336,6 +336,20 @@
           "description": "Repository topology chosen at epcc-init (drives the generated project-structure rule card)"
         }
       }
+    },
+    "assets": {
+      "type": "object",
+      "description": "Generated-asset preferences recorded once and reused, so the harness does not re-ask every time",
+      "properties": {
+        "imageProvider": {
+          "type": "string",
+          "enum": [
+            "openai",
+            "manual"
+          ],
+          "description": "How /image-generator produces raster images. 'openai' calls the Images API (billed separately from any ChatGPT subscription); 'manual' skips the API and hands the user a ready-to-paste prompt instead. Absent means not yet chosen — the skill asks once and records the answer."
+        }
+      }
     }
   },
   "required": [
