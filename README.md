@@ -161,7 +161,7 @@ code-conventions)을 생성합니다 — 레포 토폴로지(싱글/모노레포
 | **문서 의존성** (`dev/docs/prd/` 수정 시) | `prd-reviewer` |
 | **description** (조건 충족 시 모델이 발동) | `receiving-code-review` · `security-review` · `shortcut-ledger` · `pr-prep` · `codebase-survey` · `ui-ux-design` · `skill-enhancer` |
 | **다른 스킬·훅** | `stack-guide-generator` (← `epcc-init` · 세션 브리핑) |
-| **사용자만** (`disable-model-invocation` — description 비상주) | `epcc-init` · `epcc-migrate` · `health-check` · `fix-issue` · `execution-dashboard` · `harness-evaluation` |
+| **사용자만** (`disable-model-invocation` — description 비상주) | `epcc-init` · `epcc-migrate` · `health-check` · `fix-issue` · `execution-dashboard` |
 
 ## 자기검증 — `doctor`
 
@@ -294,7 +294,7 @@ PostToolUse 추적기 3종
 | --- | --- |
 | `/security-review` | 내장은 브랜치 diff 전용이고 시크릿을 명시적으로 제외합니다. 이 스킬은 코드베이스 전수 감사·의존성 CVE·결제 보안을 담당 |
 | `/receiving-code-review` | 내장은 지적을 *생성*합니다. 받은 지적을 *비판적으로 검증*하는 대응물은 없습니다 |
-| `/harness-evaluation` | `doctor`는 측정(훅 생존·dangling·예산), 이 스킬은 판단(설계가 좋은가·지금 모델에 과잉인가) |
+| `/harness-evaluation` (`epcc-harness` 플러그인 — devkit에는 없다) | `doctor`는 측정(훅 생존·dangling·예산), 이 스킬은 판단(설계가 좋은가·지금 모델에 과잉인가) |
 | `/shortcut-ledger` | 내장 `/simplify`는 **이미 쓴** 코드를 줄입니다. 의도적으로 남긴 축약의 천장이 만료됐는지 추적하는 대응물은 없습니다 (쓰기 전 규범 자체는 `code-change.md` 「구현 사다리」) |
 | `/codebase-survey` | 내장 `/init`은 `CLAUDE.md`를 **한 번** 만듭니다. `epcc-init`도 최초 1회만 실측하고, 그렇게 만든 프로젝트 소유 카드 두 장(`project-structure`·`code-conventions`)에는 **갱신 경로도 드리프트 감지 장치도 없습니다.** 이 스킬이 그 갱신 경로이며, 구조를 처방하지 않고 측정·서술만 합니다 |
 | `/pr-prep` | 내장 `/code-review`는 diff의 **결함**을, `epcc-reviewer`는 **계약**을, `/completion-review`는 **문서**를 다룹니다. **PR 본문을 만드는 대응물은 없습니다** — 되돌림 클래스가 의무 섹션(롤백 절차·호출처·개입 근거)을 정하는 형태는 이 하네스 고유입니다 |

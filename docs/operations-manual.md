@@ -117,8 +117,8 @@
 - 본문은 호출 시에만 로드되므로 상세는 본문에
 - 스킬 전용 스크립트는 `skills/<스킬>/scripts/`에 두고 **`${CLAUDE_SKILL_DIR}`**로 호출합니다.
   자작 표기는 치환되지 않아 소비자에서 실패합니다 (doctor가 검출)
-- 루트 `scripts/`는 **훅·doctor·설치기 전용**입니다. 검사 스크립트를 거기 두면 doctor의
-  자기 lint가 정규식 문자열을 오탐합니다
+- 루트 `scripts/*.sh`는 **훅·doctor·설치기 전용**입니다. 검사 스크립트를 거기 두면 doctor의
+  자기 lint가 정규식 문자열을 오탐합니다 (`scripts/gen/`의 그림 설명서 생성기는 예외 — 셸이 아니고 소비자와 무관)
 
 ### 2.5 훅을 고친다 — 침묵 실패 방지
 
@@ -262,6 +262,8 @@ bash skills/ui-ux-design/scripts/design-sync.sh --self-test           # 토큰 �
 - `docs/harness-anatomy.md`의 그래프 `kind` 표 · 「노드 N · 엣지 N」·「T0 주입 N줄」
 - T0 예산 수치 (`doctor.sh`의 `T0_BUDGET` 상수가 정본)
 - 에이전트 `tools:` 목록 ↔ README·해부 문서의 표
+- 그림 설명서 `docs/manual/user.html`·`en/user.html`의 스킬 필 목록 ↔ `skills/`+`harness/skills/` **이름 집합**(수가 아니라 집합 — 누락·유령 둘 다)
+- 그림 설명서의 「security-check가 막는 것 — N종」 ↔ 훅의 차단 사유 제목 수 (한·영)
 
 > 💡 그래프 노드/엣지를 늘렸다면 **README와 해부 문서의 수를 같이 고치세요.** 안 고치면
 > doctor `--default`가 실패합니다. 이건 기능입니다.

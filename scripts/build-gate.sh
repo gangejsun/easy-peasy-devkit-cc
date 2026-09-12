@@ -73,13 +73,43 @@ if [ -n "$UNDECIDABLE" ]; then
   exit 0
 fi
 
-BUILD_RAN=0
-if jq -r 'select(.type=="assistant") | .message.content[]?
+# 인식은 **세그먼트의 첫 토큰**으로 한다 — security-check의 면제와 같은 규율이다.
+# 예전의 한 줄 정규식은 양쪽으로 틀렸다(평가 v9 · E-60): `echo npm run build`·`grep 'pnpm build'`를
+# 실행으로 셌고(v2 stop-guard의 실패가 좁아진 채 남아 있었다), 정작 fastapi 프리셋이 처방하는
+# `pytest`(맨 명령)와 `python -m pytest`·`tsc --noEmit`·`jest`는 못 알아봐 **자기 처방을 돌린
+# 세션을 막았다.** 오탐 차단은 사용자가 훅을 끄게 만들고, 꺼진 훅의 차단력은 0이다.
+#
+# 세 부류다: ① 검증기 자체가 명령인 경우(pytest·jest·tsc·make …) ② 러너 뒤에 검증 어휘가
+# 오는 경우(npm run build · python -m pytest · npx tsc · uv run pytest …) ③ 언어 도구의
+# 부명령(cargo test · go vet …). 설치 어휘(install·add)가 있는 세그먼트는 ②에서 뺀다 —
+# `python -m pip install pytest`는 검증이 아니다. 알려진 한계: 파일 힙독 **본문**의 한 줄이
+# 검증기 이름으로 시작하면 실행으로 센다 — 명령 텍스트만 보는 판정의 원리적 경계다.
+_verification_ran() {
+  jq -r 'select(.type=="assistant") | .message.content[]?
           | select(.type=="tool_use" and .name=="Bash") | .input.command // empty' \
      "$TRANSCRIPT" 2>/dev/null \
-   | grep -qE '(pnpm|npm|npx|yarn|bun|make|cargo|go|uv|poetry|python|pytest|ruff|tsc)([[:space:]]+run)?[[:space:]]+[a-z:]*(build|test|typecheck|check|lint)'; then
-  BUILD_RAN=1
-fi
+  | awk '
+    function head(s) {
+      sub(/^[ \t]+/, "", s)
+      while (match(s, /^[A-Za-z_][A-Za-z0-9_]*=[^ \t]*[ \t]+/)) s = substr(s, RLENGTH + 1)
+      while (match(s, /^(time|env|nice|sudo|command)[ \t]+/)) s = substr(s, RLENGTH + 1)
+      if (match(s, /^timeout[ \t]+[0-9]+[a-z]?[ \t]+/)) s = substr(s, RLENGTH + 1)
+      if (match(s, /^(bash|sh|zsh)[ \t]+-c[ \t]+["\047]?/)) s = substr(s, RLENGTH + 1)
+      return s
+    }
+    { n = split($0, seg, /;|&&|\|\|/)
+      for (i = 1; i <= n; i++) {
+        s = head(seg[i]); split(s, w, /[ \t]+/); t = w[1]; sub(/.*\//, "", t)
+        if (t ~ /^(pytest|jest|vitest|mocha|tsc|vue-tsc|ruff|mypy|pyright|eslint|biome|tox|nox|gradlew|gradle|mvnw|mvn|make)$/) { found = 1; exit }
+        if (s ~ /(^|[ \t])(install|add|i)([ \t]|$)/) continue
+        if (t ~ /^(pnpm|npm|yarn|bun|npx|bunx|uv|poetry|pipx|python|python3|py|deno)$/ \
+            && s ~ /[ \t][a-z:_-]*(build|test|typecheck|check|lint|pytest|unittest|jest|vitest|mocha|tsc|ruff|mypy|clippy)[a-z:_-]*([ \t"\047]|$)/) { found = 1; exit }
+        if (t ~ /^(cargo|go|dotnet|swift)$/ && s ~ /^[a-z0-9.\/-]+[ \t]+(build|test|check|clippy|vet)([ \t]|$)/) { found = 1; exit }
+      } }
+    END { exit found ? 0 : 1 }'
+}
+BUILD_RAN=0
+_verification_ran && BUILD_RAN=1
 
 # ── 2-a. UI 파일은 빌드 통과로 끝나지 않는다 (알림, 차단 아님) ──────
 # tsc 는 빈 화면도 콘솔이 터지는 화면도 통과시킨다. 그래서 여기서 **알린다.**

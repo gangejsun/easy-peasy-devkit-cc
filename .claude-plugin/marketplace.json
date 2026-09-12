@@ -73,7 +73,7 @@
       "name": "epcc-harness",
       "source": "./harness/",
       "description": "하네스 저작 전용 도구 — 그래프 엔진을 경로 단위 8축으로 전수 평가하는 harness-evaluation 스킬. epcc-devkit을 **쓰는** 사람에게는 불필요하고, epcc-devkit을 **만드는** 사람만 설치한다. 개발 하네스와 독립 버전이다.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": {
         "name": "gangejsun"
       },

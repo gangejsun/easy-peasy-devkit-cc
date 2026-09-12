@@ -292,12 +292,28 @@ destructive_gate() {
               "모든 커밋 해시가 바뀌어 다른 사람의 클론이 전부 어긋납니다. 원격 히스토리는 되돌릴 수 없습니다" \
               "재작성이 정말 필요하면 팀에 먼저 공지하고, 백업 브랜치와 태그를 남긴 뒤 진행하세요"
 
-  # ── 강제 푸시 — 대상 브랜치로 판정한다 (3상태) ─────────────────────
-  if dhas 'git[[:space:]]+push' && dhas '(--force([^-]|$)|[[:space:]]-f([[:space:]]|$))' && ! dhas '--force-with-lease'; then
-    # 명시 refspec의 마지막 비플래그 토큰을 대상으로 본다
-    target=$(printf '%s' "$DCMD" | tr ';|&' '\n' | grep -E 'git[[:space:]]+push' | head -1 \
+  # ── 강제 푸시 · 원격 브랜치 삭제 — 대상 브랜치로 판정한다 (3상태) ──────
+  # `--force`만 보면 같은 일을 하는 세 형태가 통과한다 — `+main` refspec(강제 푸시의 원형),
+  # `--delete main`·`:main`(원격 브랜치 삭제). 격리 주입으로 셋 다 exit 0을 확인했다(평가 v9 · E-61).
+  # 넷은 한 질문이다: 「공유 브랜치의 원격 이력을 다른 사람 동의 없이 바꾸는가」. 판정 규칙
+  # (대상 브랜치 · 판정 불가 시 통과)은 그대로 두고 **입구만** 넓힌다.
+  local pushseg="" pmode=""
+  if dhas 'git[[:space:]]+push'; then
+    pushseg=$(printf '%s' "$DCMD" | tr ';|&' '\n' | grep -E 'git[[:space:]]+push' | head -1)
+    if printf '%s' "$pushseg" | grep -Eq -- '(--force([^-]|$)|[[:space:]]-f([[:space:]]|$))' \
+       && ! printf '%s' "$pushseg" | grep -q -- '--force-with-lease'; then
+      pmode="force"
+    elif printf '%s' "$pushseg" | grep -Eq '[[:space:]]\+[A-Za-z0-9_./:-]+'; then
+      pmode="force"
+    elif printf '%s' "$pushseg" | grep -Eq -- '(^|[[:space:]])(--delete|-d)([[:space:]]|$)|[[:space:]]:[A-Za-z0-9_./-]+([[:space:]]|$)'; then
+      pmode="delete"
+    fi
+  fi
+  if [ -n "$pmode" ]; then
+    # 명시 refspec의 마지막 비플래그 토큰을 대상으로 본다 (`+main`의 `+`, `src:dst`의 `src:`는 뗀다)
+    target=$(printf '%s' "$pushseg" \
              | awk '{n=0; for(i=1;i<=NF;i++) if($i !~ /^-/) t[++n]=$i; if(n>=4) print t[n]}')
-    target="${target##*:}"
+    target="${target#+}"; target="${target##*:}"
     # refspec이 없으면 현재 브랜치다. 커밋 0개 저장소에서 rev-parse가 exit 128로
     # 죽지 않게 HEAD 존재를 먼저 확인한다 — 없으면 판정 불가로 남긴다.
     if [ -z "$target" ] && git rev-parse -q --verify HEAD >/dev/null 2>&1; then
@@ -305,15 +321,20 @@ destructive_gate() {
     fi
     case "$target" in
       main|master|develop|development|release|release/*|prod|production|stage|staging)
+        if [ "$pmode" = "delete" ]; then
+          dblock "공유 브랜치 원격 삭제 ($target)" \
+                 "원격의 브랜치가 사라져 다른 사람의 추적 브랜치·열린 PR이 끊깁니다. 로컬 사본이 없으면 복구 불가입니다" \
+                 "병합 여부를 먼저 확인하고, 삭제는 호스트의 브랜치 보호 규칙을 거쳐 UI에서 하세요"
+        fi
         dblock "공유 브랜치에 강제 푸시 ($target)" \
                "원격 히스토리를 덮어써 다른 사람이 푸시한 커밋이 사라질 수 있습니다. 복구하려면 그 사람의 로컬 사본이 필요합니다" \
                "git push --force-with-lease — 남의 커밋이 있으면 거부됩니다. 이미 공개된 커밋은 revert로 되돌리세요" ;;
       ""|HEAD)
-        printf '⚠️  판정 불가: 강제 푸시의 대상 브랜치를 확인할 수 없습니다\n' >&2
+        printf '⚠️  판정 불가: 강제 푸시·삭제의 대상 브랜치를 확인할 수 없습니다\n' >&2
         printf '     (저장소 밖 · detached HEAD · 커밋 0개). 차단하지 않고 통과시킵니다 —\n' >&2
         printf '     대상이 공유 브랜치인지 직접 확인하고, --force-with-lease를 쓰세요.\n' >&2 ;;
       *)
-        dwarn "기능 브랜치 강제 푸시 ($target)" "공유 중인 브랜치면 --force-with-lease를 쓰세요" ;;
+        [ "$pmode" = "force" ] && dwarn "기능 브랜치 강제 푸시 ($target)" "공유 중인 브랜치면 --force-with-lease를 쓰세요" ;;
     esac
   fi
 

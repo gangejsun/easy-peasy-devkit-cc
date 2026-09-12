@@ -745,7 +745,7 @@
         <tr>
           <td><span class="m" style="font-weight:600;color:var(--ink)">P4</span> <b>구현</b><br><small style="color:var(--alert)">항상</small></td>
           <td>메인 세션</td>
-          <td><b>언제나 돕니다.</b> 편집 경로가 규칙 카드를 부르고, 쓰기·실행 직전마다 <span class="pill p-hook" style="font-size:11px">security-check</span>가 23종을 검사합니다. 테스트 러너가 있고 동작이 바뀌면 테스트가 먼저입니다.<br><span class="pill p-skill" style="font-size:11px">/test-driven-development</span> <span class="pill p-skill" style="font-size:11px">/ui-ux-design</span> <span class="pill p-skill" style="font-size:11px">frontend·backend-guide</span></td>
+          <td><b>언제나 돕니다.</b> 편집 경로가 규칙 카드를 부르고, 쓰기·실행 직전마다 <span class="pill p-hook" style="font-size:11px">security-check</span>가 24종을 검사합니다. 테스트 러너가 있고 동작이 바뀌면 테스트가 먼저입니다.<br><span class="pill p-skill" style="font-size:11px">/test-driven-development</span> <span class="pill p-skill" style="font-size:11px">/ui-ux-design</span> <span class="pill p-skill" style="font-size:11px">frontend·backend-guide</span></td>
           <td class="use y">●</td><td class="use y">●</td><td class="use y">●</td><td class="use y">●</td><td class="use y">●</td><td class="use n">—</td>
         </tr>
         <tr>
@@ -1121,7 +1121,7 @@
         <tr>
           <td><span class="pill p-hook">security-check</span> <span class="badge b-always">차단</span><br><span class="m" style="font-size:11px;color:var(--faint)">500줄</span></td>
           <td class="m">PreToolUse<br>Edit｜Write｜MultiEdit｜Bash<br><span style="font-family:var(--body);color:var(--soft)">쓰거나 실행하기 <b>직전</b></span></td>
-          <td><b>23종을 검사해 걸리면 exit 2</b> — 도구 호출 자체가 거부됩니다. 신규 UI 파일 생성 시 <span class="pill p-rule">ui-design</span> 카드를 소환하기도 합니다.</td>
+          <td><b>24종을 검사해 걸리면 exit 2</b> — 도구 호출 자체가 거부됩니다. 신규 UI 파일 생성 시 <span class="pill p-rule">ui-design</span> 카드를 소환하기도 합니다.</td>
           <td>쓴 다음에 잡으면 늦습니다. <b>내용 검사는 이식 가능하지만 경로 검사는 그렇지 않아서</b>, 이 훅은 경로를 몰라도 됩니다. 배치 실수(<span class="m">NEXT_PUBLIC_</span> 뒤의 서버 키)는 정규식으로 원리상 못 잡으므로 <span class="pill p-rule">security</span> 카드가 맡습니다.</td>
         </tr>
         <tr>
@@ -1146,7 +1146,7 @@
     </table>
   </div>
 
-  <h3>security-check가 막는 것 — 23종 전부</h3>
+  <h3>security-check가 막는 것 — 24종 전부</h3>
   <div class="blocks">
     <div>
       <h4 style="color:var(--hook)">시크릿 하드코딩 15종</h4>
@@ -1178,7 +1178,8 @@
         <li>prisma 스키마 초기화</li>
         <li>마이그레이션 전량 되돌리기</li>
         <li>git 히스토리 재작성 · 미러 푸시</li>
-        <li>공유 브랜치 강제 푸시</li>
+        <li>공유 브랜치 강제 푸시 (<span class="m">--force</span> · <span class="m">+refspec</span>)</li>
+        <li>공유 브랜치 원격 삭제 (<span class="m">--delete</span> · <span class="m">:branch</span>)</li>
       </ul>
     </div>
     <div>

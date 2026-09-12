@@ -1147,6 +1147,21 @@ $c"
     _claim "수동 전용 수" "$(grep -m1 -oE '수동 호출 전용\*\* \(`disable-model-invocation`\) \|[^|]*— \*\*[0-9]+개\*\*' "$AN" 2>/dev/null | grep -oE '\*\*[0-9]+개\*\*$' | tr -d '*개')" "$real_dmi" "$AN"
   fi
 
+  # 같은 문서가 「security-check가 막는 것 — N종」도 손으로 적는다. 실물은 훅의 차단 사유 제목
+  # 수(위 「차단 사유 ↔ 픽스처」와 같은 식). 강제 푸시 게이트에 원격 삭제를 넣자 23이 24가 됐고,
+  # 이 대조가 없었으면 그림 설명서 세 곳이 23에 멈췄다(평가 v9 · E-61).
+  local real_blk mb
+  real_blk=$(num "$({ grep -oE '(dblock|block) "[^"]+"' scripts/security-check.sh 2>/dev/null || true; } \
+              | sed -E 's/^(dblock|block) "//; s/"$//; s/ \(\$[a-z_]+\)$//' | sort -u | wc -l | tr -d ' ')")
+  if [ "$real_blk" -gt 0 ]; then
+    for mb in $(grep -oE '[0-9]+종을 검사해|— [0-9]+종 전부' docs/manual/user.html 2>/dev/null | grep -oE '[0-9]+' | sort -u); do
+      _claim "차단 사유 수" "$mb" "$real_blk" "docs/manual/user.html"
+    done
+    for mb in $(grep -oE '[Ss]creens [0-9]+ patterns|blocks — all [0-9]+<|[0-9]+ things that get blocked' docs/manual/en/user.html 2>/dev/null | grep -oE '[0-9]+' | sort -u); do
+      _claim "차단 사유 수" "$mb" "$real_blk" "docs/manual/en/user.html"
+    done
+  fi
+
   # 위 검사는 `grep -m1`로 **한 형식의 첫 매치만** 본다. 같은 문서가 다른 표현으로 같은 수를
   # 또 적으면 안 보인다 — 실제로 해부 문서가 556줄 뒤에서 다른 수를 적고 있었고, 그 파일
   # 자신이 "문서에 손으로 적은 수는 반드시 낡는다"고 경고하는 중이었다.
@@ -1266,10 +1281,33 @@ $c"
   # 스킬 이름 — 소비자가 설치 전에 읽는 유일한 목록이 README다. 7개 스킬이 README·docs 어디에도
   # 없었고 그중 하나(test-driven-development)는 그래프 밖 인바운드가 0이었다 (평가 v6 · E-32).
   _names_in README.md "스킬 이름" "$(ls -1 skills 2>/dev/null | tr '\n' ' ')"
+  # 그림 설명서(docs/manual/*.html)는 스킬을 `p-skill">/<name>` 필로 전수 나열한다 — 가장 큰
+  # 소비자 표면(4파일 400KB)인데 어떤 대조도 닿지 않았고, 3.29.0의 하네스 분리 뒤 이름이 기계 밖에서
+  # 낡은 자리가 정확히 여기와 README 표였다(평가 v8 · E-57). **수가 아니라 이름 집합**을 대조한다 —
+  # "26 = devkit 25 + harness 1"처럼 수는 틀 잡기에 따라 정당하게 달라지지만 집합은 그렇지 않다.
+  # 실물은 개발 하네스의 두 루트(skills/ · harness/skills/)다. marketing/은 독립 플러그인이라
+  # 그림 설명서의 범위 밖이다. 필 형식이 없는 문서·파일 부재는 판정 불가 — 통과(3상태).
+  _manual_skills_in() {  # $1 문서
+    local doc="$1" real listed miss ghost
+    [ -f "$doc" ] || return 0
+    listed=$(grep -oE 'p-skill">/[a-z0-9-]+' "$doc" 2>/dev/null | sed 's|.*/||' | sort -u)
+    [ -n "$listed" ] || return 0
+    real=$(find skills harness/skills -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sed 's|.*/||' | sort -u)
+    miss=$(comm -23 <(printf '%s\n' "$real") <(printf '%s\n' "$listed") | tr '\n' ' ')
+    ghost=$(comm -13 <(printf '%s\n' "$real") <(printf '%s\n' "$listed") | tr '\n' ' ')
+    nm_chk=$((nm_chk+1))
+    [ -z "$miss$ghost" ] && return 0
+    bad "$doc: 매뉴얼 스킬 목록 ≠ 실물${miss:+ — 누락 $miss}${ghost:+ — 유령 $ghost}" \
+        "스킬을 넣고 뺀 경로가 그림 설명서를 지나지 않았다 — 필을 고치고 manual-variants.py로 파생본도 다시 낸다"
+    nm_bad=$((nm_bad+1)); return 0
+  }
+  for doc in docs/manual/user.html docs/manual/en/user.html; do
+    _manual_skills_in "$doc"
+  done
   for doc in README.md docs/getting-started.md skills/stack-guide-generator/assets/guide-skeleton.md; do
     _seams_in "$doc" "$snames"
   done
-  [ "$nm_bad" -eq 0 ] && [ "$nm_chk" -gt 0 ] && ok "문서 이름 목록 ${nm_chk}건 실물과 일치 (프리셋·이음매)"
+  [ "$nm_bad" -eq 0 ] && [ "$nm_chk" -gt 0 ] && ok "문서 이름 목록 ${nm_chk}건 실물과 일치 (프리셋·이음매·매뉴얼 스킬)"
 
   # ── 카드 `paths:` ↔ 문서의 로드 조건 표 ──
   #
@@ -1585,6 +1623,8 @@ run_self_test() {
     "PreToolUse-bash-alembic-base.json:마이그레이션 전량 되돌리기:마이그레이션 전량 되돌리기"
     "PreToolUse-bash-filter-branch.json:git 히스토리 재작성:git 히스토리 재작성/미러 푸시"
     "PreToolUse-bash-force-push-main.json:공유 브랜치 강제 푸시:공유 브랜치에 강제 푸시"
+    "PreToolUse-bash-force-push-plus.json:+refspec 강제 푸시 (우회 시도):공유 브랜치에 강제 푸시"
+    "PreToolUse-bash-push-delete-main.json:공유 브랜치 원격 삭제:공유 브랜치 원격 삭제"
     "PreToolUse-secret-github-pat.json:GitHub PAT:GitHub Personal Access Token 하드코딩"
     "PreToolUse-secret-github-oauth.json:GitHub OAuth 토큰:GitHub 토큰 하드코딩"
     "PreToolUse-secret-stripe.json:Stripe:Stripe Secret Key 하드코딩"
@@ -1906,6 +1946,14 @@ run_self_test() {
       # 해부 문서의 「수동 전용 N개」 — 픽스처 트리의 dmi 실물은 epcc-init 1개다 (E-49).
       _fx_static_case "$sfx" manual-count-drift 'docs/harness-anatomy.md' '\*\*9개\*\*' \
         "수동 전용 수 주장 9 ≠ 실물 1" 'printf -- "\n| **수동 호출 전용** (\`disable-model-invocation\`) | \`epcc-init\` — **9개** | x |\n" >> "$T/docs/harness-anatomy.md"'
+
+      # 그림 설명서의 스킬 필 목록이 실물과 어긋난 상태 — 픽스처 트리 실물은 3개인데 2개만 적는다 (E-57).
+      _fx_static_case "$sfx" manual-skill-set-drift 'docs/manual/user.html' 'p-skill' \
+        "매뉴얼 스킬 목록 ≠ 실물" 'mkdir -p "$T/docs/manual" && printf -- "<span class=\"pill p-skill\">/sample</span> <span class=\"pill p-skill\">/epcc-init</span>\n" > "$T/docs/manual/user.html"'
+
+      # 그림 설명서의 차단 사유 수 — 합성 훅에 사유 2개를 두고 매뉴얼이 9라 주장하게 한다 (E-61).
+      _fx_static_case "$sfx" manual-block-count-drift 'docs/manual/user.html' '9종을 검사해' \
+        "차단 사유 수 주장 9 ≠ 실물 2" 'mkdir -p "$T/docs/manual" && printf "dblock \"A\"\ndblock \"B\"\n" > "$T/scripts/security-check.sh" && printf -- "<td>9종을 검사해 걸리면 exit 2</td>\n" > "$T/docs/manual/user.html"'
 
       _fx_static_case "$sfx" marketplace-drift '.claude-plugin/marketplace.json' '훅 9종' \
         "훅 수 주장 9 ≠ 실물 1" 'sed "s/훅 1종/훅 9종/" "$T/.claude-plugin/marketplace.json" > "$T/m.tmp" && mv "$T/m.tmp" "$T/.claude-plugin/marketplace.json"'
@@ -2338,6 +2386,31 @@ run_consumer() {
   printf '%s' "$out" | grep -q '렌더를 확인한 흔적이 없습니다' \
     && bad "UI 알림이 매 Stop 마다 반복된다" "세션당 1회 마커가 동작하지 않는다" \
     || ok "UI 알림 세션당 1회 (반복 경고 없음)"
+
+  # ── 검증 명령 인식 — 양쪽을 증명한다 (평가 v9 · E-60) ─────────────
+  # ⓐ fastapi 프리셋이 처방하는 맨 `pytest`를 알아봐야 한다 — 못 알아보면 자기 처방을 돌린
+  #    세션을 막는 오탐이고, 오탐은 훅을 끄게 만든다.
+  # ⓑ `echo npm run build`는 실행이 아니다 — 문자열 포함으로 통과시키면 v2 stop-guard다.
+  sec "검증 명령 인식 (build-gate)"
+  local vt="$tmp/verify-transcript.jsonl" vcase vcmd vwant
+  for vcase in "pytest -q|pass" "python -m pytest|pass" "npx tsc --noEmit|pass" "echo npm run build|block" "grep -rn 'pnpm build' README.md|block"; do
+    vcmd="${vcase%|*}"; vwant="${vcase##*|}"
+    printf '%s\n' "$(jq -nc --arg c "$vcmd" '{type:"assistant",message:{content:[{type:"tool_use",name:"Bash",input:{command:$c}}]}}')" > "$vt"
+    printf 'export const A = () => <div>%s</div>;\n' "$RANDOM" > "$up/src/Card.tsx"
+    code=0
+    out=$(printf '{"stop_hook_active":false,"transcript_path":"%s"}' "$vt" \
+          | CLAUDE_PLUGIN_ROOT="$cache" CLAUDE_PROJECT_DIR="$up" \
+            bash "$cache/scripts/build-gate.sh" 2>/dev/null) || code=$?
+    if ! command -v jq >/dev/null 2>&1; then
+      warn "검증 명령 인식 미검증 — jq 없음" "판정 불가를 통과로 접지 않는다"; break
+    elif printf '%s' "$out" | grep -q '"continue"[[:space:]]*:[[:space:]]*false'; then
+      [ "$vwant" = "block" ] && ok "build-gate: '$vcmd' → 실행 아님 → 차단" \
+        || bad "build-gate: '$vcmd'를 실행으로 못 알아봄 → 차단" "처방한 검증 명령을 돌린 세션을 막는 오탐 — 훅을 끄게 만든다"
+    else
+      [ "$vwant" = "pass" ] && ok "build-gate: '$vcmd' → 실행으로 인식" \
+        || bad "build-gate: '$vcmd'를 실행으로 셌다" "문자열 포함이 통과 근거가 됐다 — v2 stop-guard의 실패"
+    fi
+  done
 
   # ── 응답 언어 도달 ────────────────────────────────────────────────
   # 언어 선택은 config에 적히는 것으로 끝나지 않는다. T0는 파일이 아니라 훅 **출력**이라

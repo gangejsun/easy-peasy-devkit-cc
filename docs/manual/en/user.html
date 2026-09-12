@@ -249,7 +249,7 @@
 <header>
   <p class="kicker">26 skills · 9 rule cards · 5 hooks · 48 graph nodes</p>
   <h1>EPCC<br>Harness Map</h1>
-  <p class="lede">Everything that fires between a request arriving and code shipping — <strong>where it fires, and why it is there.</strong> 26 skills · 9 rule cards · 5 hooks · 23 things that get blocked.</p>
+  <p class="lede">Everything that fires between a request arriving and code shipping — <strong>where it fires, and why it is there.</strong> 26 skills · 9 rule cards · 5 hooks · 24 things that get blocked.</p>
   <div class="legend">
     <b><i style="background:var(--skill)"></i>skill</b>
     <b><i style="background:var(--rule)"></i>rule card</b>
@@ -732,7 +732,7 @@
         <tr>
           <td><span class="m" style="font-weight:600;color:var(--ink)">P4</span> <b>Build</b><br><small style="color:var(--alert)">always</small></td>
           <td>main session</td>
-          <td><b>It always runs.</b> The path you edit summons the rule cards, and before every write or command <span class="pill p-hook" style="font-size:11px">security-check</span> screens 23 patterns. If there is a test runner and behaviour changes, the test comes first.<br><span class="pill p-skill" style="font-size:11px">/test-driven-development</span> <span class="pill p-skill" style="font-size:11px">/ui-ux-design</span> <span class="pill p-skill" style="font-size:11px">frontend · backend-guide</span></td>
+          <td><b>It always runs.</b> The path you edit summons the rule cards, and before every write or command <span class="pill p-hook" style="font-size:11px">security-check</span> screens 24 patterns. If there is a test runner and behaviour changes, the test comes first.<br><span class="pill p-skill" style="font-size:11px">/test-driven-development</span> <span class="pill p-skill" style="font-size:11px">/ui-ux-design</span> <span class="pill p-skill" style="font-size:11px">frontend · backend-guide</span></td>
           <td class="use y">●</td><td class="use y">●</td><td class="use y">●</td><td class="use y">●</td><td class="use y">●</td><td class="use n">—</td>
         </tr>
         <tr>
@@ -1105,7 +1105,7 @@
         <tr>
           <td><span class="pill p-hook">security-check</span> <span class="badge b-always">blocks</span><br><span class="m" style="font-size:11px;color:var(--faint)">500 lines</span></td>
           <td class="m">PreToolUse<br>Edit｜Write｜MultiEdit｜Bash<br><span style="font-family:var(--body);color:var(--soft)">just <b>before</b> writing or running</span></td>
-          <td><b>Screens 23 patterns and exits 2 on a hit</b> — the tool call itself is refused. It also summons the <span class="pill p-rule">ui-design</span> card when a new UI file is created.</td>
+          <td><b>Screens 24 patterns and exits 2 on a hit</b> — the tool call itself is refused. It also summons the <span class="pill p-rule">ui-design</span> card when a new UI file is created.</td>
           <td>Catching it after the write is too late. <b>Content checks are portable; path checks are not</b> — so this hook never needs to know a path. Placement mistakes (a server key behind <span class="m">NEXT_PUBLIC_</span>) are impossible for a regex in principle, so the <span class="pill p-rule">security</span> card takes those.</td>
         </tr>
         <tr>
@@ -1170,7 +1170,7 @@
     </div>
   </div>
 
-  <h3>What security-check blocks — all 23</h3>
+  <h3>What security-check blocks — all 24</h3>
   <div class="blocks">
     <div>
       <h4 style="color:var(--hook)">Hard-coded secrets — 15</h4>
@@ -1202,7 +1202,8 @@
         <li>prisma schema reset</li>
         <li>reverting every migration</li>
         <li>git history rewrite · mirror push</li>
-        <li>force-push to a shared branch</li>
+        <li>force-push to a shared branch (<span class="m">--force</span> · <span class="m">+refspec</span>)</li>
+        <li>deleting a shared branch on the remote (<span class="m">--delete</span> · <span class="m">:branch</span>)</li>
       </ul>
     </div>
     <div>
